@@ -17,12 +17,10 @@ function App() {
   const [inRoom, setInRoom] = useState(false);
   const [tab, setTab] = useState('create');
 
-  // Profil
   const [myAvatar, setMyAvatar] = useState('🐱');
   const [username, setUsername] = useState('Ben');
   const [mySocketId, setMySocketId] = useState('');
 
-  // Oda
   const [roomId, setRoomId] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [maxUsers, setMaxUsers] = useState('2');
@@ -32,18 +30,15 @@ function App() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
-  // Medya
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   const [inputUrl, setInputUrl] = useState('');
 
-  // Sohbet ve Tepkiler
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [reactions, setReactions] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [copied, setCopied] = useState(false);
 
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
@@ -79,6 +74,22 @@ function App() {
       setRoomId(data.roomId);
       setMySocketId(data.socketId);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+
+      // Odaya yeni girildiğinde mevcut medyayı senkronize al
+      if (data.currentMedia && data.currentMedia.type !== 'none') {
+        setMediaType(data.currentMedia.type);
+        setMediaSrc(data.currentMedia.src);
+
+        setTimeout(() => {
+          if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
+            ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
+            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo();
+          } else if (data.currentMedia.type === 'custom_video' && customVideoRef.current) {
+            customVideoRef.current.currentTime = data.currentMedia.time || 0;
+            if (data.currentMedia.isPlaying) customVideoRef.current.play();
+          }
+        }, 800);
+      }
     });
 
     socket.on('room_user_count_update', (data) => {
@@ -154,13 +165,6 @@ function App() {
     window.history.pushState({}, '', window.location.pathname);
   };
 
-  const handleCopyLink = () => {
-    const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const sendAction = (type, payload) => {
     if (socket) {
       socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
@@ -229,7 +233,7 @@ function App() {
   };
 
   // =========================================================================
-  // 1. ANA SAYFA EKRANI
+  // LANDING PAGE
   // =========================================================================
   if (!inRoom) {
     return (
@@ -392,10 +396,10 @@ function App() {
   }
 
   // =========================================================================
-  // 2. TAM EKRAN ODA EKRANI (URL Bar + Sağ/Sol Hizalı Chat)
+  // WIDE FULLSCREEN CINEMA ROOM
   // =========================================================================
   return (
-    <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
+    <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
       <style>{`
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
         @media (max-width: 900px) {
@@ -414,26 +418,18 @@ function App() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={handleCopyLink}
-            style={{ background: copied ? '#2ed573' : '#f5b041', color: '#06080c', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
-          >
-            {copied ? 'Link Kopyalandı! 🔗' : 'Oda Linkini Kopyala 🔗'}
-          </button>
-          <button 
-            onClick={handleLeaveRoom}
-            style={{ background: '#1a202c', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
-          >
-            Ayrıl 🚪
-          </button>
-        </div>
+        <button 
+          onClick={handleLeaveRoom}
+          style={{ background: '#1a202c', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+        >
+          Odadan Ayrıl 🚪
+        </button>
       </header>
 
-      {/* Main Viewport */}
+      {/* Main Container */}
       <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* Left Side: Video Stage */}
+        {/* Left Side: Dynamic Video Player */}
         <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
           {/* Top URL Input Bar */}
@@ -450,7 +446,7 @@ function App() {
             </button>
           </form>
 
-          {/* Screen Content */}
+          {/* Screen Player Content */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
             
             {mediaType === 'none' && (
@@ -462,7 +458,7 @@ function App() {
             )}
 
             {mediaType === 'youtube' && (
-              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 0, controls: 1 } }} style={{ width: '100%', height: '100%' }} onReady={(e) => { ytPlayerRef.current = e.target; }} />
+              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 1 } }} style={{ width: '100%', height: '100%' }} onReady={(e) => { ytPlayerRef.current = e.target; }} />
             )}
 
             {mediaType === 'custom_video' && (
@@ -473,7 +469,7 @@ function App() {
               <iframe src={mediaSrc} title="Movie Stream" width="100%" height="100%" frameBorder="0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
             )}
 
-            {/* Reactions Overlay */}
+            {/* Reactions */}
             {reactions.map((r) => (
               <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '42px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
@@ -481,7 +477,7 @@ function App() {
             ))}
           </div>
 
-          {/* Playback & Reaction Controls */}
+          {/* Control Bar */}
           <div style={{ padding: '12px 20px', background: '#0e121a', borderTop: '1px solid #1a202c', display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
             <button onClick={handlePlay} style={{ flex: 1, padding: '10px', background: '#2ed573', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>
               ▶ Ortak Oynat
@@ -499,15 +495,14 @@ function App() {
           </div>
         </div>
 
-        {/* Right Side: Chat Sidebar (WhatsApp Right / Left Alignment) */}
-        <div className="chat-sidebar" style={{ width: '330px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* Right Side: Chat Box */}
+        <div className="chat-sidebar" style={{ width: '340px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a202c', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: '14px', color: '#f5b041', fontWeight: 'bold' }}>💬 Canlı Sohbet</h3>
             <span style={{ fontSize: '11px', color: '#718096' }}>Profil: {myAvatar} {username}</span>
           </div>
 
-          {/* Messages Stream */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {messages.length === 0 ? (
               <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. Keyifli seyirler! 🥰</p>
@@ -526,12 +521,10 @@ function App() {
                       maxWidth: '85%'
                     }}
                   >
-                    {/* Avatar Icon */}
                     <div style={{ fontSize: '20px', background: '#1a202c', padding: '4px', borderRadius: '50%', border: '1px solid #2d3748', lineHeight: 1, flexShrink: 0 }}>
                       {msg.avatar || '🐱'}
                     </div>
 
-                    {/* Bubble */}
                     <div 
                       style={{ 
                         background: isMe ? '#f5b0411a' : '#141a23', 
@@ -558,7 +551,6 @@ function App() {
             <div ref={chatBottomRef} />
           </div>
 
-          {/* Send Input */}
           <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #1a202c', display: 'flex', gap: '8px', background: '#0e121a' }}>
             <input 
               type="text" 
