@@ -11,23 +11,32 @@ try {
   console.error("Socket hatası:", err);
 }
 
+const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
+
 function App() {
   const [inRoom, setInRoom] = useState(false);
-  const [tab, setTab] = useState('create'); // 'create' | 'join'
+  const [tab, setTab] = useState('create');
 
+  // Kullanıcı Profili
+  const [myAvatar, setMyAvatar] = useState('🐱');
+  const [username, setUsername] = useState('İzleyici');
+
+  // Oda Bilgileri
   const [roomId, setRoomId] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [maxUsers, setMaxUsers] = useState('2');
-
   const [joinRoomInput, setJoinRoomInput] = useState('');
   const [joinPassInput, setJoinPassInput] = useState('');
 
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
-  const [mediaType, setMediaType] = useState('youtube');
-  const [mediaSrc, setMediaSrc] = useState('dQw4w9WgXcQ');
+  // Medya (Varsayılan video KALDIRILDI)
+  const [mediaType, setMediaType] = useState('none'); 
+  const [mediaSrc, setMediaSrc] = useState('');
   const [inputUrl, setInputUrl] = useState('');
+
+  // Sohbet ve Tepkiler
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [reactions, setReactions] = useState([]);
@@ -132,6 +141,8 @@ function App() {
   const handleLeaveRoom = () => {
     socket.emit('leave_room');
     setInRoom(false);
+    setMediaType('none');
+    setMediaSrc('');
     window.history.pushState({}, '', window.location.pathname);
   };
 
@@ -191,7 +202,12 @@ function App() {
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    const newMsg = { text: chatInput, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    const newMsg = { 
+      text: chatInput, 
+      sender: username,
+      avatar: myAvatar,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    };
     setMessages((prev) => [...prev, newMsg]);
     sendAction('CHAT_MESSAGE', newMsg);
     setChatInput('');
@@ -204,156 +220,160 @@ function App() {
   };
 
   // =========================================================================
-  // 1. ANA SAYFA / LANDING PAGE EKRANI
+  // 1. ANA SAYFA / LANDING PAGE (Karakter Seçimi Dahil)
   // =========================================================================
   if (!inRoom) {
     return (
-      <div style={{ backgroundColor: '#131822', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-        {/* Navigation Bar */}
-        <header style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e2638' }}>
+      <div style={{ backgroundColor: '#0b0e14', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+        <header style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a202c' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '24px' }}>❤️</span>
-            <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', fontWeight: '800', letterSpacing: '-0.5px' }}>Couple Meeting</h1>
+            <span style={{ fontSize: '28px' }}>❤️</span>
+            <h1 style={{ margin: 0, fontSize: '22px', color: '#fff', fontWeight: '900', letterSpacing: '-0.5px' }}>Couple Meeting</h1>
           </div>
           <span style={{ fontSize: '12px', background: isConnected ? '#f5b04115' : '#ff475715', color: isConnected ? '#f5b041' : '#ff4757', padding: '6px 14px', borderRadius: '20px', border: '1px solid', fontWeight: 'bold' }}>
             {isConnected ? 'Sunucu Aktif 🌐' : 'Bağlanıyor... 🔴'}
           </span>
         </header>
 
-        {/* Hero Section */}
-        <div style={{ maxWidth: '900px', margin: '60px auto 0 auto', textAlign: 'center', padding: '0 20px' }}>
-          <h2 style={{ fontSize: '48px', fontWeight: '900', color: '#fff', marginBottom: '16px', letterSpacing: '-1px' }}>
-            birlikte vakit <span style={{ color: '#f5b041' }}>geçirin</span>
+        <div style={{ maxWidth: '850px', margin: '40px auto 0 auto', textAlign: 'center', padding: '0 20px' }}>
+          <h2 style={{ fontSize: '44px', fontWeight: '900', color: '#fff', marginBottom: '14px', letterSpacing: '-1px' }}>
+            birlikte sinema <span style={{ color: '#f5b041' }}>keyfi</span>
           </h2>
-          <p style={{ fontSize: '16px', color: '#8c9ba5', marginBottom: '40px' }}>
-            YouTube, film ve videoları eş zamanlı izleyin. Mesafe tanımayan canlı sohbet odanızı hemen oluşturun.
+          <p style={{ fontSize: '15px', color: '#718096', marginBottom: '32px' }}>
+            Karakterini seç, odanı kur veya var olan bir odaya katılarak eş zamanlı izlemeye başla!
           </p>
 
-          {/* Error Message Warning */}
           {errorMessage && (
             <div style={{ background: '#ff4757', color: '#fff', padding: '14px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '24px', fontSize: '14px' }}>
               {errorMessage}
             </div>
           )}
 
-          {/* Main Card (Create or Join Tabs) */}
-          <div style={{ background: '#1c2333', borderRadius: '16px', padding: '32px', border: '1px solid #2a344a', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', maxWidth: '520px', margin: '0 auto' }}>
+          {/* Main Form Container */}
+          <div style={{ background: '#141a23', borderRadius: '20px', padding: '32px', border: '1px solid #2d3748', boxShadow: '0 25px 60px rgba(0,0,0,0.6)', maxWidth: '500px', margin: '0 auto' }}>
             
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', background: '#131822', padding: '6px', borderRadius: '10px' }}>
+            {/* Karakter / Profil Seçimi */}
+            <div style={{ marginBottom: '24px', textAlign: 'left' }}>
+              <label style={{ fontSize: '12px', color: '#a0aec0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Karakter / Profilini Seç:</label>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#0b0e14', padding: '10px', borderRadius: '12px', border: '1px solid #2d3748' }}>
+                {AVATARS.map((emoji) => (
+                  <span
+                    key={emoji}
+                    onClick={() => setMyAvatar(emoji)}
+                    style={{
+                      fontSize: '24px',
+                      padding: '6px 10px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      background: myAvatar === emoji ? '#f5b041' : 'transparent',
+                      transform: myAvatar === emoji ? 'scale(1.15)' : 'scale(1)',
+                      transition: '0.2s'
+                    }}
+                  >
+                    {emoji}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Isim Girisi */}
+            <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+              <input 
+                type="text" 
+                placeholder="Takma Adın (Örn: Ömer / Ayşe)" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Tab Buttons */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: '#0b0e14', padding: '4px', borderRadius: '10px' }}>
               <button 
                 onClick={() => setTab('create')}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: tab === 'create' ? '#f5b041' : 'transparent', color: tab === 'create' ? '#131822' : '#8c9ba5', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: tab === 'create' ? '#f5b041' : 'transparent', color: tab === 'create' ? '#0b0e14' : '#a0aec0', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 Oda Oluştur
               </button>
               <button 
                 onClick={() => setTab('join')}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: tab === 'join' ? '#f5b041' : 'transparent', color: tab === 'join' ? '#131822' : '#8c9ba5', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: tab === 'join' ? '#f5b041' : 'transparent', color: tab === 'join' ? '#0b0e14' : '#a0aec0', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 Odaya Katıl
               </button>
             </div>
 
-            {/* Tab 1: Oda Oluştur */}
             {tab === 'create' && (
-              <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <input 
                   type="text" 
                   placeholder="Oda İsmi (Örn: Sinema-Gecesi)" 
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
-                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px' }}
                 />
                 <input 
                   type="password" 
-                  placeholder="Şifre Oluştur (İsteğe bağlı)" 
+                  placeholder="Oda Şifresi (İsteğe Bağlı)" 
                   value={roomPassword}
                   onChange={(e) => setRoomPassword(e.target.value)}
-                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px' }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#131822', padding: '10px 14px', borderRadius: '10px', border: '1px solid #2a344a' }}>
-                  <span style={{ fontSize: '13px', color: '#8c9ba5' }}>Kişi Sınırı:</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0b0e14', padding: '10px 14px', borderRadius: '10px', border: '1px solid #2d3748' }}>
+                  <span style={{ fontSize: '13px', color: '#a0aec0' }}>Kişi Sınırı:</span>
                   <select 
                     value={maxUsers} 
                     onChange={(e) => setMaxUsers(e.target.value)}
                     style={{ background: 'transparent', border: 'none', color: '#f5b041', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', outline: 'none' }}
                   >
-                    <option value="2" style={{ background: '#131822' }}>2 Kişi (Çiftler)</option>
-                    <option value="4" style={{ background: '#131822' }}>4 Kişi (Grup)</option>
-                    <option value="8" style={{ background: '#131822' }}>8 Kişi (Kalabalık)</option>
-                    <option value="20" style={{ background: '#131822' }}>20 Kişi (Parti)</option>
+                    <option value="2" style={{ background: '#0b0e14' }}>2 Kişi (Çiftler)</option>
+                    <option value="4" style={{ background: '#0b0e14' }}>4 Kişi</option>
+                    <option value="8" style={{ background: '#0b0e14' }}>8 Kişi</option>
                   </select>
                 </div>
-                <button type="submit" style={{ padding: '14px', background: '#f5b041', color: '#131822', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', marginTop: '10px' }}>
-                  Kendi Odanızı Oluşturun 🚀
+                <button type="submit" style={{ padding: '14px', background: '#f5b041', color: '#0b0e14', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', marginTop: '10px' }}>
+                  Odayı Başlat 🚀
                 </button>
               </form>
             )}
 
-            {/* Tab 2: Odaya Katıl */}
             {tab === 'join' && (
-              <form onSubmit={handleJoinRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <form onSubmit={handleJoinRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <input 
                   type="text" 
-                  placeholder="Oda İsmi veya Davet Linki Yapıştır..." 
+                  placeholder="Oda İsmi veya Davet Linki..." 
                   value={joinRoomInput}
                   onChange={(e) => setJoinRoomInput(e.target.value)}
-                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px' }}
                 />
                 <input 
                   type="password" 
                   placeholder="Oda Şifresi (Varsa)" 
                   value={joinPassInput}
                   onChange={(e) => setJoinPassInput(e.target.value)}
-                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px' }}
                 />
                 <button type="submit" style={{ padding: '14px', background: '#3742fa', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', marginTop: '10px' }}>
-                  Odaya Katıl 🚪
+                  Odaya Gir 🚪
                 </button>
               </form>
             )}
-
           </div>
 
-          {/* Features Section */}
-          <div style={{ marginTop: '70px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', textAlign: 'left' }}>
-            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>🎬</div>
-              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Eş Zamanlı Oynatıcı</h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>Videoları ve filmleri aynı anda kesintisiz durdurup oynatın.</p>
-            </div>
-            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔒</div>
-              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Şifreli Özel Odalar</h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>Sadece şifreyi paylaştığınız kişilerin katılabileceği gizli odalar.</p>
-            </div>
-            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>💬</div>
-              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Canlı Sohbet & Tepkiler</h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>Mesajlaşın ve ekranda uçuşan canlı emojiler gönderin.</p>
-            </div>
-            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>🍿</div>
-              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Geniş Medya Desteği</h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>YouTube, kaçak dizi/film embed linkleri veya direkt MP4 desteği.</p>
-            </div>
-          </div>
-
-          {/* Active Public Rooms Section */}
+          {/* Açık Odalar */}
           {publicRooms.length > 0 && (
-            <div style={{ marginTop: '50px', textAlign: 'left', marginBottom: '60px' }}>
-              <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px' }}>🌐 Açık Odalar</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+            <div style={{ marginTop: '40px', textAlign: 'left', marginBottom: '60px' }}>
+              <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '14px' }}>🌐 Canlı Odalar</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                 {publicRooms.map((r) => (
-                  <div key={r.id} style={{ background: '#1c2333', padding: '14px 18px', borderRadius: '10px', border: '1px solid #2a344a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={r.id} style={{ background: '#141a23', padding: '12px 16px', borderRadius: '10px', border: '1px solid #2d3748', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>{r.name} {r.hasPassword && '🔒'}</div>
-                      <div style={{ fontSize: '12px', color: '#8c9ba5', marginTop: '2px' }}>Kişi: {r.userCount}/{r.maxUsers}</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>{r.name} {r.hasPassword && '🔒'}</div>
+                      <div style={{ fontSize: '11px', color: '#718096', marginTop: '2px' }}>İzleyici: {r.userCount}/{r.maxUsers}</div>
                     </div>
                     <button 
                       onClick={() => { setJoinRoomInput(r.id); setTab('join'); }}
-                      style={{ background: '#f5b041', color: '#131822', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}
+                      style={{ background: '#f5b041', color: '#0b0e14', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}
                     >
                       Katıl ➔
                     </button>
@@ -362,95 +382,98 @@ function App() {
               </div>
             </div>
           )}
-
         </div>
       </div>
     );
   }
 
   // =========================================================================
-  // 2. ODA / WATCH PARTY EKRANI
+  // 2. TAM EKRAN CANLI SINEMA VE SOHBET SAYFASI
   // =========================================================================
   return (
-    <div style={{ backgroundColor: '#131822', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <style>{`@keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }`}</style>
+    <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
+      <style>{`
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
+        @media (max-width: 900px) {
+          .room-layout { flex-direction: column !important; overflow-y: auto !important; }
+          .video-stage { height: 45vh !important; min-height: 280px !important; }
+          .chat-sidebar { width: 100% !important; height: 50vh !important; }
+        }
+      `}</style>
       
-      {/* Clean Room Header */}
-      <header style={{ padding: '16px 32px', background: '#1c2333', borderBottom: '1px solid #2a344a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Upper Bar */}
+      <header style={{ height: '56px', padding: '0 24px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ margin: 0, color: '#f5b041', fontSize: '18px', fontWeight: '800' }}>Couple Meeting ❤️</h2>
-          <span style={{ fontSize: '12px', background: '#f5b04115', color: '#f5b041', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid #f5b04144' }}>
-            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers} İzleyici)
+          <h2 style={{ margin: 0, color: '#f5b041', fontSize: '16px', fontWeight: '900' }}>Couple Meeting ❤️</h2>
+          <span style={{ fontSize: '11px', background: '#f5b04115', color: '#f5b041', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold', border: '1px solid #f5b04144' }}>
+            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers})
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button 
             onClick={handleCopyLink}
-            style={{ background: copied ? '#2ed573' : '#f5b041', color: '#131822', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+            style={{ background: copied ? '#2ed573' : '#f5b041', color: '#06080c', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
           >
             {copied ? 'Link Kopyalandı! 🔗' : 'Oda Linkini Kopyala 🔗'}
           </button>
           <button 
             onClick={handleLeaveRoom}
-            style={{ background: '#2a344a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+            style={{ background: '#1a202c', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
           >
-            Odadan Ayrıl 🚪
+            Ayrıl 🚪
           </button>
         </div>
       </header>
 
-      {/* Main Watch Party Grid */}
-      <div style={{ display: 'flex', padding: '24px', gap: '24px', maxWidth: '1440px', margin: '0 auto', flexWrap: 'wrap' }}>
+      {/* Main Screen Layout (Takes 100% Viewport Height) */}
+      <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* Left Side: Video Player & Controls */}
-        <div style={{ flex: '3', minWidth: '320px' }}>
-          <form onSubmit={handleMediaSubmit} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-            <input 
-              type="text" 
-              placeholder="YouTube URL, Film iFrame Embed Linki veya .MP4 Adresi Yapıştır..." 
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #2a344a', background: '#1c2333', color: '#fff', fontSize: '13px' }}
-            />
-            <button type="submit" style={{ padding: '12px 20px', background: '#f5b041', color: '#131822', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-              Medyayı Yükle 🎬
-            </button>
-          </form>
+        {/* Left Side: Cinema Screen */}
+        <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
+          
+          {/* Main Video Stage Container */}
+          <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
+            
+            {mediaType === 'none' && (
+              <div style={{ textAlign: 'center', color: '#4a5568', padding: '20px' }}>
+                <div style={{ fontSize: '50px', marginBottom: '10px' }}>🎬</div>
+                <h3 style={{ color: '#a0aec0', margin: '0 0 8px 0', fontSize: '18px' }}>Medya Ekranı Tam Ekran Olarak Hazır</h3>
+                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıdaki medya butonundan izlemek istediğiniz video URL'sini yapıştırın.</p>
+              </div>
+            )}
 
-          {/* Video Container */}
-          <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', background: '#000', minHeight: '420px', border: '1px solid #2a344a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {mediaType === 'youtube' && (
-              <YouTube videoId={mediaSrc} opts={{ height: '420', width: '100%', playerVars: { autoplay: 0, controls: 1 } }} onReady={(e) => { ytPlayerRef.current = e.target; }} />
-            )}
-            {mediaType === 'custom_video' && (
-              <video ref={customVideoRef} src={mediaSrc} controls style={{ width: '100%', maxHeight: '420px' }} />
-            )}
-            {mediaType === 'iframe' && (
-              <iframe src={mediaSrc} title="Movie Stream" width="100%" height="420" frameBorder="0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
+              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 0, controls: 1 } }} style={{ width: '100%', height: '100%' }} onReady={(e) => { ytPlayerRef.current = e.target; }} />
             )}
 
+            {mediaType === 'custom_video' && (
+              <video ref={customVideoRef} src={mediaSrc} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            )}
+
+            {mediaType === 'iframe' && (
+              <iframe src={mediaSrc} title="Movie Stream" width="100%" height="100%" frameBorder="0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
+            )}
+
+            {/* Reactions Overlay */}
             {reactions.map((r) => (
-              <div key={r.id} style={{ position: 'absolute', bottom: '20px', left: `${r.left}%`, fontSize: '36px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
+              <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '42px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
               </div>
             ))}
           </div>
 
-          {/* Controls */}
-          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={handlePlay} style={{ flex: 1, padding: '14px', background: '#2ed573', color: '#131822', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
-                ▶ Ortak Oynat
-              </button>
-              <button onClick={handlePause} style={{ flex: 1, padding: '14px', background: '#ffa502', color: '#131822', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
-                ⏸ Ortak Durdur
-              </button>
-            </div>
-
-            <div style={{ background: '#1c2333', padding: '10px', borderRadius: '10px', border: '1px solid #2a344a', display: 'flex', justifyContent: 'center', gap: '12px' }}>
+          {/* Controls Bottom Bar */}
+          <div style={{ padding: '12px 20px', background: '#0e121a', borderTop: '1px solid #1a202c', display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+            <button onClick={handlePlay} style={{ flex: 1, padding: '10px', background: '#2ed573', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>
+              ▶ Ortak Oynat
+            </button>
+            <button onClick={handlePause} style={{ flex: 1, padding: '10px', background: '#ffa502', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>
+              ⏸ Ortak Durdur
+            </button>
+            <div style={{ display: 'flex', gap: '6px' }}>
               {['❤️', '🔥', '😂', '😮', '👏', '😍'].map((emoji) => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#131822', border: '1px solid #2a344a', fontSize: '20px', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>
+                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#1a202c', border: '1px solid #2d3748', fontSize: '16px', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer' }}>
                   {emoji}
                 </button>
               ))}
@@ -458,33 +481,54 @@ function App() {
           </div>
         </div>
 
-        {/* Right Side: Chat Box */}
-        <div style={{ flex: '1.2', minWidth: '300px', background: '#1c2333', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', height: '600px', border: '1px solid #2a344a' }}>
-          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #2a344a', paddingBottom: '12px', fontSize: '15px', color: '#f5b041' }}>💬 Canlı Sohbet</h3>
+        {/* Right Side: Full Height Chat Sidebar with Avatars */}
+        <div className="chat-sidebar" style={{ width: '320px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a202c', display: 'flex', alignItems: 'center', justifyBetween: 'space-between' }}>
+            <h3 style={{ margin: 0, fontSize: '14px', color: '#f5b041', fontWeight: 'bold' }}>💬 Canlı Sohbet</h3>
+            <span style={{ fontSize: '11px', color: '#718096', marginLeft: 'auto' }}>Profilin: {myAvatar}</span>
+          </div>
+
+          {/* Left Aligned Messages Stream */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {messages.length === 0 ? (
-              <p style={{ color: '#8c9ba5', fontSize: '13px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. 🥰</p>
+              <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. Keyifli seyirler! 🥰</p>
             ) : (
               messages.map((msg, idx) => (
-                <div key={idx} style={{ alignSelf: 'flex-start', maxWidth: '85%', background: '#131822', border: '1px solid #2a344a', padding: '10px 14px', borderRadius: '12px 12px 12px 2px', textAlign: 'left' }}>
-                  <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.text}</div>
-                  <div style={{ fontSize: '9px', color: '#8c9ba5', marginTop: '4px', textAlign: 'right' }}>{msg.time}</div>
+                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', textAlign: 'left' }}>
+                  {/* Character Avatar Icon */}
+                  <div style={{ fontSize: '22px', background: '#1a202c', padding: '4px', borderRadius: '50%', border: '1px solid #2d3748', lineHeight: 1 }}>
+                    {msg.avatar || '🐱'}
+                  </div>
+
+                  {/* Message Bubble */}
+                  <div style={{ flex: 1, background: '#141a23', border: '1px solid #2d3748', padding: '8px 12px', borderRadius: '2px 10px 10px 10px' }}>
+                    <div style={{ fontSize: '11px', color: '#f5b041', fontWeight: 'bold', marginBottom: '2px' }}>
+                      {msg.sender || 'Kullanıcı'}
+                    </div>
+                    <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                      {msg.text}
+                    </div>
+                    <div style={{ fontSize: '9px', color: '#718096', marginTop: '4px', textAlign: 'right' }}>
+                      {msg.time}
+                    </div>
+                  </div>
                 </div>
               ))
             )}
             <div ref={chatBottomRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          {/* Chat Form */}
+          <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #1a202c', display: 'flex', gap: '8px', background: '#0e121a' }}>
             <input 
               type="text" 
               placeholder="Mesaj yaz..." 
               value={chatInput} 
               onChange={(e) => setChatInput(e.target.value)} 
-              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '13px' }} 
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }} 
             />
-            <button type="submit" style={{ padding: '12px 18px', background: '#f5b041', color: '#131822', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Gönder</button>
+            <button type="submit" style={{ padding: '10px 14px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>Gönder</button>
           </form>
         </div>
 
