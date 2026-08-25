@@ -2,8 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-// Render üzerindeki backend linkini buraya yaz (sonunda / olmasın)
-const SOCKET_URL = 'https://SENIN-RENDER-LINKIN.onrender.com';
+// Canlıya aldığında buraya Render linkini yaz (Örn: 'https://couple-backend.onrender.com')
+const SOCKET_URL = 'https://couple-meeting.onrender.com';
 const socket = io(SOCKET_URL, { transports: ['polling', 'websocket'] });
 
 function App() {

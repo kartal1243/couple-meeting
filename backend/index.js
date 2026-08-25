@@ -21,8 +21,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Render'ın dinamik portunu otomatik kullanır
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Sunucu ${PORT} portunda aktif!`);
+  console.log(`🚀 Sunucu ${PORT} portunda hazır!`);
 });
