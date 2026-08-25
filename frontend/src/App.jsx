@@ -17,11 +17,12 @@ function App() {
   const [inRoom, setInRoom] = useState(false);
   const [tab, setTab] = useState('create');
 
-  // Kullanıcı Profili
+  // Profil
   const [myAvatar, setMyAvatar] = useState('🐱');
-  const [username, setUsername] = useState('İzleyici');
+  const [username, setUsername] = useState('Ben');
+  const [mySocketId, setMySocketId] = useState('');
 
-  // Oda Bilgileri
+  // Oda
   const [roomId, setRoomId] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [maxUsers, setMaxUsers] = useState('2');
@@ -31,7 +32,7 @@ function App() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
-  // Medya (Varsayılan video KALDIRILDI)
+  // Medya
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   const [inputUrl, setInputUrl] = useState('');
@@ -76,6 +77,11 @@ function App() {
       setInRoom(true);
       setErrorMessage('');
       setRoomId(data.roomId);
+      setMySocketId(data.socketId);
+      setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+    });
+
+    socket.on('room_user_count_update', (data) => {
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
     });
 
@@ -111,6 +117,7 @@ function App() {
       socket.off('disconnect');
       socket.off('public_rooms_update');
       socket.off('room_joined');
+      socket.off('room_user_count_update');
       socket.off('room_error');
       socket.off('room_action');
     };
@@ -143,6 +150,7 @@ function App() {
     setInRoom(false);
     setMediaType('none');
     setMediaSrc('');
+    setMessages([]);
     window.history.pushState({}, '', window.location.pathname);
   };
 
@@ -203,8 +211,9 @@ function App() {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const newMsg = { 
+      senderId: mySocketId,
       text: chatInput, 
-      sender: username,
+      sender: username || 'Ben',
       avatar: myAvatar,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
     };
@@ -220,7 +229,7 @@ function App() {
   };
 
   // =========================================================================
-  // 1. ANA SAYFA / LANDING PAGE (Karakter Seçimi Dahil)
+  // 1. ANA SAYFA EKRANI
   // =========================================================================
   if (!inRoom) {
     return (
@@ -249,10 +258,8 @@ function App() {
             </div>
           )}
 
-          {/* Main Form Container */}
           <div style={{ background: '#141a23', borderRadius: '20px', padding: '32px', border: '1px solid #2d3748', boxShadow: '0 25px 60px rgba(0,0,0,0.6)', maxWidth: '500px', margin: '0 auto' }}>
             
-            {/* Karakter / Profil Seçimi */}
             <div style={{ marginBottom: '24px', textAlign: 'left' }}>
               <label style={{ fontSize: '12px', color: '#a0aec0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Karakter / Profilini Seç:</label>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#0b0e14', padding: '10px', borderRadius: '12px', border: '1px solid #2d3748' }}>
@@ -276,18 +283,16 @@ function App() {
               </div>
             </div>
 
-            {/* Isim Girisi */}
             <div style={{ marginBottom: '20px', textAlign: 'left' }}>
               <input 
                 type="text" 
-                placeholder="Takma Adın (Örn: Ömer / Ayşe)" 
+                placeholder="Takma Adın (Örn: Ömer / Ahsen)" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px', boxSizing: 'border-box' }}
               />
             </div>
 
-            {/* Tab Buttons */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: '#0b0e14', padding: '4px', borderRadius: '10px' }}>
               <button 
                 onClick={() => setTab('create')}
@@ -360,7 +365,6 @@ function App() {
             )}
           </div>
 
-          {/* Açık Odalar */}
           {publicRooms.length > 0 && (
             <div style={{ marginTop: '40px', textAlign: 'left', marginBottom: '60px' }}>
               <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '14px' }}>🌐 Canlı Odalar</h3>
@@ -388,7 +392,7 @@ function App() {
   }
 
   // =========================================================================
-  // 2. TAM EKRAN CANLI SINEMA VE SOHBET SAYFASI
+  // 2. TAM EKRAN ODA EKRANI (URL Bar + Sağ/Sol Hizalı Chat)
   // =========================================================================
   return (
     <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
@@ -396,17 +400,17 @@ function App() {
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
         @media (max-width: 900px) {
           .room-layout { flex-direction: column !important; overflow-y: auto !important; }
-          .video-stage { height: 45vh !important; min-height: 280px !important; }
+          .video-stage { height: 50vh !important; min-height: 300px !important; }
           .chat-sidebar { width: 100% !important; height: 50vh !important; }
         }
       `}</style>
       
-      {/* Upper Bar */}
+      {/* Header */}
       <header style={{ height: '56px', padding: '0 24px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h2 style={{ margin: 0, color: '#f5b041', fontSize: '16px', fontWeight: '900' }}>Couple Meeting ❤️</h2>
           <span style={{ fontSize: '11px', background: '#f5b04115', color: '#f5b041', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold', border: '1px solid #f5b04144' }}>
-            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers})
+            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers} Kişi)
           </span>
         </div>
 
@@ -426,20 +430,34 @@ function App() {
         </div>
       </header>
 
-      {/* Main Screen Layout (Takes 100% Viewport Height) */}
+      {/* Main Viewport */}
       <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* Left Side: Cinema Screen */}
+        {/* Left Side: Video Stage */}
         <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* Main Video Stage Container */}
+          {/* Top URL Input Bar */}
+          <form onSubmit={handleMediaSubmit} style={{ padding: '10px 16px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', gap: '10px', flexShrink: 0 }}>
+            <input 
+              type="text" 
+              placeholder="🎬 YouTube Linki, Dizi/Film Embed URL veya .MP4 Adresi Yapıştırın..." 
+              value={inputUrl}
+              onChange={(e) => setInputUrl(e.target.value)}
+              style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }}
+            />
+            <button type="submit" style={{ padding: '10px 18px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+              Medyayı Yükle 🍿
+            </button>
+          </form>
+
+          {/* Screen Content */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
             
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#4a5568', padding: '20px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '10px' }}>🎬</div>
-                <h3 style={{ color: '#a0aec0', margin: '0 0 8px 0', fontSize: '18px' }}>Medya Ekranı Tam Ekran Olarak Hazır</h3>
-                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıdaki medya butonundan izlemek istediğiniz video URL'sini yapıştırın.</p>
+                <h3 style={{ color: '#a0aec0', margin: '0 0 8px 0', fontSize: '18px' }}>Ekran Hazır</h3>
+                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıdaki sarı çubuğa video veya film linkinizi yapıştırın.</p>
               </div>
             )}
 
@@ -463,7 +481,7 @@ function App() {
             ))}
           </div>
 
-          {/* Controls Bottom Bar */}
+          {/* Playback & Reaction Controls */}
           <div style={{ padding: '12px 20px', background: '#0e121a', borderTop: '1px solid #1a202c', display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
             <button onClick={handlePlay} style={{ flex: 1, padding: '10px', background: '#2ed573', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>
               ▶ Ortak Oynat
@@ -481,45 +499,66 @@ function App() {
           </div>
         </div>
 
-        {/* Right Side: Full Height Chat Sidebar with Avatars */}
-        <div className="chat-sidebar" style={{ width: '320px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* Right Side: Chat Sidebar (WhatsApp Right / Left Alignment) */}
+        <div className="chat-sidebar" style={{ width: '330px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a202c', display: 'flex', alignItems: 'center', justifyBetween: 'space-between' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a202c', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: '14px', color: '#f5b041', fontWeight: 'bold' }}>💬 Canlı Sohbet</h3>
-            <span style={{ fontSize: '11px', color: '#718096', marginLeft: 'auto' }}>Profilin: {myAvatar}</span>
+            <span style={{ fontSize: '11px', color: '#718096' }}>Profil: {myAvatar} {username}</span>
           </div>
 
-          {/* Left Aligned Messages Stream */}
+          {/* Messages Stream */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {messages.length === 0 ? (
               <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. Keyifli seyirler! 🥰</p>
             ) : (
-              messages.map((msg, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', textAlign: 'left' }}>
-                  {/* Character Avatar Icon */}
-                  <div style={{ fontSize: '22px', background: '#1a202c', padding: '4px', borderRadius: '50%', border: '1px solid #2d3748', lineHeight: 1 }}>
-                    {msg.avatar || '🐱'}
-                  </div>
+              messages.map((msg, idx) => {
+                const isMe = msg.senderId === mySocketId || msg.sender === username;
+                return (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      display: 'flex', 
+                      gap: '8px', 
+                      alignItems: 'flex-start',
+                      alignSelf: isMe ? 'flex-end' : 'flex-start',
+                      flexDirection: isMe ? 'row-reverse' : 'row',
+                      maxWidth: '85%'
+                    }}
+                  >
+                    {/* Avatar Icon */}
+                    <div style={{ fontSize: '20px', background: '#1a202c', padding: '4px', borderRadius: '50%', border: '1px solid #2d3748', lineHeight: 1, flexShrink: 0 }}>
+                      {msg.avatar || '🐱'}
+                    </div>
 
-                  {/* Message Bubble */}
-                  <div style={{ flex: 1, background: '#141a23', border: '1px solid #2d3748', padding: '8px 12px', borderRadius: '2px 10px 10px 10px' }}>
-                    <div style={{ fontSize: '11px', color: '#f5b041', fontWeight: 'bold', marginBottom: '2px' }}>
-                      {msg.sender || 'Kullanıcı'}
-                    </div>
-                    <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                      {msg.text}
-                    </div>
-                    <div style={{ fontSize: '9px', color: '#718096', marginTop: '4px', textAlign: 'right' }}>
-                      {msg.time}
+                    {/* Bubble */}
+                    <div 
+                      style={{ 
+                        background: isMe ? '#f5b0411a' : '#141a23', 
+                        border: isMe ? '1px solid #f5b04155' : '1px solid #2d3748', 
+                        padding: '8px 12px', 
+                        borderRadius: isMe ? '10px 2px 10px 10px' : '2px 10px 10px 10px',
+                        textAlign: isMe ? 'right' : 'left'
+                      }}
+                    >
+                      <div style={{ fontSize: '11px', color: isMe ? '#f5b041' : '#70a1ff', fontWeight: 'bold', marginBottom: '2px' }}>
+                        {msg.sender}
+                      </div>
+                      <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                        {msg.text}
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#718096', marginTop: '4px' }}>
+                        {msg.time}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             <div ref={chatBottomRef} />
           </div>
 
-          {/* Chat Form */}
+          {/* Send Input */}
           <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #1a202c', display: 'flex', gap: '8px', background: '#0e121a' }}>
             <input 
               type="text" 

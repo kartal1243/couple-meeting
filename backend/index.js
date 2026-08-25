@@ -33,22 +33,31 @@ function broadcastRooms() {
   io.emit('public_rooms_update', getPublicRoomsList());
 }
 
+function updateRoomUsers(roomId) {
+  if (rooms[roomId]) {
+    io.to(roomId).emit('room_user_count_update', {
+      userCount: rooms[roomId].users.length,
+      maxUsers: rooms[roomId].maxUsers
+    });
+  }
+}
+
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
   socket.on('join_room', ({ roomId, password, maxUsers, isCreating }) => {
-    // Önceki odadan çıkış
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
-      if (rooms[socket.currentRoom].users.length === 0) {
-        delete rooms[socket.currentRoom];
+      const oldRoomId = socket.currentRoom;
+      rooms[oldRoomId].users = rooms[oldRoomId].users.filter(id => id !== socket.id);
+      updateRoomUsers(oldRoomId);
+      if (rooms[oldRoomId].users.length === 0) {
+        delete rooms[oldRoomId];
       }
     }
 
     let room = rooms[roomId];
 
     if (!room) {
-      // Yeni Oda Oluşturma
       rooms[roomId] = {
         name: roomId,
         password: password || '',
@@ -57,7 +66,6 @@ io.on('connection', (socket) => {
       };
       room = rooms[roomId];
     } else {
-      // Var olan Odaya Katılma ve Şifre Doğrulama
       if (room.password && room.password !== (password || '')) {
         socket.emit('room_error', '🔒 Hatalı Şifre! Lütfen oda şifresini girin.');
         return;
@@ -76,9 +84,11 @@ io.on('connection', (socket) => {
       roomId,
       userCount: room.users.length,
       maxUsers: room.maxUsers,
-      hasPassword: !!room.password
+      hasPassword: !!room.password,
+      socketId: socket.id
     });
 
+    updateRoomUsers(roomId);
     broadcastRooms();
   });
 
@@ -88,10 +98,12 @@ io.on('connection', (socket) => {
 
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
-      socket.leave(socket.currentRoom);
-      if (rooms[socket.currentRoom].users.length === 0) {
-        delete rooms[socket.currentRoom];
+      const rId = socket.currentRoom;
+      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
+      socket.leave(rId);
+      updateRoomUsers(rId);
+      if (rooms[rId].users.length === 0) {
+        delete rooms[rId];
       }
       socket.currentRoom = null;
       broadcastRooms();
@@ -100,9 +112,11 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
-      if (rooms[socket.currentRoom].users.length === 0) {
-        delete rooms[socket.currentRoom];
+      const rId = socket.currentRoom;
+      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
+      updateRoomUsers(rId);
+      if (rooms[rId].users.length === 0) {
+        delete rooms[rId];
       }
       broadcastRooms();
     }
