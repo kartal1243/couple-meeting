@@ -2,29 +2,40 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const SOCKET_URL = 'https://couple-meeting.onrender.com'; // Render linkini koru
-const socket = io(SOCKET_URL, { transports: ['polling', 'websocket'] });
+const BACKEND_URL = 'https://couple-meeting.onrender.com';
+let socket;
+
+try {
+  socket = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
+} catch (err) {
+  console.error("Socket hatası:", err);
+}
 
 function App() {
-  const getInitialRoom = () => {
+  const getParams = () => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('room') || 'oda-' + Math.floor(1000 + Math.random() * 9000);
+    return {
+      room: params.get('room') || 'oda-' + Math.floor(1000 + Math.random() * 9000),
+      pass: params.get('pass') || ''
+    };
   };
 
-  const [roomId, setRoomId] = useState(getInitialRoom);
-  const [newRoomInput, setNewRoomInput] = useState('');
-  
-  // Medya Türü: 'youtube' | 'custom_video' | 'iframe'
+  const initial = getParams();
+  const [roomId, setRoomId] = useState(initial.room);
+  const [roomPassword, setRoomPassword] = useState(initial.pass);
+
+  const [inputRoom, setInputRoom] = useState('');
+  const [inputPass, setInputPass] = useState('');
+
   const [mediaType, setMediaType] = useState('youtube');
-  const [mediaSrc, setMediaSrc] = useState('dQw4w9WgXcQ'); // Video ID veya URL
+  const [mediaSrc, setMediaSrc] = useState('dQw4w9WgXcQ');
   const [inputUrl, setInputUrl] = useState('');
-  
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
-  const [playlist, setPlaylist] = useState([]);
-  const [copied, setCopied] = useState(false);
   const [reactions, setReactions] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
@@ -37,12 +48,26 @@ function App() {
   };
 
   useEffect(() => {
-    const newUrl = `${window.location.pathname}?room=${roomId}`;
+    const newUrl = `${window.location.pathname}?room=${roomId}${roomPassword ? `&pass=${roomPassword}` : ''}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
 
-    socket.on('connect', () => setIsConnected(true));
-    socket.on('disconnect', () => setIsConnected(false));
-    socket.emit('join_room', roomId);
+    if (!socket) return;
+
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
+    socket.emit('join_room', { roomId, password: roomPassword });
+
+    socket.on('room_joined', () => {
+      setErrorMessage('');
+    });
+
+    socket.on('room_error', (msg) => {
+      setErrorMessage(msg);
+    });
 
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
@@ -67,26 +92,43 @@ function App() {
     });
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('room_joined');
+      socket.off('room_error');
       socket.off('room_action');
     };
-  }, [roomId]);
+  }, [roomId, roomPassword]);
 
   const sendAction = (type, payload) => {
-    socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
+    if (socket && !errorMessage) {
+      socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
+    }
   };
 
-  // URL Türünü Tespit Etme (YouTube, Direct Video, Embed)
+  const handleJoinRoom = (e) => {
+    e.preventDefault();
+    if (!inputRoom.trim()) return;
+    setRoomId(inputRoom.trim().toLowerCase());
+    setRoomPassword(inputPass.trim());
+    setInputRoom('');
+    setInputPass('');
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const processUrl = (url) => {
     const trimmed = url.trim();
     if (trimmed.includes('youtu.be/') || trimmed.includes('watch?v=')) {
       const id = trimmed.includes('youtu.be/') ? trimmed.split('youtu.be/')[1].split('?')[0] : trimmed.split('v=')[1].split('&')[0];
       return { type: 'youtube', src: id };
-    } else if (trimmed.endsWith('.mp4') || trimmed.endsWith('.webm') || trimmed.endsWith('.m3u8')) {
+    } else if (trimmed.endsWith('.mp4') || trimmed.endsWith('.webm')) {
       return { type: 'custom_video', src: trimmed };
     } else {
-      // Film sitelerindeki Embed / iFrame kaynakları
       return { type: 'iframe', src: trimmed };
     }
   };
@@ -138,19 +180,59 @@ function App() {
     <div style={{ backgroundColor: '#0b0b10', color: '#fff', minHeight: '100vh', fontFamily: 'Segoe UI, sans-serif' }}>
       <style>{`@keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }`}</style>
       
-      {/* Header */}
-      <header style={{ padding: '16px 36px', background: '#14141d', borderBottom: '1px solid #232333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0, color: '#ff4757' }}>Couple Meeting ❤️</h2>
-        <span style={{ fontSize: '12px', background: isConnected ? '#2ed57322' : '#ff475722', color: isConnected ? '#2ed573' : '#ff4757', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
-          {isConnected ? 'Küresel Canlı Bağlantı 🌐' : 'Bağlanıyor... 🔴'}
-        </span>
+      {/* Upper Navigation Bar */}
+      <header style={{ padding: '16px 36px', background: '#14141d', borderBottom: '1px solid #232333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h2 style={{ margin: 0, color: '#ff4757' }}>Couple Meeting ❤️</h2>
+          <span style={{ fontSize: '12px', background: isConnected ? '#2ed57322' : '#ff475722', color: isConnected ? '#2ed573' : '#ff4757', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', border: '1px solid' }}>
+            {isConnected ? 'Küresel Canlı Bağlantı 🌐' : 'Bağlanıyor... 🔴'}
+          </span>
+          <span style={{ fontSize: '12px', background: '#3742fa22', color: '#3742fa', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
+            Oda: {roomId} {roomPassword && '🔒'}
+          </span>
+        </div>
+
+        {/* Room Join & Link Sharing Tools */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <form onSubmit={handleJoinRoom} style={{ display: 'flex', gap: '6px' }}>
+            <input 
+              type="text" 
+              placeholder="Oda İsmi..." 
+              value={inputRoom}
+              onChange={(e) => setInputRoom(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #29293d', background: '#0b0b10', color: '#fff', fontSize: '13px' }}
+            />
+            <input 
+              type="password" 
+              placeholder="Şifre (İsteğe bağlı)" 
+              value={inputPass}
+              onChange={(e) => setInputPass(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #29293d', background: '#0b0b10', color: '#fff', fontSize: '13px', width: '130px' }}
+            />
+            <button type="submit" style={{ padding: '8px 14px', background: '#3742fa', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+              Odaya Katıl 🚪
+            </button>
+          </form>
+
+          <button 
+            onClick={handleCopyLink}
+            style={{ background: copied ? '#2ed573' : '#ff4757', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+          >
+            {copied ? 'Oda Linki Kopyalandı! 🔗' : 'Oda Linkini Kopyala 🔗'}
+          </button>
+        </div>
       </header>
 
-      {/* Main Container */}
+      {/* Password Error Warning */}
+      {errorMessage && (
+        <div style={{ background: '#ff4757', color: '#fff', padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>
+          {errorMessage} — Lütfen doğru şifre ile odaya tekrar katılın!
+        </div>
+      )}
+
+      {/* Main Grid Interface */}
       <div style={{ display: 'flex', padding: '24px', gap: '24px', maxWidth: '1440px', margin: '0 auto' }}>
         <div style={{ flex: '3' }}>
-          
-          {/* URL Giriş Formu */}
           <form onSubmit={handleMediaSubmit} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input 
               type="text" 
@@ -164,22 +246,17 @@ function App() {
             </button>
           </form>
 
-          {/* Dinamik Medya Ekranı */}
           <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#000', minHeight: '420px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            
             {mediaType === 'youtube' && (
               <YouTube videoId={mediaSrc} opts={{ height: '420', width: '100%', playerVars: { autoplay: 0, controls: 1 } }} onReady={(e) => { ytPlayerRef.current = e.target; }} />
             )}
-
             {mediaType === 'custom_video' && (
               <video ref={customVideoRef} src={mediaSrc} controls style={{ width: '100%', maxHeight: '420px' }} />
             )}
-
             {mediaType === 'iframe' && (
               <iframe src={mediaSrc} title="Movie Stream" width="100%" height="420" frameBorder="0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
             )}
 
-            {/* Yüzen Emojiler */}
             {reactions.map((r) => (
               <div key={r.id} style={{ position: 'absolute', bottom: '20px', left: `${r.left}%`, fontSize: '36px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
@@ -187,7 +264,6 @@ function App() {
             ))}
           </div>
 
-          {/* Kontroller */}
           <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={handlePlay} style={{ flex: 1, padding: '14px', background: '#2ed573', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -208,7 +284,6 @@ function App() {
           </div>
         </div>
 
-        {/* Canlı Sohbet */}
         <div style={{ flex: '1.2', background: '#14141d', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', height: '600px' }}>
           <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #232333', paddingBottom: '12px' }}>💬 Canlı Sohbet</h3>
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
