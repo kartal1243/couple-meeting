@@ -15,6 +15,13 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 const rooms = {};
 
+// Varsayılan Şarkı Listesi
+const DEFAULT_PLAYLIST = [
+  { id: 'def-1', title: '☕ Lofi Hip Hop Radio - Beats to Relax/Study', type: 'youtube', src: 'jfKfPfyJRdk', addedBy: 'Sistem' },
+  { id: 'def-2', title: '🎸 Acoustic Chill & Soft Songs', type: 'youtube', src: '5qap5aO4i9A', addedBy: 'Sistem' },
+  { id: 'def-3', title: '🎹 Romantic Piano Melodies', type: 'youtube', src: '1ZYbU82GVz4', addedBy: 'Sistem' }
+];
+
 function getPublicRoomsList() {
   const list = [];
   for (const [id, room] of Object.entries(rooms)) {
@@ -50,9 +57,7 @@ io.on('connection', (socket) => {
       const oldRoomId = socket.currentRoom;
       rooms[oldRoomId].users = rooms[oldRoomId].users.filter(id => id !== socket.id);
       updateRoomUsers(oldRoomId);
-      if (rooms[oldRoomId].users.length === 0) {
-        delete rooms[oldRoomId];
-      }
+      if (rooms[oldRoomId].users.length === 0) delete rooms[oldRoomId];
     }
 
     let room = rooms[roomId];
@@ -63,6 +68,7 @@ io.on('connection', (socket) => {
         password: password || '',
         maxUsers: parseInt(maxUsers) || 2,
         users: [],
+        playlist: [...DEFAULT_PLAYLIST],
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
@@ -81,7 +87,6 @@ io.on('connection', (socket) => {
     socket.currentRoom = roomId;
     socket.join(roomId);
 
-    // Oynatılan video devam ediyorsa saniyesini hesapla
     let calculatedTime = room.currentMedia.time;
     if (room.currentMedia.isPlaying) {
       calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
@@ -92,6 +97,7 @@ io.on('connection', (socket) => {
       userCount: room.users.length,
       maxUsers: room.maxUsers,
       socketId: socket.id,
+      playlist: room.playlist,
       currentMedia: {
         ...room.currentMedia,
         time: calculatedTime
@@ -100,6 +106,23 @@ io.on('connection', (socket) => {
 
     updateRoomUsers(roomId);
     broadcastRooms();
+  });
+
+  // Müzik / Oynatma Listesi Aksiyonları
+  socket.on('add_to_playlist', ({ roomId, item }) => {
+    const room = rooms[roomId];
+    if (room) {
+      room.playlist.push(item);
+      io.to(roomId).emit('playlist_updated', room.playlist);
+    }
+  });
+
+  socket.on('remove_from_playlist', ({ roomId, itemId }) => {
+    const room = rooms[roomId];
+    if (room) {
+      room.playlist = room.playlist.filter(i => i.id !== itemId);
+      io.to(roomId).emit('playlist_updated', room.playlist);
+    }
   });
 
   socket.on('room_action', ({ roomId, type, payload }) => {
@@ -126,9 +149,7 @@ io.on('connection', (socket) => {
       rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
       socket.leave(rId);
       updateRoomUsers(rId);
-      if (rooms[rId].users.length === 0) {
-        delete rooms[rId];
-      }
+      if (rooms[rId].users.length === 0) delete rooms[rId];
       socket.currentRoom = null;
       broadcastRooms();
     }
@@ -139,9 +160,7 @@ io.on('connection', (socket) => {
       const rId = socket.currentRoom;
       rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
       updateRoomUsers(rId);
-      if (rooms[rId].users.length === 0) {
-        delete rooms[rId];
-      }
+      if (rooms[rId].users.length === 0) delete rooms[rId];
       broadcastRooms();
     }
   });

@@ -16,6 +16,7 @@ const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻']
 function App() {
   const [inRoom, setInRoom] = useState(false);
   const [tab, setTab] = useState('create');
+  const [sidebarTab, setSidebarTab] = useState('chat'); // 'chat' | 'playlist'
 
   const [myAvatar, setMyAvatar] = useState('🐱');
   const [username, setUsername] = useState('Ben');
@@ -30,9 +31,11 @@ function App() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
+  // Oynatma ve Liste
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   const [inputUrl, setInputUrl] = useState('');
+  const [playlist, setPlaylist] = useState([]);
 
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -74,8 +77,8 @@ function App() {
       setRoomId(data.roomId);
       setMySocketId(data.socketId);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+      if (data.playlist) setPlaylist(data.playlist);
 
-      // Odaya yeni girildiğinde mevcut medyayı senkronize al
       if (data.currentMedia && data.currentMedia.type !== 'none') {
         setMediaType(data.currentMedia.type);
         setMediaSrc(data.currentMedia.src);
@@ -94,6 +97,10 @@ function App() {
 
     socket.on('room_user_count_update', (data) => {
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+    });
+
+    socket.on('playlist_updated', (updatedPlaylist) => {
+      setPlaylist(updatedPlaylist);
     });
 
     socket.on('room_error', (msg) => {
@@ -129,16 +136,17 @@ function App() {
       socket.off('public_rooms_update');
       socket.off('room_joined');
       socket.off('room_user_count_update');
+      socket.off('playlist_updated');
       socket.off('room_error');
       socket.off('room_action');
     };
   }, []);
 
   useEffect(() => {
-    if (inRoom) {
+    if (inRoom && sidebarTab === 'chat') {
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, inRoom]);
+  }, [messages, inRoom, sidebarTab]);
 
   const handleCreateRoomSubmit = (e) => {
     e.preventDefault();
@@ -173,8 +181,15 @@ function App() {
 
   const processUrl = (url) => {
     const trimmed = url.trim();
-    if (trimmed.includes('youtu.be/') || trimmed.includes('watch?v=')) {
-      const id = trimmed.includes('youtu.be/') ? trimmed.split('youtu.be/')[1].split('?')[0] : trimmed.split('v=')[1].split('&')[0];
+    if (trimmed.includes('music.youtube.com') || trimmed.includes('youtu.be/') || trimmed.includes('watch?v=')) {
+      let id = '';
+      if (trimmed.includes('music.youtube.com/watch?v=')) {
+        id = trimmed.split('v=')[1].split('&')[0];
+      } else if (trimmed.includes('youtu.be/')) {
+        id = trimmed.split('youtu.be/')[1].split('?')[0];
+      } else {
+        id = trimmed.split('v=')[1].split('&')[0];
+      }
       return { type: 'youtube', src: id };
     } else if (trimmed.endsWith('.mp4') || trimmed.endsWith('.webm')) {
       return { type: 'custom_video', src: trimmed };
@@ -190,7 +205,29 @@ function App() {
     setMediaType(media.type);
     setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
+
+    // Otomatik listeye de ekle
+    const trackItem = {
+      id: Date.now() + Math.random().toString(),
+      title: inputUrl.length > 30 ? inputUrl.substring(0, 30) + '...' : inputUrl,
+      type: media.type,
+      src: media.src,
+      addedBy: username
+    };
+    socket.emit('add_to_playlist', { roomId, item: trackItem });
+
     setInputUrl('');
+  };
+
+  const handleSelectPlaylistItem = (item) => {
+    setMediaType(item.type);
+    setMediaSrc(item.src);
+    sendAction('CHANGE_MEDIA', { type: item.type, src: item.src });
+  };
+
+  const handleRemovePlaylistItem = (itemId, e) => {
+    e.stopPropagation();
+    socket.emit('remove_from_playlist', { roomId, itemId });
   };
 
   const handlePlay = () => {
@@ -250,10 +287,10 @@ function App() {
 
         <div style={{ maxWidth: '850px', margin: '40px auto 0 auto', textAlign: 'center', padding: '0 20px' }}>
           <h2 style={{ fontSize: '44px', fontWeight: '900', color: '#fff', marginBottom: '14px', letterSpacing: '-1px' }}>
-            birlikte sinema <span style={{ color: '#f5b041' }}>keyfi</span>
+            birlikte sinema ve <span style={{ color: '#f5b041' }}>müzik keyfi</span>
           </h2>
           <p style={{ fontSize: '15px', color: '#718096', marginBottom: '32px' }}>
-            Karakterini seç, odanı kur veya var olan bir odaya katılarak eş zamanlı izlemeye başla!
+            Karakterini seç, odanı kur veya müzik/film listelerinden seçim yaparak birlikte eğlenin!
           </p>
 
           {errorMessage && (
@@ -316,7 +353,7 @@ function App() {
               <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <input 
                   type="text" 
-                  placeholder="Oda İsmi (Örn: Sinema-Gecesi)" 
+                  placeholder="Oda İsmi (Örn: Muzik-Keyfi)" 
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
                   style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2d3748', background: '#0b0e14', color: '#fff', fontSize: '14px' }}
@@ -396,7 +433,7 @@ function App() {
   }
 
   // =========================================================================
-  // WIDE FULLSCREEN CINEMA ROOM
+  // TAM EKRAN ODA EKRANI (Ortak Şarkı / Video Çalma Listeli)
   // =========================================================================
   return (
     <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
@@ -426,34 +463,34 @@ function App() {
         </button>
       </header>
 
-      {/* Main Container */}
+      {/* Main Grid */}
       <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* Left Side: Dynamic Video Player */}
+        {/* Left Side: Oynatıcı */}
         <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
           {/* Top URL Input Bar */}
           <form onSubmit={handleMediaSubmit} style={{ padding: '10px 16px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', gap: '10px', flexShrink: 0 }}>
             <input 
               type="text" 
-              placeholder="🎬 YouTube Linki, Dizi/Film Embed URL veya .MP4 Adresi Yapıştırın..." 
+              placeholder="🎵 YouTube Music, YouTube veya .MP4 Şarkı/Video Linki Yapıştırın..." 
               value={inputUrl}
               onChange={(e) => setInputUrl(e.target.value)}
               style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }}
             />
             <button type="submit" style={{ padding: '10px 18px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-              Medyayı Yükle 🍿
+              Listeye Ekle & Çal 🍿
             </button>
           </form>
 
-          {/* Screen Player Content */}
+          {/* Oynatma Sahnesi */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
             
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#4a5568', padding: '20px' }}>
-                <div style={{ fontSize: '50px', marginBottom: '10px' }}>🎬</div>
-                <h3 style={{ color: '#a0aec0', margin: '0 0 8px 0', fontSize: '18px' }}>Ekran Hazır</h3>
-                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıdaki sarı çubuğa video veya film linkinizi yapıştırın.</p>
+                <div style={{ fontSize: '50px', marginBottom: '10px' }}>🎵</div>
+                <h3 style={{ color: '#a0aec0', margin: '0 0 8px 0', fontSize: '18px' }}>Müzik & Sinema Ekranı Hazır</h3>
+                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıya link yapıştırın veya sağdaki <b>🎵 Çalma Listesi</b> sekmesinden bir şarkı seçin!</p>
               </div>
             )}
 
@@ -469,7 +506,6 @@ function App() {
               <iframe src={mediaSrc} title="Movie Stream" width="100%" height="100%" frameBorder="0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
             )}
 
-            {/* Reactions */}
             {reactions.map((r) => (
               <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '42px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
@@ -477,7 +513,7 @@ function App() {
             ))}
           </div>
 
-          {/* Control Bar */}
+          {/* Oynatıcı Kontrolleri */}
           <div style={{ padding: '12px 20px', background: '#0e121a', borderTop: '1px solid #1a202c', display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
             <button onClick={handlePlay} style={{ flex: 1, padding: '10px', background: '#2ed573', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>
               ▶ Ortak Oynat
@@ -495,72 +531,149 @@ function App() {
           </div>
         </div>
 
-        {/* Right Side: Chat Box */}
-        <div className="chat-sidebar" style={{ width: '340px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* Right Side: Tabbed Sidebar (Chat & Playlist) */}
+        <div className="chat-sidebar" style={{ width: '350px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a202c', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0, fontSize: '14px', color: '#f5b041', fontWeight: 'bold' }}>💬 Canlı Sohbet</h3>
-            <span style={{ fontSize: '11px', color: '#718096' }}>Profil: {myAvatar} {username}</span>
+          {/* Sidebar Navigation Tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #1a202c', background: '#06080c' }}>
+            <button 
+              onClick={() => setSidebarTab('chat')}
+              style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? '#0e121a' : 'transparent', color: sidebarTab === 'chat' ? '#f5b041' : '#718096', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+            >
+              💬 Sohbet
+            </button>
+            <button 
+              onClick={() => setSidebarTab('playlist')}
+              style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? '#0e121a' : 'transparent', color: sidebarTab === 'playlist' ? '#f5b041' : '#718096', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+            >
+              🎵 Çalma Listesi ({playlist.length})
+            </button>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {messages.length === 0 ? (
-              <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. Keyifli seyirler! 🥰</p>
-            ) : (
-              messages.map((msg, idx) => {
-                const isMe = msg.senderId === mySocketId || msg.sender === username;
-                return (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      display: 'flex', 
-                      gap: '8px', 
-                      alignItems: 'flex-start',
-                      alignSelf: isMe ? 'flex-end' : 'flex-start',
-                      flexDirection: isMe ? 'row-reverse' : 'row',
-                      maxWidth: '85%'
-                    }}
-                  >
-                    <div style={{ fontSize: '20px', background: '#1a202c', padding: '4px', borderRadius: '50%', border: '1px solid #2d3748', lineHeight: 1, flexShrink: 0 }}>
-                      {msg.avatar || '🐱'}
-                    </div>
+          {/* TAB 1: CANLI SOHBET */}
+          {sidebarTab === 'chat' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {messages.length === 0 ? (
+                  <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. Keyifli dinlemeler! 🥰</p>
+                ) : (
+                  messages.map((msg, idx) => {
+                    const isMe = msg.senderId === mySocketId || msg.sender === username;
+                    return (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          display: 'flex', 
+                          gap: '8px', 
+                          alignItems: 'flex-start',
+                          alignSelf: isMe ? 'flex-end' : 'flex-start',
+                          flexDirection: isMe ? 'row-reverse' : 'row',
+                          maxWidth: '85%'
+                        }}
+                      >
+                        <div style={{ fontSize: '20px', background: '#1a202c', padding: '4px', borderRadius: '50%', border: '1px solid #2d3748', lineHeight: 1, flexShrink: 0 }}>
+                          {msg.avatar || '🐱'}
+                        </div>
 
-                    <div 
-                      style={{ 
-                        background: isMe ? '#f5b0411a' : '#141a23', 
-                        border: isMe ? '1px solid #f5b04155' : '1px solid #2d3748', 
-                        padding: '8px 12px', 
-                        borderRadius: isMe ? '10px 2px 10px 10px' : '2px 10px 10px 10px',
-                        textAlign: isMe ? 'right' : 'left'
-                      }}
-                    >
-                      <div style={{ fontSize: '11px', color: isMe ? '#f5b041' : '#70a1ff', fontWeight: 'bold', marginBottom: '2px' }}>
-                        {msg.sender}
+                        <div 
+                          style={{ 
+                            background: isMe ? '#f5b0411a' : '#141a23', 
+                            border: isMe ? '1px solid #f5b04155' : '1px solid #2d3748', 
+                            padding: '8px 12px', 
+                            borderRadius: isMe ? '10px 2px 10px 10px' : '2px 10px 10px 10px',
+                            textAlign: isMe ? 'right' : 'left'
+                          }}
+                        >
+                          <div style={{ fontSize: '11px', color: isMe ? '#f5b041' : '#70a1ff', fontWeight: 'bold', marginBottom: '2px' }}>
+                            {msg.sender}
+                          </div>
+                          <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                            {msg.text}
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#718096', marginTop: '4px' }}>
+                            {msg.time}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                        {msg.text}
-                      </div>
-                      <div style={{ fontSize: '9px', color: '#718096', marginTop: '4px' }}>
-                        {msg.time}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={chatBottomRef} />
-          </div>
+                    );
+                  })
+                )}
+                <div ref={chatBottomRef} />
+              </div>
 
-          <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #1a202c', display: 'flex', gap: '8px', background: '#0e121a' }}>
-            <input 
-              type="text" 
-              placeholder="Mesaj yaz..." 
-              value={chatInput} 
-              onChange={(e) => setChatInput(e.target.value)} 
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }} 
-            />
-            <button type="submit" style={{ padding: '10px 14px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>Gönder</button>
-          </form>
+              <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #1a202c', display: 'flex', gap: '8px', background: '#0e121a' }}>
+                <input 
+                  type="text" 
+                  placeholder="Mesaj yaz..." 
+                  value={chatInput} 
+                  onChange={(e) => setChatInput(e.target.value)} 
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }} 
+                />
+                <button type="submit" style={{ padding: '10px 14px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>Gönder</button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 2: ORTAK ÇALMA LİSTESİ */}
+          {sidebarTab === 'playlist' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '14px', overflowY: 'auto' }}>
+              <div style={{ fontSize: '12px', color: '#718096', marginBottom: '12px' }}>
+                Birlikte dinlemek istediğiniz parçayı seçin:
+              </div>
+
+              {playlist.length === 0 ? (
+                <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Listeniz boş. Yukarıdan link ekleyin!</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {playlist.map((item) => {
+                    const isCurrent = mediaSrc === item.src;
+                    return (
+                      <div 
+                        key={item.id}
+                        onClick={() => handleSelectPlaylistItem(item)}
+                        style={{ 
+                          background: isCurrent ? '#f5b0411a' : '#141a23', 
+                          border: isCurrent ? '1px solid #f5b041' : '1px solid #2d3748', 
+                          padding: '10px 12px', 
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifySpaceBetween: 'space-between',
+                          transition: '0.2s'
+                        }}
+                      >
+                        <div style={{ flex: 1, overflow: 'hidden', paddingRight: '8px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: isCurrent ? '#f5b041' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {isCurrent && '🎵 '} {item.title}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#718096', marginTop: '2px' }}>
+                            Ekleyen: {item.addedBy || 'Kullanıcı'}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleSelectPlaylistItem(item); }}
+                            style={{ background: isCurrent ? '#f5b041' : '#2d3748', color: isCurrent ? '#06080c' : '#fff', border: 'none', padding: '5px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                          >
+                            {isCurrent ? 'Çalıyor' : 'Çal'}
+                          </button>
+                          <button 
+                            onClick={(e) => handleRemovePlaylistItem(item.id, e)}
+                            style={{ background: 'transparent', color: '#ff4757', border: 'none', padding: '4px', cursor: 'pointer', fontSize: '12px' }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
 
       </div>
