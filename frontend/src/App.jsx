@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const SOCKET_URL = 'https://SENIN-RENDER-LINKIN.onrender.com'; // Render linkini koru
+const SOCKET_URL = 'https://couple-meeting.onrender.com'; // Render linkini koru
 const socket = io(SOCKET_URL, { transports: ['polling', 'websocket'] });
 
 function App() {
