@@ -7,13 +7,12 @@ const app = express();
 app.use(cors());
 
 app.get('/', (req, res) => {
-  res.status(200).send('🚀 Couple Meeting Backend Server Active!');
+  res.status(200).send('🚀 Couple Meeting Backend Active!');
 });
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// Aktif odaları ve bilgilerini tutan hafıza
 const rooms = {};
 
 function getPublicRoomsList() {
@@ -35,11 +34,10 @@ function broadcastRooms() {
 }
 
 io.on('connection', (socket) => {
-  // Kullanıcı bağlandığında mevcut canlı odaları gönder
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  socket.on('join_room', ({ roomId, password, maxUsers }) => {
-    // Önceki odadan ayrılma kontrolü
+  socket.on('join_room', ({ roomId, password, maxUsers, isCreating }) => {
+    // Önceki odadan çıkış
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
       if (rooms[socket.currentRoom].users.length === 0) {
@@ -47,35 +45,38 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Oda yoksa yeni oda oluştur
-    if (!rooms[roomId]) {
+    let room = rooms[roomId];
+
+    if (!room) {
+      // Yeni Oda Oluşturma
       rooms[roomId] = {
         name: roomId,
         password: password || '',
-        maxUsers: parseInt(maxUsers) || 10,
+        maxUsers: parseInt(maxUsers) || 2,
         users: []
       };
+      room = rooms[roomId];
     } else {
-      // Şifre kontrolü
-      if (rooms[roomId].password && rooms[roomId].password !== (password || '')) {
-        socket.emit('room_error', '🔒 Hatalı Oda Şifresi!');
+      // Var olan Odaya Katılma ve Şifre Doğrulama
+      if (room.password && room.password !== (password || '')) {
+        socket.emit('room_error', '🔒 Hatalı Şifre! Lütfen oda şifresini girin.');
         return;
       }
-      // Kontenjan / Doluluk kontrolü
-      if (rooms[roomId].users.length >= rooms[roomId].maxUsers) {
-        socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${rooms[roomId].users.length}/${rooms[roomId].maxUsers})`);
+      if (room.users.length >= room.maxUsers) {
+        socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
         return;
       }
     }
 
-    rooms[roomId].users.push(socket.id);
+    room.users.push(socket.id);
     socket.currentRoom = roomId;
     socket.join(roomId);
 
     socket.emit('room_joined', {
       roomId,
-      userCount: rooms[roomId].users.length,
-      maxUsers: rooms[roomId].maxUsers
+      userCount: room.users.length,
+      maxUsers: room.maxUsers,
+      hasPassword: !!room.password
     });
 
     broadcastRooms();
@@ -83,6 +84,18 @@ io.on('connection', (socket) => {
 
   socket.on('room_action', ({ roomId, type, payload }) => {
     socket.to(roomId).emit('room_action', { type, payload });
+  });
+
+  socket.on('leave_room', () => {
+    if (socket.currentRoom && rooms[socket.currentRoom]) {
+      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
+      socket.leave(socket.currentRoom);
+      if (rooms[socket.currentRoom].users.length === 0) {
+        delete rooms[socket.currentRoom];
+      }
+      socket.currentRoom = null;
+      broadcastRooms();
+    }
   });
 
   socket.on('disconnect', () => {

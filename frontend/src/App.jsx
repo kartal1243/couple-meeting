@@ -8,27 +8,19 @@ let socket;
 try {
   socket = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
 } catch (err) {
-  console.error("Socket baglanti hatasi:", err);
+  console.error("Socket hatası:", err);
 }
 
 function App() {
-  const getParams = () => {
-    const params = new URLSearchParams(window.location.search);
-    return {
-      room: params.get('room') || 'oda-' + Math.floor(1000 + Math.random() * 9000),
-      pass: params.get('pass') || '',
-      max: params.get('max') || '2'
-    };
-  };
+  const [inRoom, setInRoom] = useState(false);
+  const [tab, setTab] = useState('create'); // 'create' | 'join'
 
-  const initial = getParams();
-  const [roomId, setRoomId] = useState(initial.room);
-  const [roomPassword, setRoomPassword] = useState(initial.pass);
-  const [maxUsers, setMaxUsers] = useState(initial.max);
+  const [roomId, setRoomId] = useState('');
+  const [roomPassword, setRoomPassword] = useState('');
+  const [maxUsers, setMaxUsers] = useState('2');
 
-  const [inputRoom, setInputRoom] = useState('');
-  const [inputPass, setInputPass] = useState('');
-  const [inputMaxUsers, setInputMaxUsers] = useState('2');
+  const [joinRoomInput, setJoinRoomInput] = useState('');
+  const [joinPassInput, setJoinPassInput] = useState('');
 
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
@@ -55,34 +47,32 @@ function App() {
   };
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    const newUrl = `${window.location.pathname}?room=${roomId}${roomPassword ? `&pass=${roomPassword}` : ''}&max=${maxUsers}`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get('room');
+    if (roomParam) {
+      setJoinRoomInput(roomParam);
+      setTab('join');
+    }
 
     if (!socket) return;
 
-    const onConnect = () => setIsConnected(true);
-    const onDisconnect = () => setIsConnected(false);
-
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-
-    socket.emit('join_room', { roomId, password: roomPassword, maxUsers });
+    socket.on('connect', () => setIsConnected(true));
+    socket.on('disconnect', () => setIsConnected(false));
 
     socket.on('public_rooms_update', (roomsList) => {
       setPublicRooms(roomsList);
     });
 
     socket.on('room_joined', (data) => {
+      setInRoom(true);
       setErrorMessage('');
+      setRoomId(data.roomId);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
     });
 
     socket.on('room_error', (msg) => {
       setErrorMessage(msg);
+      setInRoom(false);
     });
 
     socket.on('room_action', ({ type, payload }) => {
@@ -108,41 +98,54 @@ function App() {
     });
 
     return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
+      socket.off('connect');
+      socket.off('disconnect');
       socket.off('public_rooms_update');
       socket.off('room_joined');
       socket.off('room_error');
       socket.off('room_action');
     };
-  }, [roomId, roomPassword, maxUsers]);
+  }, []);
 
-  const sendAction = (type, payload) => {
-    if (socket && !errorMessage) {
-      socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
+  useEffect(() => {
+    if (inRoom) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, [messages, inRoom]);
 
-  const handleCreateOrJoinRoom = (e) => {
+  const handleCreateRoomSubmit = (e) => {
     e.preventDefault();
-    if (!inputRoom.trim()) return;
-    setRoomId(inputRoom.trim().toLowerCase());
-    setRoomPassword(inputPass.trim());
-    setMaxUsers(inputMaxUsers);
-    setInputRoom('');
-    setInputPass('');
+    const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
+    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, isCreating: true });
   };
 
-  const handleQuickJoin = (room) => {
-    setRoomId(room.id);
-    setRoomPassword('');
-    setMaxUsers(room.maxUsers);
+  const handleJoinRoomSubmit = (e) => {
+    e.preventDefault();
+    if (!joinRoomInput.trim()) return;
+    let targetRoom = joinRoomInput.trim();
+    if (targetRoom.includes('room=')) {
+      targetRoom = targetRoom.split('room=')[1].split('&')[0];
+    }
+    socket.emit('join_room', { roomId: targetRoom.toLowerCase(), password: joinPassInput.trim(), isCreating: false });
+  };
+
+  const handleLeaveRoom = () => {
+    socket.emit('leave_room');
+    setInRoom(false);
+    window.history.pushState({}, '', window.location.pathname);
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const sendAction = (type, payload) => {
+    if (socket) {
+      socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
+    }
   };
 
   const processUrl = (url) => {
@@ -200,97 +203,223 @@ function App() {
     sendAction('REACTION', reaction);
   };
 
-  return (
-    <div style={{ backgroundColor: '#090a0f', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <style>{`
-        @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #12141d; }
-        ::-webkit-scrollbar-thumb { background: #2b2e3e; borderRadius: 4px; }
-      `}</style>
-      
-      {/* Dynamic Header & Room Management Bar */}
-      <header style={{ padding: '16px 32px', background: '#12141d', borderBottom: '1px solid #1f2333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ margin: 0, color: '#ff4757', fontWeight: '800', letterSpacing: '-0.5px' }}>Couple Meeting ❤️</h2>
-          <span style={{ fontSize: '11px', background: isConnected ? '#2ed57315' : '#ff475715', color: isConnected ? '#2ed573' : '#ff4757', padding: '5px 12px', borderRadius: '20px', border: '1px solid', fontWeight: 'bold' }}>
-            {isConnected ? 'Küresel Canlı 🌐' : 'Bağlanıyor... 🔴'}
+  // =========================================================================
+  // 1. ANA SAYFA / LANDING PAGE EKRANI
+  // =========================================================================
+  if (!inRoom) {
+    return (
+      <div style={{ backgroundColor: '#131822', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+        {/* Navigation Bar */}
+        <header style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e2638' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '24px' }}>❤️</span>
+            <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', fontWeight: '800', letterSpacing: '-0.5px' }}>Couple Meeting</h1>
+          </div>
+          <span style={{ fontSize: '12px', background: isConnected ? '#f5b04115' : '#ff475715', color: isConnected ? '#f5b041' : '#ff4757', padding: '6px 14px', borderRadius: '20px', border: '1px solid', fontWeight: 'bold' }}>
+            {isConnected ? 'Sunucu Aktif 🌐' : 'Bağlanıyor... 🔴'}
           </span>
-          <span style={{ fontSize: '11px', background: '#3742fa15', color: '#70a1ff', padding: '5px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid #3742fa44' }}>
-            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers} Kişi) {roomPassword && '🔒'}
+        </header>
+
+        {/* Hero Section */}
+        <div style={{ maxWidth: '900px', margin: '60px auto 0 auto', textAlign: 'center', padding: '0 20px' }}>
+          <h2 style={{ fontSize: '48px', fontWeight: '900', color: '#fff', marginBottom: '16px', letterSpacing: '-1px' }}>
+            birlikte vakit <span style={{ color: '#f5b041' }}>geçirin</span>
+          </h2>
+          <p style={{ fontSize: '16px', color: '#8c9ba5', marginBottom: '40px' }}>
+            YouTube, film ve videoları eş zamanlı izleyin. Mesafe tanımayan canlı sohbet odanızı hemen oluşturun.
+          </p>
+
+          {/* Error Message Warning */}
+          {errorMessage && (
+            <div style={{ background: '#ff4757', color: '#fff', padding: '14px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '24px', fontSize: '14px' }}>
+              {errorMessage}
+            </div>
+          )}
+
+          {/* Main Card (Create or Join Tabs) */}
+          <div style={{ background: '#1c2333', borderRadius: '16px', padding: '32px', border: '1px solid #2a344a', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', maxWidth: '520px', margin: '0 auto' }}>
+            
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', background: '#131822', padding: '6px', borderRadius: '10px' }}>
+              <button 
+                onClick={() => setTab('create')}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: tab === 'create' ? '#f5b041' : 'transparent', color: tab === 'create' ? '#131822' : '#8c9ba5', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+              >
+                Oda Oluştur
+              </button>
+              <button 
+                onClick={() => setTab('join')}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: tab === 'join' ? '#f5b041' : 'transparent', color: tab === 'join' ? '#131822' : '#8c9ba5', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+              >
+                Odaya Katıl
+              </button>
+            </div>
+
+            {/* Tab 1: Oda Oluştur */}
+            {tab === 'create' && (
+              <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Oda İsmi (Örn: Sinema-Gecesi)" 
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                />
+                <input 
+                  type="password" 
+                  placeholder="Şifre Oluştur (İsteğe bağlı)" 
+                  value={roomPassword}
+                  onChange={(e) => setRoomPassword(e.target.value)}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#131822', padding: '10px 14px', borderRadius: '10px', border: '1px solid #2a344a' }}>
+                  <span style={{ fontSize: '13px', color: '#8c9ba5' }}>Kişi Sınırı:</span>
+                  <select 
+                    value={maxUsers} 
+                    onChange={(e) => setMaxUsers(e.target.value)}
+                    style={{ background: 'transparent', border: 'none', color: '#f5b041', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', outline: 'none' }}
+                  >
+                    <option value="2" style={{ background: '#131822' }}>2 Kişi (Çiftler)</option>
+                    <option value="4" style={{ background: '#131822' }}>4 Kişi (Grup)</option>
+                    <option value="8" style={{ background: '#131822' }}>8 Kişi (Kalabalık)</option>
+                    <option value="20" style={{ background: '#131822' }}>20 Kişi (Parti)</option>
+                  </select>
+                </div>
+                <button type="submit" style={{ padding: '14px', background: '#f5b041', color: '#131822', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', marginTop: '10px' }}>
+                  Kendi Odanızı Oluşturun 🚀
+                </button>
+              </form>
+            )}
+
+            {/* Tab 2: Odaya Katıl */}
+            {tab === 'join' && (
+              <form onSubmit={handleJoinRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Oda İsmi veya Davet Linki Yapıştır..." 
+                  value={joinRoomInput}
+                  onChange={(e) => setJoinRoomInput(e.target.value)}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                />
+                <input 
+                  type="password" 
+                  placeholder="Oda Şifresi (Varsa)" 
+                  value={joinPassInput}
+                  onChange={(e) => setJoinPassInput(e.target.value)}
+                  style={{ padding: '14px', borderRadius: '10px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '14px' }}
+                />
+                <button type="submit" style={{ padding: '14px', background: '#3742fa', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', marginTop: '10px' }}>
+                  Odaya Katıl 🚪
+                </button>
+              </form>
+            )}
+
+          </div>
+
+          {/* Features Section */}
+          <div style={{ marginTop: '70px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', textAlign: 'left' }}>
+            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>🎬</div>
+              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Eş Zamanlı Oynatıcı</h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>Videoları ve filmleri aynı anda kesintisiz durdurup oynatın.</p>
+            </div>
+            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔒</div>
+              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Şifreli Özel Odalar</h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>Sadece şifreyi paylaştığınız kişilerin katılabileceği gizli odalar.</p>
+            </div>
+            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>💬</div>
+              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Canlı Sohbet & Tepkiler</h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>Mesajlaşın ve ekranda uçuşan canlı emojiler gönderin.</p>
+            </div>
+            <div style={{ background: '#1c2333', padding: '20px', borderRadius: '12px', border: '1px solid #2a344a' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>🍿</div>
+              <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Geniş Medya Desteği</h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#8c9ba5' }}>YouTube, kaçak dizi/film embed linkleri veya direkt MP4 desteği.</p>
+            </div>
+          </div>
+
+          {/* Active Public Rooms Section */}
+          {publicRooms.length > 0 && (
+            <div style={{ marginTop: '50px', textAlign: 'left', marginBottom: '60px' }}>
+              <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px' }}>🌐 Açık Odalar</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                {publicRooms.map((r) => (
+                  <div key={r.id} style={{ background: '#1c2333', padding: '14px 18px', borderRadius: '10px', border: '1px solid #2a344a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>{r.name} {r.hasPassword && '🔒'}</div>
+                      <div style={{ fontSize: '12px', color: '#8c9ba5', marginTop: '2px' }}>Kişi: {r.userCount}/{r.maxUsers}</div>
+                    </div>
+                    <button 
+                      onClick={() => { setJoinRoomInput(r.id); setTab('join'); }}
+                      style={{ background: '#f5b041', color: '#131822', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      Katıl ➔
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 2. ODA / WATCH PARTY EKRANI
+  // =========================================================================
+  return (
+    <div style={{ backgroundColor: '#131822', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+      <style>{`@keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }`}</style>
+      
+      {/* Clean Room Header */}
+      <header style={{ padding: '16px 32px', background: '#1c2333', borderBottom: '1px solid #2a344a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h2 style={{ margin: 0, color: '#f5b041', fontSize: '18px', fontWeight: '800' }}>Couple Meeting ❤️</h2>
+          <span style={{ fontSize: '12px', background: '#f5b04115', color: '#f5b041', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid #f5b04144' }}>
+            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers} İzleyici)
           </span>
         </div>
 
-        {/* Create Room Controls */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <form onSubmit={handleCreateOrJoinRoom} style={{ display: 'flex', gap: '6px' }}>
-            <input 
-              type="text" 
-              placeholder="Oda İsmi..." 
-              value={inputRoom}
-              onChange={(e) => setInputRoom(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #232738', background: '#090a0f', color: '#fff', fontSize: '12px' }}
-            />
-            <input 
-              type="password" 
-              placeholder="Şifre" 
-              value={inputPass}
-              onChange={(e) => setInputPass(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #232738', background: '#090a0f', color: '#fff', fontSize: '12px', width: '90px' }}
-            />
-            <select 
-              value={inputMaxUsers} 
-              onChange={(e) => setInputMaxUsers(e.target.value)}
-              style={{ padding: '8px', borderRadius: '8px', border: '1px solid #232738', background: '#090a0f', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
-            >
-              <option value="2">2 Kişilik</option>
-              <option value="4">4 Kişilik</option>
-              <option value="8">8 Kişilik</option>
-              <option value="20">20 Kişilik</option>
-            </select>
-            <button type="submit" style={{ padding: '8px 14px', background: '#3742fa', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-              Oda Kur/Geç 🚪
-            </button>
-          </form>
-
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button 
             onClick={handleCopyLink}
-            style={{ background: copied ? '#2ed573' : '#ff4757', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', transition: '0.2s' }}
+            style={{ background: copied ? '#2ed573' : '#f5b041', color: '#131822', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
           >
             {copied ? 'Link Kopyalandı! 🔗' : 'Oda Linkini Kopyala 🔗'}
+          </button>
+          <button 
+            onClick={handleLeaveRoom}
+            style={{ background: '#2a344a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+          >
+            Odadan Ayrıl 🚪
           </button>
         </div>
       </header>
 
-      {/* Error Banner */}
-      {errorMessage && (
-        <div style={{ background: '#ff4757', color: '#fff', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
-          {errorMessage}
-        </div>
-      )}
-
-      {/* Main Grid View */}
+      {/* Main Watch Party Grid */}
       <div style={{ display: 'flex', padding: '24px', gap: '24px', maxWidth: '1440px', margin: '0 auto', flexWrap: 'wrap' }}>
         
-        {/* Left Column: Player & Active Public Rooms */}
+        {/* Left Side: Video Player & Controls */}
         <div style={{ flex: '3', minWidth: '320px' }}>
-          
-          {/* Media Player URL Bar */}
           <form onSubmit={handleMediaSubmit} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input 
               type="text" 
               placeholder="YouTube URL, Film iFrame Embed Linki veya .MP4 Adresi Yapıştır..." 
               value={inputUrl}
               onChange={(e) => setInputUrl(e.target.value)}
-              style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #232738', background: '#12141d', color: '#fff', fontSize: '13px' }}
+              style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #2a344a', background: '#1c2333', color: '#fff', fontSize: '13px' }}
             />
-            <button type="submit" style={{ padding: '12px 20px', background: '#ff4757', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+            <button type="submit" style={{ padding: '12px 20px', background: '#f5b041', color: '#131822', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
               Medyayı Yükle 🎬
             </button>
           </form>
 
-          {/* Video Container Screen */}
-          <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', background: '#000', minHeight: '420px', border: '1px solid #1f2333', boxShadow: '0 20px 40px rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          {/* Video Container */}
+          <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', background: '#000', minHeight: '420px', border: '1px solid #2a344a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {mediaType === 'youtube' && (
               <YouTube videoId={mediaSrc} opts={{ height: '420', width: '100%', playerVars: { autoplay: 0, controls: 1 } }} onReady={(e) => { ytPlayerRef.current = e.target; }} />
             )}
@@ -308,84 +437,39 @@ function App() {
             ))}
           </div>
 
-          {/* Synchronized Playback Controls */}
+          {/* Controls */}
           <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={handlePlay} style={{ flex: 1, padding: '14px', background: '#2ed573', color: '#090a0f', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
+              <button onClick={handlePlay} style={{ flex: 1, padding: '14px', background: '#2ed573', color: '#131822', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
                 ▶ Ortak Oynat
               </button>
-              <button onClick={handlePause} style={{ flex: 1, padding: '14px', background: '#ffa502', color: '#090a0f', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
+              <button onClick={handlePause} style={{ flex: 1, padding: '14px', background: '#ffa502', color: '#131822', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
                 ⏸ Ortak Durdur
               </button>
             </div>
 
-            <div style={{ background: '#12141d', padding: '10px', borderRadius: '10px', border: '1px solid #1f2333', display: 'flex', justifyContent: 'center', gap: '12px' }}>
+            <div style={{ background: '#1c2333', padding: '10px', borderRadius: '10px', border: '1px solid #2a344a', display: 'flex', justifyContent: 'center', gap: '12px' }}>
               {['❤️', '🔥', '😂', '😮', '👏', '😍'].map((emoji) => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#1a1d2b', border: '1px solid #232738', fontSize: '20px', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>
+                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#131822', border: '1px solid #2a344a', fontSize: '20px', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>
                   {emoji}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Live Active Public Rooms List */}
-          <div style={{ marginTop: '24px', background: '#12141d', padding: '20px', borderRadius: '14px', border: '1px solid #1f2333' }}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#70a1ff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              🌐 Canlı Odalar ve Doluluk Oranları
-            </h3>
-            {publicRooms.length === 0 ? (
-              <p style={{ color: '#57606f', fontSize: '13px', margin: 0 }}>Henüz aktif başka oda yok.</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-                {publicRooms.map((room) => (
-                  <div 
-                    key={room.id}
-                    onClick={() => handleQuickJoin(room)}
-                    style={{ 
-                      background: room.id === roomId ? '#1e2338' : '#090a0f', 
-                      padding: '12px 14px', 
-                      borderRadius: '10px', 
-                      border: room.id === roomId ? '1px solid #3742fa' : '1px solid #1f2333',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justify: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '13px', color: room.id === roomId ? '#70a1ff' : '#fff' }}>
-                        {room.name} {room.hasPassword && '🔒'}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#a4b0be', marginTop: '3px' }}>
-                        Doluluk: <b style={{ color: room.userCount >= room.maxUsers ? '#ff4757' : '#2ed573' }}>{room.userCount}/{room.maxUsers} Kişi</b>
-                      </div>
-                    </div>
-                    {room.id === roomId ? (
-                      <span style={{ fontSize: '10px', background: '#3742fa', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>Buradasın</span>
-                    ) : (
-                      <button style={{ background: '#1e1e2e', border: 'none', color: '#fff', fontSize: '11px', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer' }}>Katıl ➔</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
         </div>
 
-        {/* Right Column: Left-Aligned Clean Chat */}
-        <div style={{ flex: '1.2', minWidth: '300px', background: '#12141d', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', height: '650px', border: '1px solid #1f2333' }}>
-          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #1f2333', paddingBottom: '12px', fontSize: '15px', color: '#ff4757' }}>💬 Canlı Sohbet</h3>
+        {/* Right Side: Chat Box */}
+        <div style={{ flex: '1.2', minWidth: '300px', background: '#1c2333', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', height: '600px', border: '1px solid #2a344a' }}>
+          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #2a344a', paddingBottom: '12px', fontSize: '15px', color: '#f5b041' }}>💬 Canlı Sohbet</h3>
           
-          {/* Chat Messages List (Fixed Left Alignment) */}
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
             {messages.length === 0 ? (
-              <p style={{ color: '#57606f', fontSize: '13px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. 🥰</p>
+              <p style={{ color: '#8c9ba5', fontSize: '13px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Sohbet henüz boş. 🥰</p>
             ) : (
               messages.map((msg, idx) => (
-                <div key={idx} style={{ alignSelf: 'flex-start', maxWidth: '85%', background: '#1a1d2b', border: '1px solid #232738', padding: '10px 14px', borderRadius: '12px 12px 12px 2px', textAlign: 'left' }}>
+                <div key={idx} style={{ alignSelf: 'flex-start', maxWidth: '85%', background: '#131822', border: '1px solid #2a344a', padding: '10px 14px', borderRadius: '12px 12px 12px 2px', textAlign: 'left' }}>
                   <div style={{ color: '#e0e6ed', fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.text}</div>
-                  <div style={{ fontSize: '9px', color: '#747d8c', marginTop: '4px', textAlign: 'right' }}>{msg.time}</div>
+                  <div style={{ fontSize: '9px', color: '#8c9ba5', marginTop: '4px', textAlign: 'right' }}>{msg.time}</div>
                 </div>
               ))
             )}
@@ -398,9 +482,9 @@ function App() {
               placeholder="Mesaj yaz..." 
               value={chatInput} 
               onChange={(e) => setChatInput(e.target.value)} 
-              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #232738', background: '#090a0f', color: '#fff', fontSize: '13px' }} 
+              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #2a344a', background: '#131822', color: '#fff', fontSize: '13px' }} 
             />
-            <button type="submit" style={{ padding: '12px 18px', background: '#ff4757', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Gönder</button>
+            <button type="submit" style={{ padding: '12px 18px', background: '#f5b041', color: '#131822', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Gönder</button>
           </form>
         </div>
 
