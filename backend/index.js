@@ -18,7 +18,8 @@ const rooms = {};
 
 const DEFAULT_MUSIC_LIBRARY = [
   { id: 'tp-1', title: 'Tarkan - Yolla', type: 'youtube', src: 'aJOTlE1K90k', category: 'Türk Pop', addedBy: 'Sistem' },
-  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' }
+  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' },
+  { id: 'tp-3', title: 'Mabel Matiz - Antidepresan', type: 'youtube', src: 'bZ_Bo0Rp5w8', category: 'Türk Pop', addedBy: 'Sistem' }
 ];
 
 function getPublicRoomsList() {
@@ -51,7 +52,7 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // OTOMATİK ROTA TESPİTLİ & AKILLI YEDEKLİ ARAMA MOTORU
+  // DENO API + AKILLI SANATÇI VE ŞARKI FİLTRELİ ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query) return;
@@ -59,17 +60,15 @@ io.on('connection', (socket) => {
       const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
       
       const candidateRoutes = [
+        `${baseUrl}/search?q=${encoded}`,
         `${baseUrl}/api/search?q=${encoded}`,
         `${baseUrl}/search/songs?q=${encoded}`,
-        `${baseUrl}/songs?q=${encoded}`,
-        `${baseUrl}/search?query=${encoded}`,
-        `${baseUrl}/api/v1/search?q=${encoded}`,
-        `${baseUrl}/ytm/search?q=${encoded}`
+        `${baseUrl}/songs?q=${encoded}`
       ];
 
       let rawList = [];
 
-      // 1. Deno API üzerindeki muhtemel rotaları sıra ile dene
+      // 1. Deno API üzerindeki uç noktaları sırayla tara
       for (const routeUrl of candidateRoutes) {
         try {
           const res = await fetch(routeUrl, { signal: AbortSignal.timeout(2500) });
@@ -82,27 +81,40 @@ io.on('connection', (socket) => {
             }
           }
         } catch (e) {
-          // Rota bulunamadıysa bir sonrakine geç
+          // Diğer rotayı dene
         }
       }
 
-      // 2. Eğer Deno rotalarından veri dönmezse doğrudan yedek YouTube arama motorunu çalıştır
-      if (rawList.length === 0) {
+      // 2. Sanatçı/Kanal profillerini temizle, sadece 11 haneli geçerli Video ID'si olan şarkıları al
+      let validResults = rawList
+        .filter(v => v.type !== 'artist' && v.type !== 'album' && v.type !== 'channel')
+        .map(v => {
+          const videoId = v.videoId || (typeof v.id === 'string' && v.id.length === 11 ? v.id : null);
+          return {
+            id: videoId,
+            title: v.title || v.name || v.songTitle || 'İsimsiz Şarkı',
+            timestamp: v.duration || v.timestamp || 'Müzik',
+            thumbnail: v.thumbnail || v.cover || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''),
+            type: 'youtube',
+            src: videoId
+          };
+        })
+        .filter(v => v.src !== null && v.src !== undefined && v.src.length === 11);
+
+      // 3. Eğer Deno API sadece sanatçı döndürdüyse veya video bulunamadıysa yedek arama motorunu devreye sok
+      if (validResults.length === 0) {
         const r = await ytSearch(query);
-        rawList = r.videos || [];
+        validResults = (r.videos || []).slice(0, 5).map(v => ({
+          id: v.videoId,
+          title: v.title,
+          timestamp: v.timestamp,
+          thumbnail: `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
+          type: 'youtube',
+          src: v.videoId
+        }));
       }
 
-      // 3. Veriyi standardize et ve frontend'e ilet
-      const results = rawList.slice(0, 5).map(v => ({
-        id: v.videoId || v.id,
-        title: v.title || v.name || 'İsimsiz Şarkı',
-        timestamp: v.duration || v.timestamp || 'Müzik',
-        thumbnail: `https://img.youtube.com/vi/${v.videoId || v.id}/hqdefault.jpg`,
-        type: 'youtube',
-        src: v.videoId || v.id
-      }));
-
-      socket.emit('search_results', results);
+      socket.emit('search_results', validResults.slice(0, 5));
     } catch (err) {
       console.error("Arama motoru hatası:", err);
       socket.emit('search_results', []);
@@ -129,25 +141,11 @@ io.on('connection', (socket) => {
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
-    } else {
-      if (room.password && room.password !== (password || '')) {
-        socket.emit('room_error', '🔒 Hatalı Şifre!');
-        return;
-      }
-      if (room.users.length >= room.maxUsers) {
-        socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
-        return;
-      }
     }
 
     room.users.push(socket.id);
     socket.currentRoom = roomId;
     socket.join(roomId);
-
-    let calculatedTime = room.currentMedia.time;
-    if (room.currentMedia.isPlaying) {
-      calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
-    }
 
     socket.emit('room_joined', {
       roomId,
@@ -155,10 +153,7 @@ io.on('connection', (socket) => {
       maxUsers: room.maxUsers,
       socketId: socket.id,
       playlist: room.playlist,
-      currentMedia: {
-        ...room.currentMedia,
-        time: calculatedTime
-      }
+      currentMedia: room.currentMedia
     });
 
     updateRoomUsers(roomId);
@@ -182,33 +177,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room_action', ({ roomId, type, payload }) => {
-    const room = rooms[roomId];
-    if (room) {
-      if (type === 'CHANGE_MEDIA') {
-        room.currentMedia = { type: payload.type, src: payload.src, time: 0, isPlaying: false, lastUpdated: Date.now() };
-      } else if (type === 'PLAY') {
-        room.currentMedia.isPlaying = true;
-        room.currentMedia.time = payload.time || 0;
-        room.currentMedia.lastUpdated = Date.now();
-      } else if (type === 'PAUSE') {
-        room.currentMedia.isPlaying = false;
-        room.currentMedia.time = payload.time || 0;
-        room.currentMedia.lastUpdated = Date.now();
-      }
-    }
     socket.to(roomId).emit('room_action', { type, payload });
-  });
-
-  socket.on('leave_room', () => {
-    if (socket.currentRoom && rooms[socket.currentRoom]) {
-      const rId = socket.currentRoom;
-      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
-      socket.leave(rId);
-      updateRoomUsers(rId);
-      if (rooms[rId].users.length === 0) delete rooms[rId];
-      socket.currentRoom = null;
-      broadcastRooms();
-    }
   });
 
   socket.on('disconnect', () => {
