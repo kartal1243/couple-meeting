@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const BACKEND_URL = 'https://couple-meeting.onrender.com';
+const BACKEND_URL = 'http://localhost:3001';
 let socket;
 
 try {
@@ -12,6 +12,7 @@ try {
 }
 
 const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
+const CITIES = ['Zonguldak', 'Tokat', 'İstanbul', 'Ankara', 'İzmir', 'Antalya', 'Bursa', 'Trabzon', 'Sivas', 'Adana', 'Eskişehir', 'Samsun', 'Kayseri', 'Konya', 'Diyarbakır'];
 
 function App() {
   const [userId] = useState(() => {
@@ -31,12 +32,12 @@ function App() {
   });
 
   const [activeTab, setActiveTab] = useState('create');
-  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarTab, setSidebarTab] = useState('chat');
 
   const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [username, setUsername] = useState(() => localStorage.getItem('cm_username') || 'İzleyici');
+  const [userCity, setUserCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
   const [mySocketId, setMySocketId] = useState('');
 
   const [recentRooms, setRecentRooms] = useState(() => {
@@ -54,10 +55,16 @@ function App() {
 
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
+  const [distanceKm, setDistanceKm] = useState(null);
 
+  // MEDYA VE KLASÖRLÜ ÇALMA LİSTESİ
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   const [playlist, setPlaylist] = useState([]);
+  const [categories, setCategories] = useState(['Genel', 'Türk Pop', 'Rap', 'Arabesk']);
+  const [selectedCategory, setSelectedCategory] = useState('Genel');
+  const [targetAddCategory, setTargetAddCategory] = useState('Genel');
+  const [newCategoryInput, setNewCategoryInput] = useState('');
   const [playMode, setPlayMode] = useState('sequence');
 
   const [searchInput, setSearchInput] = useState('');
@@ -91,6 +98,11 @@ function App() {
     localStorage.setItem('cm_username', val);
   };
 
+  const handleCityChange = (val) => {
+    setUserCity(val);
+    localStorage.setItem('cm_user_city', val);
+  };
+
   const showFloatingEmoji = (reaction) => {
     setReactions((prev) => [...prev, reaction]);
     setTimeout(() => {
@@ -115,7 +127,7 @@ function App() {
     const targetRoom = urlParams.get('room') || localStorage.getItem('cm_saved_room');
     if (targetRoom && socket) {
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId });
+      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId, userCity });
     }
   }, [userId]);
 
@@ -146,7 +158,9 @@ function App() {
       setMySocketId(data.socketId);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
       setPlaylist(Array.isArray(data.playlist) ? data.playlist : []);
+      if (data.categories) setCategories(data.categories);
       if (data.playMode) setPlayMode(data.playMode);
+      if (data.distanceKm) setDistanceKm(data.distanceKm);
 
       localStorage.setItem('cm_saved_room', data.roomId);
       saveToRecentRooms(data.roomId);
@@ -170,6 +184,8 @@ function App() {
     });
 
     socket.on('room_user_count_update', (data) => setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers }));
+    socket.on('location_updated', (data) => { if (data.distanceKm) setDistanceKm(data.distanceKm); });
+    socket.on('categories_updated', (cats) => setCategories(cats));
     socket.on('playlist_updated', (data) => {
       if (Array.isArray(data)) setPlaylist(data);
       else if (data && Array.isArray(data.playlist)) {
@@ -210,6 +226,7 @@ function App() {
     return () => {
       socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
+      socket.off('location_updated'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
     };
   }, []);
@@ -222,14 +239,14 @@ function App() {
     e.preventDefault();
     const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', roomPassword.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId });
+    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId, userCity });
   };
 
   const handleJoinRoomSubmit = (e) => {
     e.preventDefault();
     if (!joinRoomInput.trim()) return;
     localStorage.setItem('cm_saved_pass', joinPassInput.trim());
-    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId });
+    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity });
   };
 
   const handleLeaveRoom = () => {
@@ -248,6 +265,13 @@ function App() {
   };
 
   const handleModeChange = (mode) => { setPlayMode(mode); socket.emit('change_play_mode', { roomId, mode }); };
+
+  const handleCreateCategory = (e) => {
+    e.preventDefault();
+    if (!newCategoryInput.trim()) return;
+    socket.emit('create_category', { roomId, categoryName: newCategoryInput.trim() });
+    setNewCategoryInput('');
+  };
 
   const handleMediaEnd = () => {
     if (!playlist || playlist.length === 0) return;
@@ -284,10 +308,10 @@ function App() {
     let item;
     if (searchInput.includes('http://') || searchInput.includes('https://')) {
       const media = processUrl(searchInput);
-      item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya Linki', type: media.type, src: media.src, addedBy: username };
+      item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya Linki', type: media.type, src: media.src, addedBy: username, category: targetAddCategory };
     } else if (searchResults.length > 0) {
       const song = searchResults[0];
-      item = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username };
+      item = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username, category: targetAddCategory };
     } else return;
     socket.emit('add_to_playlist', { roomId, item });
     setSearchInput('');
@@ -296,7 +320,7 @@ function App() {
 
   const handleSelectSearchResult = (song, playImmediately = true) => {
     if (!song) return;
-    const trackItem = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username };
+    const trackItem = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username, category: targetAddCategory };
     socket.emit('add_to_playlist', { roomId, item: trackItem });
     if (playImmediately) {
       setMediaType('youtube');
@@ -351,10 +375,13 @@ function App() {
     sendAction('REACTION', reaction);
   };
 
-  const getSortedPlaylist = () => {
+  const getFilteredPlaylist = () => {
     if (!Array.isArray(playlist)) return [];
-    if (playMode === 'alphabetical') return [...playlist].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
-    return playlist;
+    let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
+    if (playMode === 'alphabetical') {
+      return [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+    }
+    return filtered;
   };
 
   const styles = {
@@ -396,56 +423,29 @@ function App() {
     }
   };
 
-  // 1. ZENGİN ANA SAYFA (LANDING PAGE & SEÇENEKLER / PROFİL DÜZENİ)
+  // 1. ANA SAYFA (LANDING PAGE)
   if (!inRoom) {
     return (
       <div style={{ ...styles.app, overflowY: 'auto' }}>
-        {/* HEADER BAR & SEÇENEKLER MENÜSÜ */}
-        <header style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16', sticky: 'top', zIndex: 100 }}>
+        <header style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setInRoom(false)}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #00a884, #008f6f)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>💬</div>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ff4757, #00a884)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>❤️</div>
             <div>
               <h1 style={{ margin: 0, fontSize: '22px', color: '#fff', fontWeight: '900', letterSpacing: '-0.5px' }}>Couple Meeting</h1>
-              <span style={{ fontSize: '11px', color: '#00a884', fontWeight: 'bold' }}>Birlikte İzle & Dinle</span>
+              <span style={{ fontSize: '11px', color: '#00a884', fontWeight: 'bold' }}>Aynı Anda İzle & Dinle</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
-            <span style={{ fontSize: '12px', background: isConnected ? 'rgba(0, 168, 132, 0.15)' : 'rgba(255, 71, 87, 0.15)', color: isConnected ? '#00a884' : '#ff4757', padding: '6px 14px', borderRadius: '20px', border: '1px solid', fontWeight: 'bold' }}>
-              {isConnected ? 'Sunucu Aktif 🌐' : 'Bağlanıyor... 🔴'}
-            </span>
-
-            {/* SEÇENEKLER DROPDOWN BUTTON */}
-            <button 
-              onClick={() => setShowOptionsModal(!showOptionsModal)} 
-              style={{ background: '#111b21', color: '#e9edef', border: '1px solid #222d34', padding: '10px 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <span>{myAvatar} {username}</span>
-              <span>⚙️ Seçenekler ▾</span>
-            </button>
-
-            {/* POPUP SEÇENEKLER MENÜSÜ */}
-            {showOptionsModal && (
-              <div style={{ position: 'absolute', top: '50px', right: 0, width: '260px', background: '#111b21', border: '1px solid #222d34', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.8)', padding: '12px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button onClick={() => { setShowProfileModal(true); setShowOptionsModal(false); }} style={{ background: '#202c33', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', textAlign: 'left', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
-                  👤 Profil Düzenle / Seç
-                </button>
-                <button onClick={() => { setActiveTab('create'); setShowOptionsModal(false); window.scrollTo({ top: 500, behavior: 'smooth' }); }} style={{ background: '#202c33', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', textAlign: 'left', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
-                  ➕ Hızlı Oda Oluştur
-                </button>
-                <button onClick={() => { setActiveTab('join'); setShowOptionsModal(false); window.scrollTo({ top: 500, behavior: 'smooth' }); }} style={{ background: '#202c33', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', textAlign: 'left', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
-                  🚪 Odaya Katıl
-                </button>
-              </div>
-            )}
-          </div>
+          <button onClick={() => setShowProfileModal(true)} style={{ background: '#111b21', color: '#e9edef', border: '1px solid #222d34', padding: '10px 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>{myAvatar} {username} ({userCity})</span>
+            <span>⚙️ Profil Düzenle</span>
+          </button>
         </header>
 
-        {/* PROFİL SEÇİM MODALI */}
         {showProfileModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ ...styles.card, width: '420px', textAlign: 'center' }}>
-              <h3 style={{ margin: '0 0 16px 0', color: '#00a884', fontSize: '20px', fontWeight: '800' }}>👤 Profil Bilgileriniz</h3>
+              <h3 style={{ margin: '0 0 16px 0', color: '#00a884', fontSize: '20px', fontWeight: '800' }}>👤 Çift Profil Kartı</h3>
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>AVATAR SEÇİN</label>
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#0b141a', padding: '12px', borderRadius: '14px', border: '1px solid #222d34' }}>
@@ -456,66 +456,47 @@ function App() {
                   ))}
                 </div>
               </div>
-              <div style={{ marginBottom: '20px', textAlign: 'left' }}>
-                <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>ISIM / NICKNAME</label>
+              <div style={{ marginBottom: '16px', textAlign: 'left' }}>
+                <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>TAKMA AD</label>
                 <input type="text" placeholder="Adınız" value={username} onChange={(e) => handleUsernameChange(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ marginBottom: '24px', textAlign: 'left' }}>
+                <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>YAŞADIĞINIZ ŞEHİR</label>
+                <select value={userCity} onChange={(e) => handleCityChange(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                  {CITIES.map(c => <option key={c} value={c} style={{ background: '#111b21' }}>{c}</option>)}
+                </select>
               </div>
               <button onClick={() => setShowProfileModal(false)} style={{ ...styles.buttonPrimary, width: '100%' }}>Kaydet & Kapat</button>
             </div>
           </div>
         )}
 
-        {/* HERO SECTION (ZENGİN AÇIKLAMA VE BİLGİLER) */}
-        <section style={{ maxWidth: '1100px', margin: '60px auto 40px auto', padding: '0 24px', textAlign: 'center' }}>
+        <section style={{ maxWidth: '1100px', margin: '50px auto 40px auto', padding: '0 24px', textAlign: 'center' }}>
           <span style={{ background: 'rgba(0, 168, 132, 0.15)', color: '#00a884', padding: '6px 18px', borderRadius: '30px', border: '1px solid rgba(0, 168, 132, 0.3)', fontWeight: 'bold', fontSize: '13px' }}>
-            ✨ Mesafe Tanımayan Canlı Birlikte İzleme Platformu
+            ✨ Uzak Mesafeleri Yakınlaştıran Ortak Müzik Platformu
           </span>
 
-          <h2 style={{ fontSize: '52px', fontWeight: '900', color: '#fff', margin: '24px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
-            Aynı Anda İzleyin,<br />
-            <span style={{ color: '#00a884' }}>Aradaki Mesafeleri Unutun.</span>
+          <h2 style={{ fontSize: '48px', fontWeight: '900', color: '#fff', margin: '20px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
+            Aynı Anda Dinleyin,<br />
+            <span style={{ color: '#00a884' }}>Aramızdaki Mesafeleri Unutun.</span>
           </h2>
 
-          <p style={{ color: '#8696a0', fontSize: '18px', maxWidth: '720px', margin: '0 auto 40px auto', lineHeight: '1.6' }}>
-            Sevgilinizle, arkadaşlarınızla veya grubunuzla YouTube videolarını, müzikleri ve filmleri tam senkronize izleyin. Milisaniyelik gecikmesiz senkronizasyon ve canlı sohbet deneyimi.
-          </p>
-
-          {/* İSTATİSTİK ROZETLERİ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', maxWidth: '850px', margin: '0 auto 60px auto' }}>
-            <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>0 ms</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Milisaniyelik Senkron</div>
-            </div>
-            <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>%100</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Ücretsiz & Kayıtsız</div>
-            </div>
-            <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>🔒 Özel</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Şifreli Gizli Odalar</div>
-            </div>
-          </div>
-
-          {/* ODA OLUŞTURMA / KATILMA KARTI (SEKMELİ) */}
-          <div style={{ ...styles.card, maxWidth: '580px', margin: '0 auto 80px auto', textAlign: 'left', border: '1px solid #00a88444', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
-            
+          <div style={{ ...styles.card, maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
             {errorMessage && (
               <div style={{ background: '#ea0038', color: '#fff', padding: '12px 16px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '20px', fontSize: '14px' }}>
                 {errorMessage}
               </div>
             )}
 
-            {/* SEKMELER */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: '#0b141a', padding: '6px', borderRadius: '14px', border: '1px solid #222d34' }}>
-              <button onClick={() => setActiveTab('create')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: activeTab === 'create' ? '#00a884' : 'transparent', color: activeTab === 'create' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button onClick={() => setActiveTab('create')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: activeTab === 'create' ? '#00a884' : 'transparent', color: activeTab === 'create' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>
                 🚀 Oda Oluştur
               </button>
-              <button onClick={() => setActiveTab('join')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: activeTab === 'join' ? '#00a884' : 'transparent', color: activeTab === 'join' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button onClick={() => setActiveTab('join')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: activeTab === 'join' ? '#00a884' : 'transparent', color: activeTab === 'join' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>
                 🚪 Odaya Katıl
               </button>
             </div>
 
-            {/* FORMLAR */}
             {activeTab === 'create' ? (
               <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <input type="text" placeholder="Oda İsmi Belirleyin" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={styles.input} />
@@ -527,7 +508,6 @@ function App() {
                     <option value="2" style={{ background: '#111b21' }}>2 Kişi (Çiftler)</option>
                     <option value="4" style={{ background: '#111b21' }}>4 Kişi (Grup)</option>
                     <option value="8" style={{ background: '#111b21' }}>8 Kişi (Kalabalık)</option>
-                    <option value="20" style={{ background: '#111b21' }}>20 Kişi (Parti)</option>
                   </select>
                 </div>
 
@@ -543,10 +523,10 @@ function App() {
 
             {recentRooms.length > 0 && (
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #222d34' }}>
-                <span style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>SON GİRDİĞİN ODALAR</span>
+                <span style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>KAYITLI ODALARIN</span>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {recentRooms.map((rId) => (
-                    <button key={rId} onClick={() => socket.emit('join_room', { roomId: rId, password: '', userId })} style={{ background: '#202c33', color: '#00a884', border: '1px solid #00a88433', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                    <button key={rId} onClick={() => socket.emit('join_room', { roomId: rId, password: '', userId, userCity })} style={{ background: '#202c33', color: '#00a884', border: '1px solid #00a88433', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
                       🚪 {rId}
                     </button>
                   ))}
@@ -554,60 +534,19 @@ function App() {
               </div>
             )}
           </div>
-
-          {/* DOLDURULMUŞ ÖZELLİK TANITIM KARTLARI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', textAlign: 'left', marginBottom: '80px' }}>
-            <div style={styles.card}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎬</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>Ortak Video & Müzik</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>YouTube veya özel video linklerini ortak oynatın. Biri durdurduğunda herkeste aynı anda durur.</p>
-            </div>
-
-            <div style={styles.card}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>WhatsApp Stili Sohbet</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>Siz sağ tarafta yeşil baloncukta, arkadaşınız sol tarafta koyu gri baloncukta anlık mesajlaşsın.</p>
-            </div>
-
-            <div style={{ ...styles.card }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎭</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>Özel Profil Avatarları</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>Kayıt olmakla uğraşmadan cihazınıza özel takma ad ve eğlenceli avatarınızı hemen seçin.</p>
-            </div>
-          </div>
-
-          {/* AKTİF ODALAR LİSTESİ */}
-          {publicRooms.length > 0 && (
-            <div style={{ textAlign: 'left', marginBottom: '80px' }}>
-              <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '16px', fontWeight: '800' }}>🌐 Canlı Katılabileceğin Odalar</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
-                {publicRooms.map((r) => {
-                  const isFull = r.userCount >= r.maxUsers;
-                  return (
-                    <div key={r.id} style={{ background: '#111b21', padding: '16px', borderRadius: '12px', border: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>
-                          {r.name} {r.hasPassword ? '🔒' : '🔓'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: isFull ? '#ff4757' : '#00a884', marginTop: '4px', fontWeight: 'bold' }}>
-                          {isFull ? '⚠️ Oda Dolu' : `Kişi: ${r.userCount}/${r.maxUsers}`}
-                        </div>
-                      </div>
-                      <button disabled={isFull} onClick={() => { setJoinRoomInput(r.id); setActiveTab('join'); }} style={{ background: isFull ? '#222d34' : '#00a884', color: isFull ? '#8696a0' : '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: isFull ? 'not-allowed' : 'pointer' }}>
-                        {isFull ? 'Dolu' : 'Katıl ➔'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </section>
+        
+        {/* FOOTER STATUS */}
+        <footer style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '12px', color: '#8696a0' }}>
+          <span style={{ color: isConnected ? '#00a884' : '#ff4757', fontWeight: 'bold' }}>
+            ● Sunucu Durumu: {isConnected ? 'Aktif (Bağlandı)' : 'Bağlanıyor...'}
+          </span>
+        </footer>
       </div>
     );
   }
 
-  // 2. FULLSCREEN ODA ARAYÜZÜ
+  // 2. ODA EKRANI (KLASÖRLÜ ÇALMA LİSTESİ VE MESAFE SAYAÇLARI)
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
       <style>{`
@@ -617,13 +556,21 @@ function App() {
         ::-webkit-scrollbar-thumb { background: #222d34; border-radius: 4px; }
       `}</style>
 
+      {/* HEADER BAR */}
       <header style={{ height: '60px', padding: '0 28px', background: '#111b21', borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>💬</div>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️</div>
           <h2 style={{ margin: 0, color: '#00a884', fontSize: '18px', fontWeight: '900' }}>Couple Meeting</h2>
+          
           <span style={{ fontSize: '11px', background: 'rgba(0, 168, 132, 0.15)', color: '#00a884', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(0, 168, 132, 0.3)' }}>
-            {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers})
+            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers})
           </span>
+
+          {distanceKm && (
+            <span style={{ fontSize: '11px', background: 'rgba(245, 176, 65, 0.15)', color: '#f5b041', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(245, 176, 65, 0.3)' }}>
+              📍 Mesafe: {distanceKm} km | ❤️ Birlikte Dinleme: Bugün
+            </span>
+          )}
         </div>
 
         <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
@@ -631,34 +578,52 @@ function App() {
         </button>
       </header>
 
+      {/* MAIN VIEWPORT */}
       <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+        
+        {/* SOL: PLAYER EKRANI */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          <div style={{ padding: '12px 20px', background: '#111b21', borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', position: 'relative' }}>
-            <input type="text" placeholder="🔍 Şarkı/Video Adı Yazın veya Link Yapıştırın..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={{ ...styles.input, flex: 1 }} />
+          {/* ARAMA VE LINK BAR */}
+          <div style={{ padding: '12px 20px', background: '#111b21', borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
+            <input 
+              type="text" 
+              placeholder="🔍 Şarkı/Video Adı Yazın veya Link Yapıştırın..." 
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              style={{ ...styles.input, flex: 1 }}
+            />
+
+            {/* HEDEF KLASÖR SEÇİMİ */}
+            <select value={targetAddCategory} onChange={(e) => setTargetAddCategory(e.target.value)} style={{ ...styles.input, background: '#202c33', color: '#00a884', fontWeight: 'bold', cursor: 'pointer' }}>
+              {categories.map(cat => <option key={cat} value={cat} style={{ background: '#111b21', color: '#fff' }}>📁 {cat}</option>)}
+            </select>
+
             <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: '#00a884' }}>▶ Oynat</button>
             <button onClick={handleAddToPlaylist} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
 
+            {/* CANLI ARAMA DROPDOWN */}
             {(searchResults.length > 0 || isSearching) && (
-              <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', background: '#111b21', border: '1px solid #222d34', borderRadius: '16px', padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.card, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {isSearching && <div style={{ color: '#00a884', fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
                 {searchResults.map((song) => (
-                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#0b141a', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34' }}>
+                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#111b21', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34' }}>
                     <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
                     <div style={{ flex: 1, overflow: 'hidden', fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
                     <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#00a884' }}>▶ Çal</button>
-                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Ekle</button>
+                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Klasöre Ekle</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
+          {/* SAHNE */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a' }}>
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#8696a0' }}>
                 <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Şarkı Aratın veya Çalma Listesinden Seçin!</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Şarkı Aratın veya Kitaplık Klasörlerinden Seçin!</div>
               </div>
             )}
 
@@ -677,6 +642,7 @@ function App() {
             ))}
           </div>
 
+          {/* KONTROLLER */}
           <div style={{ padding: '14px 24px', background: '#111b21', borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, background: '#00a884' }}>▶ Ortak Oynat</button>
             <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
@@ -690,24 +656,51 @@ function App() {
           </div>
         </div>
 
-        <div style={{ width: '360px', background: '#111b21', borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
+        {/* SAĞ: WHATSAPP SOHBET VE KLASÖRLÜ ÇALMA LİSTESİ */}
+        <div style={{ width: '380px', background: '#111b21', borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'chat' ? '#111b21' : 'transparent', color: sidebarTab === 'chat' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'playlist' ? '#111b21' : 'transparent', color: sidebarTab === 'playlist' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>🎵 Liste ({playlist ? playlist.length : 0})</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'playlist' ? '#111b21' : 'transparent', color: sidebarTab === 'playlist' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0b141a' }}>
+              {/* WHATSAPP SOHBET AKIŞI */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
                   return (
-                    <div key={idx} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '8px', maxWidth: '85%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div 
+                      key={idx} 
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: isMe ? 'row-reverse' : 'row',
+                        alignItems: 'flex-end',
+                        gap: '8px',
+                        maxWidth: '85%',
+                        alignSelf: isMe ? 'flex-end' : 'flex-start'
+                      }}
+                    >
                       <span style={{ fontSize: '18px', paddingBottom: '2px' }}>{msg.avatar || '🐱'}</span>
-                      <div style={{ background: isMe ? '#005c4b' : '#202c33', color: '#e9edef', padding: '8px 12px', borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px', boxShadow: '0 1px 3px rgba(0,0,0,0.4)', minWidth: '80px' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '2px' }}>{msg.sender}</div>
-                        <div style={{ fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.text}</div>
-                        <div style={{ fontSize: '9px', color: '#8696a0', textAlign: 'right', marginTop: '4px' }}>{msg.time}</div>
+                      <div 
+                        style={{ 
+                          background: isMe ? '#005c4b' : '#202c33', 
+                          color: '#e9edef', 
+                          padding: '8px 12px', 
+                          borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                          minWidth: '80px'
+                        }}
+                      >
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '2px' }}>
+                          {msg.sender}
+                        </div>
+                        <div style={{ fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                          {msg.text}
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#8696a0', textAlign: 'right', marginTop: '4px' }}>
+                          {msg.time}
+                        </div>
                       </div>
                     </div>
                   );
@@ -722,18 +715,44 @@ function App() {
             </div>
           ) : (
             <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: '#0b141a' }}>
-              <div style={{ display: 'flex', gap: '6px', background: '#111b21', padding: '4px', borderRadius: '12px', border: '1px solid #222d34' }}>
-                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: playMode === 'sequence' ? '#00a884' : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>▶ Sırayla</button>
-                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: playMode === 'shuffle' ? '#00a884' : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔀 Rastgele</button>
-                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: playMode === 'alphabetical' ? '#00a884' : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔤 A-Z</button>
+              
+              {/* KLASÖR / KİTAPLIK SEÇİMİ */}
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {categories.map((cat) => (
+                  <button 
+                    key={cat} 
+                    onClick={() => setSelectedCategory(cat)}
+                    style={{ background: selectedCategory === cat ? '#00a884' : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                  >
+                    📁 {cat}
+                  </button>
+                ))}
               </div>
 
-              {getSortedPlaylist().map((item) => (
-                <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? '1px solid #00a884' : '1px solid #222d34', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
-                  <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}>🗑️</button>
-                </div>
-              ))}
+              {/* YENİ KLASÖR OLUŞTURMA */}
+              <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '6px' }}>
+                <input type="text" placeholder="+ Yeni Klasör Aç..." value={newCategoryInput} onChange={(e) => setNewCategoryInput(e.target.value)} style={{ ...styles.input, flex: 1, padding: '8px 12px', fontSize: '12px' }} />
+                <button type="submit" style={{ ...styles.buttonPrimary, padding: '8px 12px', fontSize: '12px' }}>Ekle</button>
+              </form>
+
+              {/* MOD BUTONLARI */}
+              <div style={{ display: 'flex', gap: '6px', background: '#111b21', padding: '4px', borderRadius: '12px', border: '1px solid #222d34' }}>
+                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'sequence' ? '#00a884' : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>▶ Sırayla</button>
+                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'shuffle' ? '#00a884' : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔀 Rastgele</button>
+                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'alphabetical' ? '#00a884' : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔤 A-Z</button>
+              </div>
+
+              {/* KLASÖR İÇERİĞİ */}
+              {getFilteredPlaylist().length === 0 ? (
+                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş. Arama yaparak ekleyebilirsiniz!</div>
+              ) : (
+                getFilteredPlaylist().map((item) => (
+                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? '1px solid #00a884' : '1px solid #222d34', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
+                    <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}>🗑️</button>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

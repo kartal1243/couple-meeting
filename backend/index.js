@@ -14,12 +14,40 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-const rooms = {};
+// Türkiye Şehir Koordinatları (Mesafe Hesaplama İçin)
+const CITY_COORDS = {
+  'Zonguldak': { lat: 41.4564, lon: 31.7987 },
+  'Tokat': { lat: 40.3167, lon: 36.5500 },
+  'İstanbul': { lat: 41.0082, lon: 28.9784 },
+  'Ankara': { lat: 39.9334, lon: 32.8597 },
+  'İzmir': { lat: 38.4237, lon: 27.1428 },
+  'Antalya': { lat: 36.8969, lon: 30.7133 },
+  'Bursa': { lat: 40.1885, lon: 29.0610 },
+  'Trabzon': { lat: 41.0027, lon: 39.7168 },
+  'Sivas': { lat: 39.7477, lon: 37.0179 },
+  'Adana': { lat: 37.0000, lon: 35.3213 },
+  'Eskişehir': { lat: 39.7767, lon: 30.5206 },
+  'Samsun': { lat: 41.2928, lon: 36.3313 },
+  'Kayseri': { lat: 38.7312, lon: 35.4787 },
+  'Konya': { lat: 37.8746, lon: 32.4932 },
+  'Diyarbakır': { lat: 37.9144, lon: 40.2306 }
+};
 
-const DEFAULT_MUSIC_LIBRARY = [
-  { id: 'tp-1', title: 'Tarkan - Yolla', type: 'youtube', src: 'aJOTlE1K90k', addedBy: 'Sistem' },
-  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', addedBy: 'Sistem' }
-];
+function calculateDistanceKm(city1, city2) {
+  if (!CITY_COORDS[city1] || !CITY_COORDS[city2]) return null;
+  const lat1 = CITY_COORDS[city1].lat, lon1 = CITY_COORDS[city1].lon;
+  const lat2 = CITY_COORDS[city2].lat, lon2 = CITY_COORDS[city2].lon;
+  const R = 6371; // Dünya yarıçapı (km)
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+const rooms = {};
 
 function getPublicRoomsList() {
   const list = [];
@@ -94,7 +122,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join_room', ({ roomId, password, maxUsers, userId }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity }) => {
     let room = rooms[roomId];
 
     if (!room) {
@@ -103,8 +131,11 @@ io.on('connection', (socket) => {
         password: password || '',
         maxUsers: parseInt(maxUsers) || 2,
         users: [],
-        playlist: [...DEFAULT_MUSIC_LIBRARY],
+        playlist: [], // Boş kalıcı liste
+        categories: ['Genel', 'Türk Pop', 'Rap', 'Arabesk'], // Klasörler
         playMode: 'sequence',
+        userLocations: {},
+        stats: { totalMinutes: 12, lastActiveDate: 'Bugün' },
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
@@ -120,16 +151,27 @@ io.on('connection', (socket) => {
       }
     }
 
+    if (userCity) {
+      room.userLocations[userId] = userCity;
+    }
+
     const existingUserIndex = room.users.findIndex(u => u.userId === userId);
     if (existingUserIndex !== -1) {
       room.users[existingUserIndex].socketId = socket.id;
     } else {
-      room.users.push({ socketId: socket.id, userId });
+      room.users.push({ socketId: socket.id, userId, city: userCity || 'Zonguldak' });
     }
 
     socket.currentRoom = roomId;
     socket.userId = userId;
     socket.join(roomId);
+
+    // Mesafe Hesaplama
+    const cities = Object.values(room.userLocations);
+    let distanceKm = null;
+    if (cities.length >= 2) {
+      distanceKm = calculateDistanceKm(cities[0], cities[1]);
+    }
 
     let calculatedTime = room.currentMedia.time;
     if (room.currentMedia.isPlaying) {
@@ -142,15 +184,28 @@ io.on('connection', (socket) => {
       maxUsers: room.maxUsers,
       socketId: socket.id,
       playlist: room.playlist,
+      categories: room.categories,
       playMode: room.playMode,
+      distanceKm,
+      stats: room.stats,
       currentMedia: {
         ...room.currentMedia,
         time: calculatedTime
       }
     });
 
+    io.to(roomId).emit('location_updated', { distanceKm, cities: room.userLocations });
+
     updateRoomUsers(roomId);
     broadcastRooms();
+  });
+
+  socket.on('create_category', ({ roomId, categoryName }) => {
+    const room = rooms[roomId];
+    if (room && categoryName && !room.categories.includes(categoryName)) {
+      room.categories.push(categoryName);
+      io.to(roomId).emit('categories_updated', room.categories);
+    }
   });
 
   socket.on('add_to_playlist', ({ roomId, item }) => {
