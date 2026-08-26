@@ -26,6 +26,36 @@ const THEMES = {
 
 };
 
+// Tüm sayfalara enjekte edilen global stil: hover/focus animasyonları, cam efektleri, scrollbar
+const GLOBAL_CSS = `
+  @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
+  @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+  @keyframes pulseDot { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,150,.5); } 50% { box-shadow: 0 0 0 6px rgba(0,200,150,0); } }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #0b141a; }
+  ::-webkit-scrollbar-thumb { background: #2a3942; border-radius: 4px; }
+  button { transition: transform .15s ease, filter .2s ease, box-shadow .2s ease !important; }
+  button:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  button:active { transform: translateY(0) scale(.98); }
+  input, select { transition: border-color .2s ease, box-shadow .2s ease !important; }
+  input:focus, select:focus { outline: none; border-color: var(--cm-primary, #00a884) !important; box-shadow: 0 0 0 3px rgba(0,168,132,.25); }
+  .cm-glass {
+    background: rgba(17, 27, 33, 0.72) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .cm-gradient-text {
+    background: linear-gradient(90deg, var(--cm-primary,#00a884), #53bdeb, var(--cm-primary,#00a884));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 4s linear infinite;
+  }
+  .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
+`;
+
 
 
 function App() {
@@ -221,6 +251,9 @@ function App() {
 
 
   const currentTheme = THEMES[roomTheme] || THEMES.default;
+
+  // Tema rengini CSS değişkeni olarak alt bileşenlere aktar
+  const cssVars = { '--cm-primary': currentTheme.primary };
 
   // Socket handler'ların (useEffect [] closure) her zaman güncel leave fonksiyonuna erişmesi için
   const leaveRoomRef = useRef(() => {});
@@ -986,9 +1019,9 @@ function App() {
 
       background: currentTheme.cardBg,
 
-      border: '1px solid #222d34',
+      border: '1px solid #22303a',
 
-      borderRadius: '16px',
+      borderRadius: '20px',
 
       padding: '24px'
 
@@ -1004,11 +1037,13 @@ function App() {
 
       padding: '10px 16px',
 
-      borderRadius: '10px',
+      borderRadius: '12px',
 
       fontWeight: '700',
 
-      cursor: 'pointer'
+      cursor: 'pointer',
+
+      boxShadow: '0 6px 18px rgba(0,0,0,0.35)'
 
     },
 
@@ -1038,7 +1073,8 @@ function App() {
 
     return (
 
-      <div style={{ ...styles.app, overflowY: 'auto' }}>
+      <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
+      <style>{GLOBAL_CSS}</style>
 
         <header style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
 
@@ -1138,11 +1174,11 @@ function App() {
 
 
 
-          <h2 style={{ fontSize: '52px', fontWeight: '900', color: '#fff', margin: '20px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
+          <h2 style={{ fontSize: '52px', fontWeight: '900', margin: '20px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
 
             Aynı Anda İzleyin & Dinleyin,<br />
 
-            <span style={{ color: '#00a884' }}>Aramızdaki Mesafeleri Unutun.</span>
+            <span className="cm-gradient-text">Aramızdaki Mesafeleri Unutun.</span>
 
           </h2>
 
@@ -1156,7 +1192,7 @@ function App() {
 
 
 
-          <div style={{ ...styles.card, maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
+          <div className="cm-glass" style={{ ...styles.card, maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444' }}>
 
             {errorMessage && (
 
@@ -1274,19 +1310,9 @@ function App() {
 
   return (
 
-    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
 
-      <style>{`
-
-        @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
-
-        ::-webkit-scrollbar { width: 4px; }
-
-        ::-webkit-scrollbar-track { background: #0b141a; }
-
-        ::-webkit-scrollbar-thumb { background: #222d34; border-radius: 4px; }
-
-      `}</style>
+      <style>{GLOBAL_CSS + `\n        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n      `}</style>
 
 
 
@@ -1462,9 +1488,9 @@ function App() {
 
 
 
-          <span style={{ fontSize: '11px', background: 'rgba(0, 168, 132, 0.15)', color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(0, 168, 132, 0.3)' }}>
+          <span style={{ fontSize: '11px', background: currentTheme.cardBg, color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
 
-            Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+            <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} /> Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
 
           </span>
 
