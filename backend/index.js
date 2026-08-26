@@ -17,8 +17,8 @@ const io = new Server(server, { cors: { origin: '*' } });
 const rooms = {};
 
 const DEFAULT_MUSIC_LIBRARY = [
-  { id: 'tp-1', title: 'Tarkan - Yolla', type: 'youtube', src: 'aJOTlE1K90k', category: 'Türk Pop', addedBy: 'Sistem' },
-  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' }
+  { id: 'tp-1', title: 'Tarkan - Yolla', type: 'youtube', src: 'aJOTlE1K90k', addedBy: 'Sistem' },
+  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', addedBy: 'Sistem' }
 ];
 
 function getPublicRoomsList() {
@@ -51,7 +51,7 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // CANLI YOUTUBE VE MUSIC ARAMA MOTORU
+  // ANLIK GENEL YOUTUBE ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query || query.trim().length < 2) {
@@ -69,9 +69,7 @@ io.on('connection', (socket) => {
           const data = await res.json();
           rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []);
         }
-      } catch (e) {
-        // Fallback
-      }
+      } catch (e) {}
 
       if (!rawList || rawList.length === 0) {
         const r = await ytSearch(query);
@@ -82,8 +80,8 @@ io.on('connection', (socket) => {
         const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
         return {
           id: videoId,
-          title: v.title || v.name || 'İsimsiz Şarkı',
-          timestamp: v.duration || v.timestamp || 'Müzik',
+          title: v.title || v.name || 'YouTube Videosu',
+          timestamp: v.duration || v.timestamp || 'Video',
           thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           type: 'youtube',
           src: videoId
@@ -119,7 +117,7 @@ io.on('connection', (socket) => {
       room = rooms[roomId];
     } else {
       if (room.password && room.password !== (password || '')) {
-        socket.emit('room_error', '🔒 Hatalı Şifre!');
+        socket.emit('room_error', '🔒 Hatalı Oda Şifresi!');
         return;
       }
       if (room.users.length >= room.maxUsers) {
@@ -132,21 +130,13 @@ io.on('connection', (socket) => {
     socket.currentRoom = roomId;
     socket.join(roomId);
 
-    let calculatedTime = room.currentMedia.time;
-    if (room.currentMedia.isPlaying) {
-      calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
-    }
-
     socket.emit('room_joined', {
       roomId,
       userCount: room.users.length,
       maxUsers: room.maxUsers,
       socketId: socket.id,
       playlist: room.playlist,
-      currentMedia: {
-        ...room.currentMedia,
-        time: calculatedTime
-      }
+      currentMedia: room.currentMedia
     });
 
     updateRoomUsers(roomId);
