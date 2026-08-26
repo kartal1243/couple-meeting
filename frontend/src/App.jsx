@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const BACKEND_URL = 'https://couple-meeting.onrender.com';
+const BACKEND_URL = 'https://RENDER_LINKINIZ.onrender.com';
 let socket;
 
 try {
@@ -16,7 +16,7 @@ const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻']
 function App() {
   const [inRoom, setInRoom] = useState(false);
   const [tab, setTab] = useState('create');
-  const [sidebarTab, setSidebarTab] = useState('chat'); // 'chat' | 'playlist'
+  const [sidebarTab, setSidebarTab] = useState('chat');
 
   const [myAvatar, setMyAvatar] = useState('🐱');
   const [username, setUsername] = useState('Ben');
@@ -31,11 +31,11 @@ function App() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
-  // Oynatma ve Liste
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   const [inputUrl, setInputUrl] = useState('');
   const [playlist, setPlaylist] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('Tümü');
 
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -206,12 +206,12 @@ function App() {
     setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
 
-    // Otomatik listeye de ekle
     const trackItem = {
       id: Date.now() + Math.random().toString(),
       title: inputUrl.length > 30 ? inputUrl.substring(0, 30) + '...' : inputUrl,
       type: media.type,
       src: media.src,
+      category: 'Özel Eklenenler',
       addedBy: username
     };
     socket.emit('add_to_playlist', { roomId, item: trackItem });
@@ -269,12 +269,14 @@ function App() {
     sendAction('REACTION', reaction);
   };
 
-  // =========================================================================
-  // LANDING PAGE
-  // =========================================================================
+  const categories = ['Tümü', ...new Set(playlist.map(i => i.category || 'Diğer'))];
+  const filteredPlaylist = playlist
+    .filter(item => selectedCategory === 'Tümü' || item.category === selectedCategory)
+    .sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+
   if (!inRoom) {
     return (
-      <div style={{ backgroundColor: '#0b0e14', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ backgroundColor: '#0b0e14', color: '#e0e6ed', minHeight: '100vh', width: '100vw', fontFamily: "'Inter', sans-serif" }}>
         <header style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a202c' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '28px' }}>❤️</span>
@@ -285,7 +287,7 @@ function App() {
           </span>
         </header>
 
-        <div style={{ maxWidth: '850px', margin: '40px auto 0 auto', textAlign: 'center', padding: '0 20px' }}>
+        <div style={{ width: '100%', margin: '40px auto 0 auto', textAlign: 'center', padding: '0 20px', boxSizing: 'border-box' }}>
           <h2 style={{ fontSize: '44px', fontWeight: '900', color: '#fff', marginBottom: '14px', letterSpacing: '-1px' }}>
             birlikte sinema ve <span style={{ color: '#f5b041' }}>müzik keyfi</span>
           </h2>
@@ -432,9 +434,6 @@ function App() {
     );
   }
 
-  // =========================================================================
-  // TAM EKRAN ODA EKRANI (Ortak Şarkı / Video Çalma Listeli)
-  // =========================================================================
   return (
     <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
       <style>{`
@@ -446,8 +445,7 @@ function App() {
         }
       `}</style>
       
-      {/* Header */}
-      <header style={{ height: '56px', padding: '0 24px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+      <header style={{ height: '56px', width: '100vw', padding: '0 24px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h2 style={{ margin: 0, color: '#f5b041', fontSize: '16px', fontWeight: '900' }}>Couple Meeting ❤️</h2>
           <span style={{ fontSize: '11px', background: '#f5b04115', color: '#f5b041', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold', border: '1px solid #f5b04144' }}>
@@ -463,13 +461,10 @@ function App() {
         </button>
       </header>
 
-      {/* Main Grid */}
-      <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+      <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* Left Side: Oynatıcı */}
         <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* Top URL Input Bar */}
           <form onSubmit={handleMediaSubmit} style={{ padding: '10px 16px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', gap: '10px', flexShrink: 0 }}>
             <input 
               type="text" 
@@ -483,9 +478,7 @@ function App() {
             </button>
           </form>
 
-          {/* Oynatma Sahnesi */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
-            
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#4a5568', padding: '20px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '10px' }}>🎵</div>
@@ -513,7 +506,6 @@ function App() {
             ))}
           </div>
 
-          {/* Oynatıcı Kontrolleri */}
           <div style={{ padding: '12px 20px', background: '#0e121a', borderTop: '1px solid #1a202c', display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
             <button onClick={handlePlay} style={{ flex: 1, padding: '10px', background: '#2ed573', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>
               ▶ Ortak Oynat
@@ -531,10 +523,8 @@ function App() {
           </div>
         </div>
 
-        {/* Right Side: Tabbed Sidebar (Chat & Playlist) */}
-        <div className="chat-sidebar" style={{ width: '350px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div className="chat-sidebar" style={{ width: '340px', background: '#0e121a', borderLeft: '1px solid #1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
-          {/* Sidebar Navigation Tabs */}
           <div style={{ display: 'flex', borderBottom: '1px solid #1a202c', background: '#06080c' }}>
             <button 
               onClick={() => setSidebarTab('chat')}
@@ -546,11 +536,10 @@ function App() {
               onClick={() => setSidebarTab('playlist')}
               style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? '#0e121a' : 'transparent', color: sidebarTab === 'playlist' ? '#f5b041' : '#718096', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
             >
-              🎵 Çalma Listesi ({playlist.length})
+              🎵 Çalma Listesi ({filteredPlaylist.length})
             </button>
           </div>
 
-          {/* TAB 1: CANLI SOHBET */}
           {sidebarTab === 'chat' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -614,18 +603,28 @@ function App() {
             </div>
           )}
 
-          {/* TAB 2: ORTAK ÇALMA LİSTESİ */}
           {sidebarTab === 'playlist' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '14px', overflowY: 'auto' }}>
-              <div style={{ fontSize: '12px', color: '#718096', marginBottom: '12px' }}>
-                Birlikte dinlemek istediğiniz parçayı seçin:
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '11px', color: '#718096', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Kategori Seçin (A-Z Sıralı):</label>
+                <select 
+                  value={selectedCategory} 
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#f5b041', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', outline: 'none' }}
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat} style={{ background: '#0e121a', color: '#fff' }}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {playlist.length === 0 ? (
-                <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Listeniz boş. Yukarıdan link ekleyin!</p>
+              {filteredPlaylist.length === 0 ? (
+                <p style={{ color: '#4a5568', fontSize: '12px', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>Bu kategoride henüz şarkı yok.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {playlist.map((item) => {
+                  {filteredPlaylist.map((item) => {
                     const isCurrent = mediaSrc === item.src;
                     return (
                       <div 
@@ -648,7 +647,7 @@ function App() {
                             {isCurrent && '🎵 '} {item.title}
                           </div>
                           <div style={{ fontSize: '10px', color: '#718096', marginTop: '2px' }}>
-                            Ekleyen: {item.addedBy || 'Kullanıcı'}
+                            Tür: {item.category || 'Genel'} | Ekleyen: {item.addedBy || 'Kullanıcı'}
                           </div>
                         </div>
 
