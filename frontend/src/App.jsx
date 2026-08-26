@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const BACKEND_URL = 'https://couple-meeting.onrender.com';
+const BACKEND_URL = 'http://localhost:3001';
 let socket;
 
 try {
@@ -14,7 +14,6 @@ try {
 const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
 
 function App() {
-  // KALICI KULLANICI KİMLİĞİ (F5 BUG'INI KÖKTEN ÇÖZER)
   const [userId] = useState(() => {
     let savedId = localStorage.getItem('cm_user_id');
     if (!savedId) {
@@ -24,7 +23,6 @@ function App() {
     return savedId;
   });
 
-  // F5 DE ANA SAYFAYA SIÇRAMAYI ENGELLEYEN ANLIK STATE
   const [inRoom, setInRoom] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoom = urlParams.get('room');
@@ -35,9 +33,19 @@ function App() {
   const [tab, setTab] = useState('create');
   const [sidebarTab, setSidebarTab] = useState('chat');
 
-  const [myAvatar, setMyAvatar] = useState('🐱');
-  const [username, setUsername] = useState('İzleyici');
+  // İSTEĞE BAĞLI VE CİHAZDA SAKLANAN PROFİL BİLGİLERİ
+  const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
+  const [username, setUsername] = useState(() => localStorage.getItem('cm_username') || 'İzleyici');
   const [mySocketId, setMySocketId] = useState('');
+
+  // GEÇMİŞ / SABİT ODALAR LİSTESİ
+  const [recentRooms, setRecentRooms] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cm_recent_rooms')) || [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   const [roomId, setRoomId] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -70,6 +78,23 @@ function App() {
   const customVideoRef = useRef(null);
   const chatBottomRef = useRef(null);
 
+  const saveToRecentRooms = (targetRoomId) => {
+    if (!targetRoomId) return;
+    const updated = [targetRoomId, ...recentRooms.filter(r => r !== targetRoomId)].slice(0, 5);
+    setRecentRooms(updated);
+    localStorage.setItem('cm_recent_rooms', JSON.stringify(updated));
+  };
+
+  const handleAvatarSelect = (emoji) => {
+    setMyAvatar(emoji);
+    localStorage.setItem('cm_user_avatar', emoji);
+  };
+
+  const handleUsernameChange = (val) => {
+    setUsername(val);
+    localStorage.setItem('cm_username', val);
+  };
+
   const showFloatingEmoji = (reaction) => {
     setReactions((prev) => [...prev, reaction]);
     setTimeout(() => {
@@ -89,7 +114,6 @@ function App() {
     }
   };
 
-  // OTOMATİK DOKUNMADAN BAGLANMA KONTROLÜ
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetRoom = urlParams.get('room') || localStorage.getItem('cm_saved_room');
@@ -142,6 +166,7 @@ function App() {
       if (data.playMode) setPlayMode(data.playMode);
 
       localStorage.setItem('cm_saved_room', data.roomId);
+      saveToRecentRooms(data.roomId);
       window.history.replaceState({}, '', `?room=${data.roomId}`);
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
@@ -453,7 +478,6 @@ function App() {
     }
   };
 
-  // 1. ANA SAYFA EKRANI
   if (!inRoom) {
     return (
       <div style={{ ...styles.app, overflowY: 'auto' }}>
@@ -481,12 +505,12 @@ function App() {
 
           <div style={{ ...styles.glassCard, padding: '36px', textAlign: 'left', maxWidth: '520px', margin: '0 auto' }}>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>KARAKTER SEÇİMİ</label>
+              <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>PROFİL SEÇİMİ (İSTEĞE BAĞLI)</label>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', background: '#111b21', padding: '12px', borderRadius: '16px', border: '1px solid #222d34' }}>
                 {AVATARS.map((emoji) => (
                   <span
                     key={emoji}
-                    onClick={() => setMyAvatar(emoji)}
+                    onClick={() => handleAvatarSelect(emoji)}
                     style={{
                       fontSize: '26px',
                       padding: '8px',
@@ -505,12 +529,29 @@ function App() {
             <div style={{ marginBottom: '20px' }}>
               <input 
                 type="text" 
-                placeholder="Takma Adınız" 
+                placeholder="Takma Adınız (Cihaza kaydolur)" 
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => handleUsernameChange(e.target.value)}
                 style={{ ...styles.input, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
+
+            {recentRooms.length > 0 && (
+              <div style={{ marginBottom: '24px', background: '#111b21', padding: '12px 16px', borderRadius: '12px', border: '1px solid #222d34' }}>
+                <span style={{ fontSize: '12px', color: '#00a884', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>📌 Kayıtlı / Son Odaların</span>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {recentRooms.map((rId) => (
+                    <button
+                      key={rId}
+                      onClick={() => socket.emit('join_room', { roomId: rId, password: '', userId })}
+                      style={{ background: '#202c33', color: '#00a884', border: '1px solid #00a88444', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                    >
+                      🚪 {rId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: '#111b21', padding: '6px', borderRadius: '14px' }}>
               <button onClick={() => setTab('create')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: tab === 'create' ? '#00a884' : 'transparent', color: tab === 'create' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>Oda Oluştur</button>
@@ -577,17 +618,15 @@ function App() {
     );
   }
 
-  // 2. ODA EKRANI (%100 FULL EKRAN & WHATSAPP SOHBET)
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
       <style>{`
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0b141a; }
-        ::-webkit-scrollbar-thumb { background: #222d34; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #222d34; borderRadius: 4px; }
       `}</style>
 
-      {/* HEADER */}
       <header style={{ height: '60px', padding: '0 28px', background: '#111b21', borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>💬</div>
@@ -602,11 +641,9 @@ function App() {
         </button>
       </header>
 
-      {/* ANA EKRAN DÜZENİ */}
       <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* ARAMA VE LINK GİRİŞİ */}
           <div style={{ padding: '12px 20px', background: '#111b21', borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', position: 'relative' }}>
             <input 
               type="text" 
@@ -619,7 +656,6 @@ function App() {
             <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: '#00a884' }}>▶ Oynat</button>
             <button onClick={handleAddToPlaylist} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
 
-            {/* ARAMA SONUÇLARI MENÜSÜ */}
             {(searchResults.length > 0 || isSearching) && (
               <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.glassCard, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {isSearching && <div style={{ color: '#00a884', fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
@@ -635,7 +671,6 @@ function App() {
             )}
           </div>
 
-          {/* SAHNE / PLAYER */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a' }}>
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#8696a0' }}>
@@ -665,7 +700,6 @@ function App() {
             ))}
           </div>
 
-          {/* KONTROL BUTONLARI */}
           <div style={{ padding: '14px 24px', background: '#111b21', borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, background: '#00a884' }}>▶ Ortak Oynat</button>
             <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
@@ -679,7 +713,6 @@ function App() {
           </div>
         </div>
 
-        {/* SAĞ PANEL: WHATSAPP TARZI SOHBET VE ÇALMA LİSTESİ */}
         <div style={{ width: '360px', background: '#111b21', borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'chat' ? '#111b21' : 'transparent', color: sidebarTab === 'chat' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>💬 Sohbet</button>
@@ -688,7 +721,6 @@ function App() {
 
           {sidebarTab === 'chat' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0b141a' }}>
-              {/* WHATSAPP MESAJ AKIŞI */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
@@ -732,7 +764,6 @@ function App() {
                 <div ref={chatBottomRef} />
               </div>
 
-              {/* WHATSAPP METİN GİRİŞ BARI */}
               <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #222d34', display: 'flex', gap: '8px', background: '#111b21' }}>
                 <input 
                   type="text" 

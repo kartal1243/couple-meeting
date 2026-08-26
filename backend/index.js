@@ -113,7 +113,6 @@ io.on('connection', (socket) => {
         socket.emit('room_error', '🔒 Hatalı Oda Şifresi!');
         return;
       }
-      // Kullanıcı var mı kontrol et (userId ile)
       const existingUser = room.users.find(u => u.userId === userId);
       if (!existingUser && room.users.length >= room.maxUsers) {
         socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
@@ -121,7 +120,6 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Kullanıcı varsa soketini güncelle, yoksa yeni ekle
     const existingUserIndex = room.users.findIndex(u => u.userId === userId);
     if (existingUserIndex !== -1) {
       room.users[existingUserIndex].socketId = socket.id;
@@ -213,7 +211,6 @@ io.on('connection', (socket) => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
       const socketIdToRemove = socket.id;
-      // F5 sırasında hemen silme, 3 saniye esneklik tanı
       setTimeout(() => {
         if (rooms[rId]) {
           rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socketIdToRemove);
