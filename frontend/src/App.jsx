@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://couple-meeting.onrender.com';
 let socket;
 
 try {
