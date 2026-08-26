@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const ytSearch = require('yt-search');
 
 const app = express();
 app.use(cors());
@@ -18,8 +17,7 @@ const rooms = {};
 
 const DEFAULT_MUSIC_LIBRARY = [
   { id: 'tp-1', title: 'Tarkan - Yolla', type: 'youtube', src: 'aJOTlE1K90k', category: 'Türk Pop', addedBy: 'Sistem' },
-  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' },
-  { id: 'tp-3', title: 'Mabel Matiz - Antidepresan', type: 'youtube', src: 'bZ_Bo0Rp5w8', category: 'Türk Pop', addedBy: 'Sistem' }
+  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' }
 ];
 
 function getPublicRoomsList() {
@@ -52,71 +50,37 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // DENO API + AKILLI SANATÇI VE ŞARKI FİLTRELİ ARAMA MOTORU
+  // DOGRUDAN DENO API ARAMA MOTORU (/api/search VE /api/yt_search)
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query) return;
       const encoded = encodeURIComponent(query);
       const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
       
-      const candidateRoutes = [
-        `${baseUrl}/search?q=${encoded}`,
-        `${baseUrl}/api/search?q=${encoded}`,
-        `${baseUrl}/search/songs?q=${encoded}`,
-        `${baseUrl}/songs?q=${encoded}`
-      ];
-
-      let rawList = [];
-
-      // 1. Deno API üzerindeki uç noktaları sırayla tara
-      for (const routeUrl of candidateRoutes) {
-        try {
-          const res = await fetch(routeUrl, { signal: AbortSignal.timeout(2500) });
-          if (res.ok) {
-            const data = await res.json();
-            const extracted = Array.isArray(data) ? data : (data.results || data.songs || data.data || []);
-            if (extracted.length > 0) {
-              rawList = extracted;
-              break;
-            }
-          }
-        } catch (e) {
-          // Diğer rotayı dene
-        }
+      // Önce YouTube Music /api/search, yanıt vermezse /api/yt_search dene
+      let res = await fetch(`${baseUrl}/api/search?q=${encoded}`);
+      if (!res.ok) {
+        res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`);
       }
 
-      // 2. Sanatçı/Kanal profillerini temizle, sadece 11 haneli geçerli Video ID'si olan şarkıları al
-      let validResults = rawList
-        .filter(v => v.type !== 'artist' && v.type !== 'album' && v.type !== 'channel')
-        .map(v => {
-          const videoId = v.videoId || (typeof v.id === 'string' && v.id.length === 11 ? v.id : null);
-          return {
-            id: videoId,
-            title: v.title || v.name || v.songTitle || 'İsimsiz Şarkı',
-            timestamp: v.duration || v.timestamp || 'Müzik',
-            thumbnail: v.thumbnail || v.cover || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''),
-            type: 'youtube',
-            src: videoId
-          };
-        })
-        .filter(v => v.src !== null && v.src !== undefined && v.src.length === 11);
+      const data = await res.json();
+      const rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []);
 
-      // 3. Eğer Deno API sadece sanatçı döndürdüyse veya video bulunamadıysa yedek arama motorunu devreye sok
-      if (validResults.length === 0) {
-        const r = await ytSearch(query);
-        validResults = (r.videos || []).slice(0, 5).map(v => ({
-          id: v.videoId,
-          title: v.title,
-          timestamp: v.timestamp,
-          thumbnail: `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
+      const results = rawList.slice(0, 5).map(v => {
+        const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
+        return {
+          id: videoId,
+          title: v.title || v.name || 'İsimsiz Şarkı',
+          timestamp: v.duration || v.timestamp || 'Müzik',
+          thumbnail: v.thumbnail || v.cover || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           type: 'youtube',
-          src: v.videoId
-        }));
-      }
+          src: videoId
+        };
+      }).filter(v => v.src);
 
-      socket.emit('search_results', validResults.slice(0, 5));
+      socket.emit('search_results', results);
     } catch (err) {
-      console.error("Arama motoru hatası:", err);
+      console.error("Deno API Arama hatası:", err);
       socket.emit('search_results', []);
     }
   });
