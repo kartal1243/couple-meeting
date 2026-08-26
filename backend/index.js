@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const ytSearch = require('yt-search');
 
 const app = express();
 app.use(cors());
@@ -34,66 +33,17 @@ function broadcastRooms() {
   io.emit('public_rooms_update', getPublicRoomsList());
 }
 
-function updateRoomUsers(roomId) {
-  if (rooms[roomId]) {
-    io.to(roomId).emit('room_user_count_update', {
-      userCount: rooms[roomId].users.length,
-      maxUsers: rooms[roomId].maxUsers,
-      users: rooms[roomId].users,
-      hostUserId: rooms[roomId].hostUserId,
-      roomName: rooms[roomId].name,
-      theme: rooms[roomId].theme || 'default'
-    });
-  }
-}
-
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  socket.on('search_music', async ({ query }) => {
-    try {
-      if (!query || query.trim().length < 2) {
-        socket.emit('search_results', []);
-        return;
+  socket.on('join_room', ({ roomId, password, maxUsers }) => {
+    if (socket.currentRoom && rooms[socket.currentRoom]) {
+      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
+      if (rooms[socket.currentRoom].users.length === 0) {
+        delete rooms[socket.currentRoom];
       }
-      
-      const encoded = encodeURIComponent(query.trim());
-      const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
-      let rawList = [];
-
-      try {
-        const res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
-        if (res.ok) {
-          const data = await res.json();
-          rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []);
-        }
-      } catch (e) {}
-
-      if (!rawList || rawList.length === 0) {
-        const r = await ytSearch(query);
-        rawList = r.videos || [];
-      }
-
-      const results = rawList.slice(0, 6).map(v => {
-        const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
-        return {
-          id: videoId,
-          title: v.title || v.name || 'YouTube Videosu',
-          timestamp: v.duration || v.timestamp || 'Müzik',
-          thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-          type: 'youtube',
-          src: videoId
-        };
-      }).filter(v => v.src && v.src.length === 11);
-
-      socket.emit('search_results', results);
-    } catch (err) {
-      console.error("Arama hatası:", err);
-      socket.emit('search_results', []);
     }
-  });
 
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar }) => {
     let room = rooms[roomId];
 
     if (!room) {
@@ -101,155 +51,45 @@ io.on('connection', (socket) => {
         name: roomId,
         password: password || '',
         maxUsers: parseInt(maxUsers) || 2,
-        hostUserId: userId, // Odayı ilk kuran kullanıcı varsayılan Admin
-        theme: 'default',
-        users: [],
-        playlist: [],
-        categories: ['Genel'],
-        playMode: 'sequence',
-        currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
+        users: []
       };
       room = rooms[roomId];
     } else {
       if (room.password && room.password !== (password || '')) {
-        socket.emit('room_error', '🔒 Hatalı Oda Şifresi!');
+        socket.emit('room_error', '🔒 Hatalı Şifre! Lütfen oda şifresini girin.');
         return;
       }
-      const existingUser = room.users.find(u => u.userId === userId);
-      if (!existingUser && room.users.length >= room.maxUsers) {
+      if (room.users.length >= room.maxUsers) {
         socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
         return;
       }
     }
 
-    const existingUserIndex = room.users.findIndex(u => u.userId === userId);
-    const userInfo = { socketId: socket.id, userId, username: username || 'İzleyici', avatar: avatar || '🐱', userCity };
-    
-    if (existingUserIndex !== -1) {
-      room.users[existingUserIndex] = userInfo;
-    } else {
-      room.users.push(userInfo);
-    }
-
+    room.users.push(socket.id);
     socket.currentRoom = roomId;
-    socket.userId = userId;
     socket.join(roomId);
-
-    let calculatedTime = room.currentMedia.time;
-    if (room.currentMedia.isPlaying) {
-      calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
-    }
 
     socket.emit('room_joined', {
       roomId,
-      roomName: room.name,
-      hostUserId: room.hostUserId,
-      theme: room.theme,
       userCount: room.users.length,
       maxUsers: room.maxUsers,
-      socketId: socket.id,
-      users: room.users,
-      playlist: room.playlist,
-      categories: room.categories,
-      playMode: room.playMode,
-      currentMedia: {
-        ...room.currentMedia,
-        time: calculatedTime
-      }
+      hasPassword: !!room.password
     });
 
-    updateRoomUsers(roomId);
     broadcastRooms();
   });
 
-  // ODA AYARLARI ETKİLEŞİMLERİ
-  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId }) => {
-    const room = rooms[roomId];
-    if (room && room.hostUserId === socket.userId) {
-      if (newName && newName.trim()) room.name = newName.trim();
-      if (newTheme) room.theme = newTheme;
-      if (newHostUserId) room.hostUserId = newHostUserId;
-
-      io.to(roomId).emit('room_settings_updated', {
-        roomName: room.name,
-        theme: room.theme,
-        hostUserId: room.hostUserId
-      });
-      broadcastRooms();
-    }
-  });
-
-  socket.on('kick_user', ({ roomId, targetUserId }) => {
-    const room = rooms[roomId];
-    if (room && room.hostUserId === socket.userId && targetUserId !== socket.userId) {
-      const targetUser = room.users.find(u => u.userId === targetUserId);
-      if (targetUser) {
-        io.to(targetUser.socketId).emit('kicked_from_room', '⚠️ Oda yöneticisi tarafından odadan çıkarıldınız.');
-        const targetSocket = io.sockets.sockets.get(targetUser.socketId);
-        if (targetSocket) targetSocket.leave(roomId);
-        room.users = room.users.filter(u => u.userId !== targetUserId);
-        updateRoomUsers(roomId);
-        broadcastRooms();
-      }
-    }
-  });
-
-  socket.on('create_category', ({ roomId, categoryName }) => {
-    const room = rooms[roomId];
-    if (room && categoryName && !room.categories.includes(categoryName)) {
-      room.categories.push(categoryName);
-      io.to(roomId).emit('categories_updated', room.categories);
-    }
-  });
-
-  socket.on('add_to_playlist', ({ roomId, item }) => {
-    const room = rooms[roomId];
-    if (room && item) {
-      room.playlist.push(item);
-      io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
-    }
-  });
-
-  socket.on('remove_from_playlist', ({ roomId, itemId }) => {
-    const room = rooms[roomId];
-    if (room) {
-      room.playlist = room.playlist.filter(i => i.id !== itemId);
-      io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
-    }
-  });
-
-  socket.on('change_play_mode', ({ roomId, mode }) => {
-    const room = rooms[roomId];
-    if (room) {
-      room.playMode = mode;
-      io.to(roomId).emit('play_mode_changed', mode);
-    }
-  });
-
   socket.on('room_action', ({ roomId, type, payload }) => {
-    const room = rooms[roomId];
-    if (room) {
-      if (type === 'CHANGE_MEDIA') {
-        room.currentMedia = { type: payload.type, src: payload.src, time: 0, isPlaying: true, lastUpdated: Date.now() };
-      } else if (type === 'PLAY') {
-        room.currentMedia.isPlaying = true;
-        room.currentMedia.time = payload.time || 0;
-        room.currentMedia.lastUpdated = Date.now();
-      } else if (type === 'PAUSE') {
-        room.currentMedia.isPlaying = false;
-        room.currentMedia.time = payload.time || 0;
-        room.currentMedia.lastUpdated = Date.now();
-      }
-    }
     socket.to(roomId).emit('room_action', { type, payload });
   });
 
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      const rId = socket.currentRoom;
-      rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
-      socket.leave(rId);
-      updateRoomUsers(rId);
+      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
+      socket.leave(socket.currentRoom);
+      if (rooms[socket.currentRoom].users.length === 0) {
+        delete rooms[socket.currentRoom];
+      }
       socket.currentRoom = null;
       broadcastRooms();
     }
@@ -257,15 +97,11 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      const rId = socket.currentRoom;
-      const socketIdToRemove = socket.id;
-      setTimeout(() => {
-        if (rooms[rId]) {
-          rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socketIdToRemove);
-          updateRoomUsers(rId);
-          broadcastRooms();
-        }
-      }, 3000);
+      rooms[socket.currentRoom].users = rooms[socket.currentRoom].users.filter(id => id !== socket.id);
+      if (rooms[socket.currentRoom].users.length === 0) {
+        delete rooms[socket.currentRoom];
+      }
+      broadcastRooms();
     }
   });
 });
