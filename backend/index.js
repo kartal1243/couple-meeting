@@ -94,14 +94,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join_room', ({ roomId, password, maxUsers }) => {
-    if (socket.currentRoom && rooms[socket.currentRoom]) {
-      const oldRoomId = socket.currentRoom;
-      rooms[oldRoomId].users = rooms[oldRoomId].users.filter(id => id !== socket.id);
-      updateRoomUsers(oldRoomId);
-      if (rooms[oldRoomId].users.length === 0) delete rooms[oldRoomId];
-    }
-
+  socket.on('join_room', ({ roomId, password, maxUsers, userId }) => {
     let room = rooms[roomId];
 
     if (!room) {
@@ -120,19 +113,26 @@ io.on('connection', (socket) => {
         socket.emit('room_error', '🔒 Hatalı Oda Şifresi!');
         return;
       }
-      if (!room.users.includes(socket.id) && room.users.length >= room.maxUsers) {
+      // Kullanıcı var mı kontrol et (userId ile)
+      const existingUser = room.users.find(u => u.userId === userId);
+      if (!existingUser && room.users.length >= room.maxUsers) {
         socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
         return;
       }
     }
 
-    if (!room.users.includes(socket.id)) {
-      room.users.push(socket.id);
+    // Kullanıcı varsa soketini güncelle, yoksa yeni ekle
+    const existingUserIndex = room.users.findIndex(u => u.userId === userId);
+    if (existingUserIndex !== -1) {
+      room.users[existingUserIndex].socketId = socket.id;
+    } else {
+      room.users.push({ socketId: socket.id, userId });
     }
+
     socket.currentRoom = roomId;
+    socket.userId = userId;
     socket.join(roomId);
 
-    // GECEN ZAMANI VE ANLIK CANLI SANİYEYİ HESAPLA
     let calculatedTime = room.currentMedia.time;
     if (room.currentMedia.isPlaying) {
       calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
@@ -200,7 +200,7 @@ io.on('connection', (socket) => {
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
-      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
+      rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       socket.leave(rId);
       updateRoomUsers(rId);
       if (rooms[rId].users.length === 0) delete rooms[rId];
@@ -212,10 +212,16 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
-      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
-      updateRoomUsers(rId);
-      if (rooms[rId].users.length === 0) delete rooms[rId];
-      broadcastRooms();
+      const socketIdToRemove = socket.id;
+      // F5 sırasında hemen silme, 3 saniye esneklik tanı
+      setTimeout(() => {
+        if (rooms[rId]) {
+          rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socketIdToRemove);
+          updateRoomUsers(rId);
+          if (rooms[rId].users.length === 0) delete rooms[rId];
+          broadcastRooms();
+        }
+      }, 3000);
     }
   });
 });
