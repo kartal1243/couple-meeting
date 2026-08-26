@@ -69,6 +69,19 @@ function App() {
     }
   };
 
+  // F5 YENİLEME VE OTOMATİK GERİ BAĞLANMA KONTROLÜ
+  useEffect(() => {
+    const savedRoom = localStorage.getItem('cm_saved_room');
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomFromUrl = urlParams.get('room');
+    const activeRoom = roomFromUrl || savedRoom;
+
+    if (activeRoom && socket) {
+      const savedPass = localStorage.getItem('cm_saved_pass') || '';
+      socket.emit('join_room', { roomId: activeRoom, password: savedPass });
+    }
+  }, []);
+
   useEffect(() => {
     if (!searchInput.trim() || searchInput.trim().length < 2 || searchInput.includes('http://') || searchInput.includes('https://')) {
       setSearchResults([]);
@@ -101,6 +114,7 @@ function App() {
       setIsSearching(false);
     });
 
+    // ODAYA GİRİLDİĞİNDE TAM SENKRONİZASYON (F5 KORUMASI DAHİL)
     socket.on('room_joined', (data) => {
       setInRoom(true);
       setErrorMessage('');
@@ -110,9 +124,25 @@ function App() {
       setPlaylist(Array.isArray(data.playlist) ? data.playlist : []);
       if (data.playMode) setPlayMode(data.playMode);
 
+      localStorage.setItem('cm_saved_room', data.roomId);
+      window.history.replaceState({}, '', `?room=${data.roomId}`);
+
       if (data.currentMedia && data.currentMedia.type !== 'none') {
         setMediaType(data.currentMedia.type);
         setMediaSrc(data.currentMedia.src);
+
+        // Odaya sonradan katılan kişiyi tam saniyesine zıplat
+        setTimeout(() => {
+          if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
+            ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
+            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo();
+            else ytPlayerRef.current.pauseVideo();
+          } else if (data.currentMedia.type === 'custom_video' && customVideoRef.current) {
+            customVideoRef.current.currentTime = data.currentMedia.time || 0;
+            if (data.currentMedia.isPlaying) customVideoRef.current.play();
+            else customVideoRef.current.pause();
+          }
+        }, 1000);
       }
     });
 
@@ -120,7 +150,6 @@ function App() {
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
     });
 
-    // DONMA HATASINI ENGELLEYEN GÜVENLİ LİSTE HANDLER'I
     socket.on('playlist_updated', (data) => {
       if (Array.isArray(data)) {
         setPlaylist(data);
@@ -137,15 +166,22 @@ function App() {
     socket.on('room_error', (msg) => {
       setErrorMessage(msg);
       setInRoom(false);
+      localStorage.removeItem('cm_saved_room');
+      localStorage.removeItem('cm_saved_pass');
     });
 
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
-        if (payload.mediaType === 'youtube') ytPlayerRef.current?.playVideo();
-        else if (payload.mediaType === 'custom_video' && customVideoRef.current) customVideoRef.current.play();
+        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+          ytPlayerRef.current.seekTo(payload.time || 0, true);
+          ytPlayerRef.current.playVideo();
+        } else if (payload.mediaType === 'custom_video' && customVideoRef.current) {
+          customVideoRef.current.currentTime = payload.time || 0;
+          customVideoRef.current.play();
+        }
       } else if (type === 'PAUSE') {
         if (payload.mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
-        else if (payload.mediaType === 'custom_video' && customVideoRef.current) customVideoRef.current.pause();
+        if (payload.mediaType === 'custom_video') customVideoRef.current?.pause();
       } else if (type === 'CHANGE_MEDIA') {
         setMediaType(payload.type);
         setMediaSrc(payload.src);
@@ -179,12 +215,14 @@ function App() {
   const handleCreateRoomSubmit = (e) => {
     e.preventDefault();
     const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
+    localStorage.setItem('cm_saved_pass', roomPassword.trim());
     socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers });
   };
 
   const handleJoinRoomSubmit = (e) => {
     e.preventDefault();
     if (!joinRoomInput.trim()) return;
+    localStorage.setItem('cm_saved_pass', joinPassInput.trim());
     socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim() });
   };
 
@@ -194,6 +232,9 @@ function App() {
     setMediaType('none');
     setMediaSrc('');
     setMessages([]);
+    localStorage.removeItem('cm_saved_room');
+    localStorage.removeItem('cm_saved_pass');
+    window.history.replaceState({}, '', window.location.pathname);
   };
 
   const sendAction = (type, payload) => {
@@ -356,7 +397,6 @@ function App() {
     return playlist;
   };
 
-  // %100 TAM EKRAN (FULL BLEED) TASARIM STİLLERİ
   const styles = {
     app: {
       background: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)',
@@ -486,7 +526,6 @@ function App() {
             )}
           </div>
 
-          {/* DÜZELTİLMİŞ ŞİFRELİ/ŞİFRESİZ CANLI ODALAR LİSTESİ */}
           {publicRooms.length > 0 && (
             <div style={{ maxWidth: '800px', margin: '40px auto 60px auto', textAlign: 'left' }}>
               <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px', fontWeight: '800' }}>🌐 Canlı Aktif Odalar</h3>
@@ -521,16 +560,14 @@ function App() {
     );
   }
 
-  // ODA EKRANI (%100 FULLSCREEN EKRAINI DOLDURAN DÜZEN)
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
       <style>{`@keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }`}</style>
 
-      {/* ÜST LOGO VE NAVIGASYON BARI */}
       <header style={{ height: '60px', padding: '0 28px', background: 'rgba(14, 18, 26, 0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #ff4757, #f5b041)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️</div>
-          <h2 style={{ margin: 0, color: '#fff', fontSize: '18px', fontWeight: '900' }}>Couple Meeting</h2>
+          <h2 style={{ margin: 0, color: '#fff', fontSize: '16px', fontWeight: '900' }}>Couple Meeting</h2>
           <span style={{ fontSize: '11px', background: 'rgba(245, 176, 65, 0.15)', color: '#f5b041', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(245, 176, 65, 0.3)' }}>
             {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers})
           </span>
@@ -541,11 +578,9 @@ function App() {
         </button>
       </header>
 
-      {/* EKRANI %100 DOLDURAN ANA ALAN */}
       <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* ARAMA BARI */}
           <div style={{ padding: '12px 20px', background: '#0e121a', borderBottom: '1px solid rgba(255,255,255,0.08)', zIndex: 999, display: 'flex', gap: '10px', position: 'relative' }}>
             <input 
               type="text" 
@@ -558,7 +593,6 @@ function App() {
             <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: '#2ed573' }}>▶ Oynat</button>
             <button onClick={handleAddToPlaylist} style={styles.buttonPrimary}>➕ Listeye Ekle</button>
 
-            {/* ARAMA SONUÇLARI */}
             {(searchResults.length > 0 || isSearching) && (
               <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.glassCard, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {isSearching && <div style={{ color: '#f5b041', fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
@@ -574,7 +608,6 @@ function App() {
             )}
           </div>
 
-          {/* OYNATICI SAHNESİ */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#05070c' }}>
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#64748b' }}>
@@ -604,7 +637,6 @@ function App() {
             ))}
           </div>
 
-          {/* KONTROL PANELİ */}
           <div style={{ padding: '14px 24px', background: '#0e121a', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, background: '#2ed573' }}>▶ Ortak Oynat</button>
             <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
@@ -618,7 +650,6 @@ function App() {
           </div>
         </div>
 
-        {/* SAĞ PANEL: SOHBET & CANLI MODLU ÇALMA LİSTESİ */}
         <div style={{ width: '360px', background: '#0e121a', borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'chat' ? '#0e121a' : 'transparent', color: sidebarTab === 'chat' ? '#f5b041' : '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>💬 Sohbet</button>

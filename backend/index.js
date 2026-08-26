@@ -120,15 +120,23 @@ io.on('connection', (socket) => {
         socket.emit('room_error', '🔒 Hatalı Oda Şifresi!');
         return;
       }
-      if (room.users.length >= room.maxUsers) {
+      if (!room.users.includes(socket.id) && room.users.length >= room.maxUsers) {
         socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
         return;
       }
     }
 
-    room.users.push(socket.id);
+    if (!room.users.includes(socket.id)) {
+      room.users.push(socket.id);
+    }
     socket.currentRoom = roomId;
     socket.join(roomId);
+
+    // GECEN ZAMANI VE ANLIK CANLI SANİYEYİ HESAPLA
+    let calculatedTime = room.currentMedia.time;
+    if (room.currentMedia.isPlaying) {
+      calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
+    }
 
     socket.emit('room_joined', {
       roomId,
@@ -137,7 +145,10 @@ io.on('connection', (socket) => {
       socketId: socket.id,
       playlist: room.playlist,
       playMode: room.playMode,
-      currentMedia: room.currentMedia
+      currentMedia: {
+        ...room.currentMedia,
+        time: calculatedTime
+      }
     });
 
     updateRoomUsers(roomId);
@@ -172,7 +183,7 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (room) {
       if (type === 'CHANGE_MEDIA') {
-        room.currentMedia = { type: payload.type, src: payload.src, time: 0, isPlaying: false, lastUpdated: Date.now() };
+        room.currentMedia = { type: payload.type, src: payload.src, time: 0, isPlaying: true, lastUpdated: Date.now() };
       } else if (type === 'PLAY') {
         room.currentMedia.isPlaying = true;
         room.currentMedia.time = payload.time || 0;
