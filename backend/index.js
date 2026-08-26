@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const ytSearch = require('yt-search');
 
 const app = express();
 app.use(cors());
@@ -51,22 +50,28 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // CANLI YOUTUBE ARAMA MOTORU DINLEYICISI
+  // CANLI DENO API ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query) return;
-      const r = await ytSearch(query);
-      const results = r.videos.slice(0, 5).map(v => ({
-        id: v.videoId,
-        title: v.title,
-        timestamp: v.timestamp,
-        thumbnail: `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
+      
+      // Deno Deploy API isteği
+      const apiRes = await fetch(`https://verome-api-hq8s6wtb2v78.kartal1243.deno.net/search?q=${encodeURIComponent(query)}`);
+      const data = await apiRes.json();
+      
+      const rawList = Array.isArray(data) ? data : (data.results || data.songs || []);
+      const results = rawList.slice(0, 5).map(v => ({
+        id: v.videoId || v.id,
+        title: v.title || v.name,
+        timestamp: v.duration || v.timestamp || 'Müzik',
+        thumbnail: v.thumbnail || v.cover || `https://img.youtube.com/vi/${v.videoId || v.id}/hqdefault.jpg`,
         type: 'youtube',
-        src: v.videoId
+        src: v.videoId || v.id
       }));
+
       socket.emit('search_results', results);
     } catch (err) {
-      console.error("Arama motoru hatası:", err);
+      console.error("Deno API arama hatası:", err);
       socket.emit('search_results', []);
     }
   });
