@@ -1,26 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 
 import io from 'socket.io-client';
 
 import YouTube from 'react-youtube';
 
-
-
 const BACKEND_URL = 'https://couple-meeting.onrender.com';
-
-let socket;
-
-
-
-try {
-
-  socket = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
-
-} catch (err) {
-
-  console.error("Socket hatası:", err);
-
-}
 
 
 
@@ -84,7 +68,7 @@ function App() {
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
- 
+
 
   const [showFolderModal, setShowFolderModal] = useState(false);
 
@@ -154,7 +138,7 @@ function App() {
 
   const [mediaSrc, setMediaSrc] = useState('');
 
- 
+
 
   const [playlist, setPlaylist] = useState(() => {
 
@@ -210,9 +194,36 @@ function App() {
 
   const chatBottomRef = useRef(null);
 
+  // Socket artık component içinde yaratılıyor (modül seviyesi yerine)
+
+  const socketRef = useRef(null);
+
+  if (!socketRef.current) {
+
+    socketRef.current = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
+
+  }
+
+  const socket = socketRef.current;
+
+  useEffect(() => {
+
+    return () => {
+
+      socketRef.current?.disconnect();
+
+      socketRef.current = null;
+
+    };
+
+  }, []);
+
 
 
   const currentTheme = THEMES[roomTheme] || THEMES.default;
+
+  // Socket handler'ların (useEffect [] closure) her zaman güncel leave fonksiyonuna erişmesi için
+  const leaveRoomRef = useRef(() => {});
 
 
 
@@ -472,7 +483,7 @@ function App() {
 
       setErrorMessage(msg);
 
-      handleLeaveRoom();
+      leaveRoomRef.current();
 
     });
 
@@ -630,13 +641,17 @@ function App() {
 
     localStorage.removeItem('cm_saved_pass');
 
-    window.history.replaceState({}, '', window.location.pathname);
+      window.history.replaceState({}, '', window.location.pathname);
 
-  };
+    };
 
+    useEffect(() => {
 
+      leaveRoomRef.current = handleLeaveRoom;
 
-  const sendAction = (type, payload) => {
+    }, [handleLeaveRoom]);
+
+    const sendAction = (type, payload) => {
 
     if (socket) socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
 
@@ -940,7 +955,8 @@ function App() {
 
   };
 
-
+  // Her render'da iki kez hesaplanmasın diye memoized
+  const filteredPlaylist = useMemo(getFilteredPlaylist, [playlist, selectedCategory, playMode]);
 
   const styles = {
 
@@ -1180,7 +1196,7 @@ function App() {
 
                 <input type="password" placeholder="Şifre (İsteğe Bağlı)" value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} style={styles.input} />
 
-               
+
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0b141a', padding: '12px 16px', borderRadius: '12px', border: '1px solid #222d34' }}>
 
@@ -1444,7 +1460,7 @@ function App() {
 
           <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '18px', fontWeight: '900' }}>{roomName}</h2>
 
-         
+
 
           <span style={{ fontSize: '11px', background: 'rgba(0, 168, 132, 0.15)', color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(0, 168, 132, 0.3)' }}>
 
@@ -1478,13 +1494,13 @@ function App() {
 
       <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
 
-       
+
 
         {/* SOL: PLAYER EKRANI */}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
 
-         
+
 
           {/* ARAMA BAR */}
 
@@ -1632,7 +1648,7 @@ function App() {
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0b141a' }}>
 
-             
+
 
               {/* KÜÇÜLTÜLMÜŞ SIKI SOHBET BALONCUKLARI */}
 
@@ -1780,13 +1796,13 @@ function App() {
 
 
 
-              {getFilteredPlaylist().length === 0 ? (
+              {filteredPlaylist.length === 0 ? (
 
                 <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş.</div>
 
               ) : (
 
-                getFilteredPlaylist().map((item) => (
+                filteredPlaylist.map((item) => (
 
                   <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 
