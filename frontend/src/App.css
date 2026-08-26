@@ -1,19 +1,5 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
 
-html, body, #root {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: 100vw !important;
-  overflow: hidden !important;
-  background-color: #06080c;
-}
-}.counter {
+.counter {
   font-size: 16px;
   padding: 5px 10px;
   border-radius: 5px;
