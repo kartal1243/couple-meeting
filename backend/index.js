@@ -51,7 +51,7 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // HIZLI VE ANLIK ARAMA MOTORU
+  // CANLI YOUTUBE VE MUSIC ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query || query.trim().length < 2) {
@@ -63,7 +63,6 @@ io.on('connection', (socket) => {
       const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
       let rawList = [];
 
-      // 1. Doğrudan Deno YouTube Arama Rotası
       try {
         const res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
         if (res.ok) {
@@ -71,23 +70,21 @@ io.on('connection', (socket) => {
           rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []);
         }
       } catch (e) {
-        // Deno yavaşlarsa veya yanıt vermezse pas geç
+        // Fallback
       }
 
-      // 2. Deno boş dönerse ultra hızlı yerel motoru çalıştır
       if (!rawList || rawList.length === 0) {
         const r = await ytSearch(query);
         rawList = r.videos || [];
       }
 
-      // 3. Veriyi anında temizle ve gönder
       const results = rawList.slice(0, 6).map(v => {
         const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
         return {
           id: videoId,
           title: v.title || v.name || 'İsimsiz Şarkı',
           timestamp: v.duration || v.timestamp || 'Müzik',
-          thumbnail: v.thumbnail || v.cover || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           type: 'youtube',
           src: videoId
         };
@@ -120,11 +117,25 @@ io.on('connection', (socket) => {
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
+    } else {
+      if (room.password && room.password !== (password || '')) {
+        socket.emit('room_error', '🔒 Hatalı Şifre!');
+        return;
+      }
+      if (room.users.length >= room.maxUsers) {
+        socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
+        return;
+      }
     }
 
     room.users.push(socket.id);
     socket.currentRoom = roomId;
     socket.join(roomId);
+
+    let calculatedTime = room.currentMedia.time;
+    if (room.currentMedia.isPlaying) {
+      calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
+    }
 
     socket.emit('room_joined', {
       roomId,
@@ -132,7 +143,10 @@ io.on('connection', (socket) => {
       maxUsers: room.maxUsers,
       socketId: socket.id,
       playlist: room.playlist,
-      currentMedia: room.currentMedia
+      currentMedia: {
+        ...room.currentMedia,
+        time: calculatedTime
+      }
     });
 
     updateRoomUsers(roomId);
@@ -156,7 +170,33 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room_action', ({ roomId, type, payload }) => {
+    const room = rooms[roomId];
+    if (room) {
+      if (type === 'CHANGE_MEDIA') {
+        room.currentMedia = { type: payload.type, src: payload.src, time: 0, isPlaying: false, lastUpdated: Date.now() };
+      } else if (type === 'PLAY') {
+        room.currentMedia.isPlaying = true;
+        room.currentMedia.time = payload.time || 0;
+        room.currentMedia.lastUpdated = Date.now();
+      } else if (type === 'PAUSE') {
+        room.currentMedia.isPlaying = false;
+        room.currentMedia.time = payload.time || 0;
+        room.currentMedia.lastUpdated = Date.now();
+      }
+    }
     socket.to(roomId).emit('room_action', { type, payload });
+  });
+
+  socket.on('leave_room', () => {
+    if (socket.currentRoom && rooms[socket.currentRoom]) {
+      const rId = socket.currentRoom;
+      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
+      socket.leave(rId);
+      updateRoomUsers(rId);
+      if (rooms[rId].users.length === 0) delete rooms[rId];
+      socket.currentRoom = null;
+      broadcastRooms();
+    }
   });
 
   socket.on('disconnect', () => {
