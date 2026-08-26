@@ -76,7 +76,12 @@ function App() {
     });
 
     socket.on('search_results', (results) => {
-      setSearchResults(results);
+      // HD Kalitede Görselleri Yükle
+      const hdResults = results.map(song => ({
+        ...song,
+        thumbnail: `https://img.youtube.com/vi/${song.src}/hqdefault.jpg`
+      }));
+      setSearchResults(hdResults);
       setIsSearching(false);
     });
 
@@ -189,7 +194,6 @@ function App() {
     }
   };
 
-  // Şarkı Arama İşlemi
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -197,7 +201,6 @@ function App() {
     socket.emit('search_music', { query: searchQuery.trim() });
   };
 
-  // Aramadan Şarkıyı Listeye Ekleme ve Çalma
   const handleSelectSearchResult = (song, playImmediately = false) => {
     const trackItem = {
       id: Date.now() + Math.random().toString(),
@@ -465,7 +468,7 @@ function App() {
         
         <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* ARAMA VE LINK GIRIŞ BARI */}
+          {/* HD ARAMA BARI */}
           <div style={{ padding: '10px 16px', background: '#0e121a', borderBottom: '1px solid #1a202c', position: 'relative', zIndex: 10 }}>
             <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px' }}>
               <input 
@@ -480,23 +483,29 @@ function App() {
               </button>
             </form>
 
-            {/* ARAMA SONUÇLARI KART LİSTESİ */}
+            {/* HD ARAMA SONUÇLARI LİSTESİ */}
             {searchResults.length > 0 && (
-              <div style={{ position: 'absolute', top: '56px', left: '16px', right: '16px', background: '#141a23', border: '1px solid #f5b041', borderRadius: '10px', padding: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 99 }}>
+              <div style={{ position: 'absolute', top: '56px', left: '16px', right: '16px', background: '#141a23', border: '1px solid #f5b041', borderRadius: '10px', padding: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 99 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#f5b041', fontWeight: 'bold' }}>Arama Sonuçları:</span>
+                  <span style={{ fontSize: '12px', color: '#f5b041', fontWeight: 'bold' }}>Arama Sonuçları (HD):</span>
                   <button onClick={() => setSearchResults([])} style={{ background: 'transparent', border: 'none', color: '#718096', cursor: 'pointer', fontSize: '12px' }}>Kapat ✖</button>
                 </div>
                 {searchResults.map((song) => (
-                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#0b0e14', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2d3748' }}>
-                    <img src={song.thumbnail} alt={song.title} style={{ width: '45px', height: '45px', borderRadius: '6px', objectFit: 'cover' }} />
+                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#0b0e14', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2d3748' }}>
+                    {/* HD Yüksek Çözünürlüklü Resim */}
+                    <img 
+                      src={song.thumbnail} 
+                      alt={song.title} 
+                      style={{ width: '80px', height: '45px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #2d3748' }} 
+                      onError={(e) => { e.target.src = `https://img.youtube.com/vi/${song.src}/mqdefault.jpg`; }} 
+                    />
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</div>
                       <div style={{ fontSize: '11px', color: '#718096', marginTop: '2px' }}>Süre: {song.timestamp}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      <button onClick={() => handleSelectSearchResult(song, true)} style={{ background: '#2ed573', color: '#06080c', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>▶ Hemen Çal</button>
-                      <button onClick={() => handleSelectSearchResult(song, false)} style={{ background: '#f5b041', color: '#06080c', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>+ Listeye Ekle</button>
+                      <button onClick={() => handleSelectSearchResult(song, true)} style={{ background: '#2ed573', color: '#06080c', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>▶ Hemen Çal</button>
+                      <button onClick={() => handleSelectSearchResult(song, false)} style={{ background: '#f5b041', color: '#06080c', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>+ Listeye Ekle</button>
                     </div>
                   </div>
                 ))}
@@ -664,7 +673,7 @@ function App() {
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifySpaceBetween: 'space-between',
+                          justifyContent: 'space-between',
                           transition: '0.2s'
                         }}
                       >
