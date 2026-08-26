@@ -54,7 +54,18 @@ const GLOBAL_CSS = `
     animation: shimmer 4s linear infinite;
   }
   .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
-`;
+  /* MOBİL DÜZELTMELER: Yatay kaydırmayı tamamen engelle */
+  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+  * { min-width: 0; }
+  @media (max-width: 768px) {
+    header { padding: 12px 16px !important; flex-direction: column !important; gap: 10px !important; text-align: center; }
+    h1 { font-size: 18px !important; }
+    section { margin-top: 24px !important; margin-bottom: 20px !important; padding: 0 14px !important; }
+    h2 { font-size: 30px !important; letter-spacing: -0.5px !important; }
+    p { font-size: 15px !important; padding: 0 6px; }
+    .cm-glass { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+    input, select, button { max-width: 100%; box-sizing: border-box !important; }
+  }`;
 
 
 
@@ -172,13 +183,13 @@ function App() {
 
   const [playlist, setPlaylist] = useState(() => {
 
-    try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch(e) { return []; }
+    try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch (e) { return []; }
 
   });
 
   const [categories, setCategories] = useState(() => {
 
-    try { return JSON.parse(localStorage.getItem('cm_local_categories')) || ['Genel']; } catch(e) { return ['Genel']; }
+    try { return JSON.parse(localStorage.getItem('cm_local_categories')) || ['Genel']; } catch (e) { return ['Genel']; }
 
   });
 
@@ -256,7 +267,7 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
 
   // Socket handler'ların (useEffect [] closure) her zaman güncel leave fonksiyonuna erişmesi için
-  const leaveRoomRef = useRef(() => {});
+  const leaveRoomRef = useRef(() => { });
 
 
 
@@ -674,17 +685,17 @@ function App() {
 
     localStorage.removeItem('cm_saved_pass');
 
-      window.history.replaceState({}, '', window.location.pathname);
+    window.history.replaceState({}, '', window.location.pathname);
 
-    };
+  };
 
-    useEffect(() => {
+  useEffect(() => {
 
-      leaveRoomRef.current = handleLeaveRoom;
+    leaveRoomRef.current = handleLeaveRoom;
 
-    }, [handleLeaveRoom]);
+  }, [handleLeaveRoom]);
 
-    const sendAction = (type, payload) => {
+  const sendAction = (type, payload) => {
 
     if (socket) socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
 
@@ -1074,9 +1085,9 @@ function App() {
     return (
 
       <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
-      <style>{GLOBAL_CSS}</style>
+        <style>{GLOBAL_CSS}</style>
 
-        <header style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
+        <header className="cm-landing-header" style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setInRoom(false)}>
 
@@ -1164,7 +1175,7 @@ function App() {
 
 
 
-        <section style={{ maxWidth: '1100px', margin: '50px auto 40px auto', padding: '0 24px', textAlign: 'center' }}>
+        <section style={{ width: '100%', maxWidth: '1100px', margin: '50px auto 40px auto', padding: '0 24px', textAlign: 'center', boxSizing: 'border-box' }}>
 
           <span style={{ background: 'rgba(0, 168, 132, 0.15)', color: '#00a884', padding: '6px 18px', borderRadius: '30px', border: '1px solid rgba(0, 168, 132, 0.3)', fontWeight: 'bold', fontSize: '13px' }}>
 
@@ -1174,7 +1185,7 @@ function App() {
 
 
 
-          <h2 style={{ fontSize: '52px', fontWeight: '900', margin: '20px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
+          <h2 style={{ fontSize: 'clamp(28px, 7vw, 52px)', fontWeight: '900', color: '#fff', margin: '20px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2', wordBreak: 'break-word', padding: '0 8px' }}>
 
             Aynı Anda İzleyin & Dinleyin,<br />
 
@@ -1192,7 +1203,7 @@ function App() {
 
 
 
-          <div className="cm-glass" style={{ ...styles.card, maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444' }}>
+          <div className="cm-glass" style={{ ...styles.card, width: '100%', maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444', boxSizing: 'border-box' }}>
 
             {errorMessage && (
 
