@@ -18,8 +18,7 @@ const rooms = {};
 
 const DEFAULT_MUSIC_LIBRARY = [
   { id: 'tp-1', title: 'Tarkan - Yolla', type: 'youtube', src: 'aJOTlE1K90k', category: 'Türk Pop', addedBy: 'Sistem' },
-  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' },
-  { id: 'tp-3', title: 'Mabel Matiz - Antidepresan', type: 'youtube', src: 'bZ_Bo0Rp5w8', category: 'Türk Pop', addedBy: 'Sistem' }
+  { id: 'tp-2', title: 'EDIS - Martılar', type: 'youtube', src: '7W1r-V8U1N4', category: 'Türk Pop', addedBy: 'Sistem' }
 ];
 
 function getPublicRoomsList() {
@@ -52,19 +51,22 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
+  // CANLI YOUTUBE ARAMA MOTORU DINLEYICISI
   socket.on('search_music', async ({ query }) => {
     try {
+      if (!query) return;
       const r = await ytSearch(query);
       const results = r.videos.slice(0, 5).map(v => ({
         id: v.videoId,
         title: v.title,
         timestamp: v.timestamp,
-        thumbnail: v.thumbnail,
+        thumbnail: `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
         type: 'youtube',
         src: v.videoId
       }));
       socket.emit('search_results', results);
     } catch (err) {
+      console.error("Arama motoru hatası:", err);
       socket.emit('search_results', []);
     }
   });
@@ -89,11 +91,25 @@ io.on('connection', (socket) => {
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
+    } else {
+      if (room.password && room.password !== (password || '')) {
+        socket.emit('room_error', '🔒 Hatalı Şifre!');
+        return;
+      }
+      if (room.users.length >= room.maxUsers) {
+        socket.emit('room_error', `⚠️ Oda Kontenjanı Dolu! (${room.users.length}/${room.maxUsers})`);
+        return;
+      }
     }
 
     room.users.push(socket.id);
     socket.currentRoom = roomId;
     socket.join(roomId);
+
+    let calculatedTime = room.currentMedia.time;
+    if (room.currentMedia.isPlaying) {
+      calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
+    }
 
     socket.emit('room_joined', {
       roomId,
@@ -101,7 +117,10 @@ io.on('connection', (socket) => {
       maxUsers: room.maxUsers,
       socketId: socket.id,
       playlist: room.playlist,
-      currentMedia: room.currentMedia
+      currentMedia: {
+        ...room.currentMedia,
+        time: calculatedTime
+      }
     });
 
     updateRoomUsers(roomId);
@@ -125,7 +144,33 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room_action', ({ roomId, type, payload }) => {
+    const room = rooms[roomId];
+    if (room) {
+      if (type === 'CHANGE_MEDIA') {
+        room.currentMedia = { type: payload.type, src: payload.src, time: 0, isPlaying: false, lastUpdated: Date.now() };
+      } else if (type === 'PLAY') {
+        room.currentMedia.isPlaying = true;
+        room.currentMedia.time = payload.time || 0;
+        room.currentMedia.lastUpdated = Date.now();
+      } else if (type === 'PAUSE') {
+        room.currentMedia.isPlaying = false;
+        room.currentMedia.time = payload.time || 0;
+        room.currentMedia.lastUpdated = Date.now();
+      }
+    }
     socket.to(roomId).emit('room_action', { type, payload });
+  });
+
+  socket.on('leave_room', () => {
+    if (socket.currentRoom && rooms[socket.currentRoom]) {
+      const rId = socket.currentRoom;
+      rooms[rId].users = rooms[rId].users.filter(id => id !== socket.id);
+      socket.leave(rId);
+      updateRoomUsers(rId);
+      if (rooms[rId].users.length === 0) delete rooms[rId];
+      socket.currentRoom = null;
+      broadcastRooms();
+    }
   });
 
   socket.on('disconnect', () => {
