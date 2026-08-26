@@ -14,6 +14,7 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// Odalar bellekte kalıcı tutuluyor.
 const rooms = {};
 
 function getPublicRoomsList() {
@@ -92,14 +93,15 @@ io.on('connection', (socket) => {
   socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity }) => {
     let room = rooms[roomId];
 
+    // ODA YOKSA OLUŞTURULUR
     if (!room) {
       rooms[roomId] = {
         name: roomId,
         password: password || '',
         maxUsers: parseInt(maxUsers) || 2,
         users: [],
-        playlist: [],
-        categories: ['Genel'], // Sadece Genel kütüphanesi
+        playlist: [], // Tüm şarkılar/diziler burada kalıcı saklanır
+        categories: ['Genel'], // Oluşturulan klasörler kalıcı tutulur
         playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
@@ -132,6 +134,7 @@ io.on('connection', (socket) => {
       calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
     }
 
+    // Katılan kullanıcıya mevcutta kayıtlı OLAN TÜM LİSTE VE KLASÖRLER gonderilir
     socket.emit('room_joined', {
       roomId,
       userCount: room.users.length,
@@ -206,7 +209,7 @@ io.on('connection', (socket) => {
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       socket.leave(rId);
       updateRoomUsers(rId);
-      if (rooms[rId].users.length === 0) delete rooms[rId];
+      // DİKKAT: Herkes çıksa bile oda silinmiyor! Veriler korunuyor.
       socket.currentRoom = null;
       broadcastRooms();
     }
@@ -220,7 +223,6 @@ io.on('connection', (socket) => {
         if (rooms[rId]) {
           rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socketIdToRemove);
           updateRoomUsers(rId);
-          if (rooms[rId].users.length === 0) delete rooms[rId];
           broadcastRooms();
         }
       }, 3000);

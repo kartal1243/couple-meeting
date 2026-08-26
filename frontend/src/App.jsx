@@ -34,7 +34,6 @@ function App() {
   const [activeTab, setActiveTab] = useState('create');
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  // KLASÖR SEÇİM MODALI STATE'LERİ
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
@@ -64,8 +63,15 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
-  const [playlist, setPlaylist] = useState([]);
-  const [categories, setCategories] = useState(['Genel']);
+  
+  // Yerel cihaz belleğinde playlist ve kategorileri saklama
+  const [playlist, setPlaylist] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch(e) { return []; }
+  });
+  const [categories, setCategories] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cm_local_categories')) || ['Genel']; } catch(e) { return ['Genel']; }
+  });
+
   const [selectedCategory, setSelectedCategory] = useState('Genel');
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [playMode, setPlayMode] = useState('sequence');
@@ -160,8 +166,16 @@ function App() {
       setRoomId(data.roomId);
       setMySocketId(data.socketId);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
-      setPlaylist(Array.isArray(data.playlist) ? data.playlist : []);
-      if (data.categories) setCategories(data.categories);
+
+      // Verileri hem oda sunucusundan al hem yerel hafızaya yaz
+      if (Array.isArray(data.playlist)) {
+        setPlaylist(data.playlist);
+        localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist));
+      }
+      if (Array.isArray(data.categories)) {
+        setCategories(data.categories);
+        localStorage.setItem('cm_local_categories', JSON.stringify(data.categories));
+      }
       if (data.playMode) setPlayMode(data.playMode);
 
       localStorage.setItem('cm_saved_room', data.roomId);
@@ -186,14 +200,19 @@ function App() {
     });
 
     socket.on('room_user_count_update', (data) => setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers }));
-    socket.on('categories_updated', (cats) => setCategories(cats));
-    socket.on('playlist_updated', (data) => {
-      if (Array.isArray(data)) setPlaylist(data);
-      else if (data && Array.isArray(data.playlist)) {
-        setPlaylist(data.playlist);
-        if (data.playMode) setPlayMode(data.playMode);
-      }
+    
+    socket.on('categories_updated', (cats) => {
+      setCategories(cats);
+      localStorage.setItem('cm_local_categories', JSON.stringify(cats));
     });
+
+    socket.on('playlist_updated', (data) => {
+      const newPlaylist = Array.isArray(data) ? data : (data.playlist || []);
+      setPlaylist(newPlaylist);
+      localStorage.setItem('cm_local_playlist', JSON.stringify(newPlaylist));
+      if (data && data.playMode) setPlayMode(data.playMode);
+    });
+
     socket.on('play_mode_changed', (mode) => setPlayMode(mode));
     socket.on('room_error', (msg) => {
       setErrorMessage(msg);
@@ -304,7 +323,6 @@ function App() {
     setSearchResults([]);
   };
 
-  // POP-UP İLE LİSTEYE EKLEME BAŞLATMA
   const handleOpenAddModal = (song = null) => {
     let item;
     if (song) {
@@ -312,7 +330,7 @@ function App() {
     } else if (searchInput.trim()) {
       if (searchInput.includes('http://') || searchInput.includes('https://')) {
         const media = processUrl(searchInput);
-        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya Linki', type: media.type, src: media.src, addedBy: username };
+        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya / Dizi Linki', type: media.type, src: media.src, addedBy: username };
       } else if (searchResults.length > 0) {
         const s = searchResults[0];
         item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
@@ -441,7 +459,6 @@ function App() {
     }
   };
 
-  // 1. ZENGİN ANA SAYFA LANDING PAGE
   if (!inRoom) {
     return (
       <div style={{ ...styles.app, overflowY: 'auto' }}>
@@ -500,18 +517,17 @@ function App() {
           </h2>
 
           <p style={{ color: '#8696a0', fontSize: '18px', maxWidth: '720px', margin: '0 auto 40px auto', lineHeight: '1.6' }}>
-            Sevgilinizle veya arkadaşlarınızla YouTube videolarını ve müzikleri tam senkronize izleyin. Milisaniyelik gecikmesiz senkronizasyon ve canlı WhatsApp stili sohbet.
+            Sevgilinizle veya arkadaşlarınızla YouTube videolarını, dizileri ve müzikleri kalıcı listeler halinde düzenleyin. Tekrar girdiğinizde listeniz olduğu gibi sizi karşılar.
           </p>
 
-          {/* İSTATİSTİK VE TANITIM ROZETLERİ */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', maxWidth: '850px', margin: '0 auto 60px auto' }}>
             <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
               <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>0 ms</div>
               <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Milisaniyelik Senkron</div>
             </div>
             <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>%100</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Ücretsiz & Kayıtsız</div>
+              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>💾 Kalıcı</div>
+              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Silinmeyen Listeler</div>
             </div>
             <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
               <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>🔒 Özel</div>
@@ -519,7 +535,6 @@ function App() {
             </div>
           </div>
 
-          {/* ODA KARTI */}
           <div style={{ ...styles.card, maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
             {errorMessage && (
               <div style={{ background: '#ea0038', color: '#fff', padding: '12px 16px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '20px', fontSize: '14px' }}>
@@ -562,7 +577,7 @@ function App() {
 
             {recentRooms.length > 0 && (
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #222d34' }}>
-                <span style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>KAYITLI ODALARIN</span>
+                <span style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>SON GİRDİĞİN ODALAR</span>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {recentRooms.map((rId) => (
                     <button key={rId} onClick={() => socket.emit('join_room', { roomId: rId, password: '', userId, userCity })} style={{ background: '#202c33', color: '#00a884', border: '1px solid #00a88433', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
@@ -574,7 +589,6 @@ function App() {
             )}
           </div>
 
-          {/* DOLDURULMUŞ ÖZELLİK TANITIM KARTLARI */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', textAlign: 'left', marginBottom: '80px' }}>
             <div style={styles.card}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎬</div>
@@ -590,8 +604,8 @@ function App() {
 
             <div style={styles.card}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>📚</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>Klasörlü Özel Kitaplık</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>İstediğiniz isimde kütüphaneler açın, eklediğiniz şarkıları kategorilerine ayırarak dinleyin.</p>
+              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>Silinmeyen Dizi & Müzik Arşivi</h3>
+              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>Oluşturduğunuz klasörler ve dizi sıralamalarınız çıkıp tekrar girdiğinizde kaybolmaz, aynen kalır.</p>
             </div>
           </div>
 
@@ -631,7 +645,6 @@ function App() {
     );
   }
 
-  // 2. ODA EKRANI (KLASÖRLÜ POP-UP İLE EKLEME)
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
       <style>{`
@@ -641,13 +654,12 @@ function App() {
         ::-webkit-scrollbar-thumb { background: #222d34; border-radius: 4px; }
       `}</style>
 
-      {/* KLASÖR SEÇİM POP-UP (MODAL) */}
       {showFolderModal && pendingMediaItem && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ ...styles.card, width: '400px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 12px 0', color: '#00a884', fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
             <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px' }}>
-              <strong>{pendingMediaItem.title}</strong> parçasını kaydetmek istediğiniz kütüphane klasörünü seçin:
+              <strong>{pendingMediaItem.title}</strong> öğesini eklemek istediğiniz klasörü seçin:
             </p>
 
             <div style={{ marginBottom: '20px' }}>
@@ -664,7 +676,6 @@ function App() {
         </div>
       )}
 
-      {/* HEADER BAR */}
       <header style={{ height: '60px', padding: '0 28px', background: '#111b21', borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
@@ -680,17 +691,14 @@ function App() {
         </button>
       </header>
 
-      {/* MAIN VIEWPORT */}
       <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         
-        {/* SOL: PLAYER EKRANI */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* ARAMA BAR (KLASÖR MENÜSÜZ TEMİZ GİRİŞ) */}
           <div style={{ padding: '12px 20px', background: '#111b21', borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
             <input 
               type="text" 
-              placeholder="🔍 Şarkı/Video Adı Yazın veya Link Yapıştırın..." 
+              placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..." 
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               style={{ ...styles.input, flex: 1 }}
@@ -699,7 +707,6 @@ function App() {
             <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: '#00a884' }}>▶ Oynat</button>
             <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
 
-            {/* CANLI ARAMA DROPDOWN */}
             {(searchResults.length > 0 || isSearching) && (
               <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.card, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {isSearching && <div style={{ color: '#00a884', fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
@@ -715,12 +722,11 @@ function App() {
             )}
           </div>
 
-          {/* SAHNE */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a' }}>
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#8696a0' }}>
                 <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Şarkı Aratın veya Kitaplıktan Seçin!</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
               </div>
             )}
 
@@ -739,7 +745,6 @@ function App() {
             ))}
           </div>
 
-          {/* KONTROLLER */}
           <div style={{ padding: '14px 24px', background: '#111b21', borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, background: '#00a884' }}>▶ Ortak Oynat</button>
             <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
@@ -753,7 +758,6 @@ function App() {
           </div>
         </div>
 
-        {/* SAĞ: SOHBET VE KLASÖRLÜ ÇALMA LİSTESİ */}
         <div style={{ width: '380px', background: '#111b21', borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'chat' ? '#111b21' : 'transparent', color: sidebarTab === 'chat' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>💬 Sohbet</button>
@@ -762,7 +766,6 @@ function App() {
 
           {sidebarTab === 'chat' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0b141a' }}>
-              {/* WHATSAPP SOHBET AKIŞI */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
@@ -813,7 +816,6 @@ function App() {
           ) : (
             <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: '#0b141a' }}>
               
-              {/* KLASÖR / KİTAPLIK SEÇİMİ (SADECE GENEL VE KULLANICININ AÇTIKLARI) */}
               <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {categories.map((cat) => (
                   <button 
@@ -826,22 +828,19 @@ function App() {
                 ))}
               </div>
 
-              {/* KULLANICININ YENİ KLASÖR AÇMA ALANI */}
               <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '6px' }}>
                 <input type="text" placeholder="+ Yeni Klasör Oluştur..." value={newCategoryInput} onChange={(e) => setNewCategoryInput(e.target.value)} style={{ ...styles.input, flex: 1, padding: '8px 12px', fontSize: '12px' }} />
                 <button type="submit" style={{ ...styles.buttonPrimary, padding: '8px 12px', fontSize: '12px' }}>Aç</button>
               </form>
 
-              {/* MOD BUTONLARI */}
               <div style={{ display: 'flex', gap: '6px', background: '#111b21', padding: '4px', borderRadius: '12px', border: '1px solid #222d34' }}>
                 <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'sequence' ? '#00a884' : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>▶ Sırayla</button>
                 <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'shuffle' ? '#00a884' : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔀 Rastgele</button>
                 <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'alphabetical' ? '#00a884' : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔤 A-Z</button>
               </div>
 
-              {/* KLASÖR İÇERİĞİ */}
               {getFilteredPlaylist().length === 0 ? (
-                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş. Arama yaparak şarkı ekleyin!</div>
+                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş. Arama yaparak ekleyebilirsiniz!</div>
               ) : (
                 getFilteredPlaylist().map((item) => (
                   <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? '1px solid #00a884' : '1px solid #222d34', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
