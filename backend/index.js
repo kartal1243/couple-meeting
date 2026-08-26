@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const ytSearch = require('yt-search');
 
 const app = express();
 app.use(cors());
@@ -50,28 +51,60 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // CANLI DENO API ARAMA MOTORU
+  // OTOMATİK ROTA TESPİTLİ & AKILLI YEDEKLİ ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query) return;
+      const encoded = encodeURIComponent(query);
+      const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
       
-      // Deno Deploy API isteği
-      const apiRes = await fetch(`https://verome-api-hq8s6wtb2v78.kartal1243.deno.net/search?q=${encodeURIComponent(query)}`);
-      const data = await apiRes.json();
-      
-      const rawList = Array.isArray(data) ? data : (data.results || data.songs || []);
+      const candidateRoutes = [
+        `${baseUrl}/api/search?q=${encoded}`,
+        `${baseUrl}/search/songs?q=${encoded}`,
+        `${baseUrl}/songs?q=${encoded}`,
+        `${baseUrl}/search?query=${encoded}`,
+        `${baseUrl}/api/v1/search?q=${encoded}`,
+        `${baseUrl}/ytm/search?q=${encoded}`
+      ];
+
+      let rawList = [];
+
+      // 1. Deno API üzerindeki muhtemel rotaları sıra ile dene
+      for (const routeUrl of candidateRoutes) {
+        try {
+          const res = await fetch(routeUrl, { signal: AbortSignal.timeout(2500) });
+          if (res.ok) {
+            const data = await res.json();
+            const extracted = Array.isArray(data) ? data : (data.results || data.songs || data.data || []);
+            if (extracted.length > 0) {
+              rawList = extracted;
+              break;
+            }
+          }
+        } catch (e) {
+          // Rota bulunamadıysa bir sonrakine geç
+        }
+      }
+
+      // 2. Eğer Deno rotalarından veri dönmezse doğrudan yedek YouTube arama motorunu çalıştır
+      if (rawList.length === 0) {
+        const r = await ytSearch(query);
+        rawList = r.videos || [];
+      }
+
+      // 3. Veriyi standardize et ve frontend'e ilet
       const results = rawList.slice(0, 5).map(v => ({
         id: v.videoId || v.id,
-        title: v.title || v.name,
+        title: v.title || v.name || 'İsimsiz Şarkı',
         timestamp: v.duration || v.timestamp || 'Müzik',
-        thumbnail: v.thumbnail || v.cover || `https://img.youtube.com/vi/${v.videoId || v.id}/hqdefault.jpg`,
+        thumbnail: `https://img.youtube.com/vi/${v.videoId || v.id}/hqdefault.jpg`,
         type: 'youtube',
         src: v.videoId || v.id
       }));
 
       socket.emit('search_results', results);
     } catch (err) {
-      console.error("Deno API arama hatası:", err);
+      console.error("Arama motoru hatası:", err);
       socket.emit('search_results', []);
     }
   });
