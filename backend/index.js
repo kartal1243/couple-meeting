@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const ytSearch = require('yt-search');
 
 const app = express();
 app.use(cors());
@@ -50,23 +51,37 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // DOGRUDAN DENO API ARAMA MOTORU (/api/search VE /api/yt_search)
+  // HIZLI VE ANLIK ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
-      if (!query) return;
-      const encoded = encodeURIComponent(query);
-      const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
+      if (!query || query.trim().length < 2) {
+        socket.emit('search_results', []);
+        return;
+      }
       
-      // Önce YouTube Music /api/search, yanıt vermezse /api/yt_search dene
-      let res = await fetch(`${baseUrl}/api/search?q=${encoded}`);
-      if (!res.ok) {
-        res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`);
+      const encoded = encodeURIComponent(query.trim());
+      const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
+      let rawList = [];
+
+      // 1. Doğrudan Deno YouTube Arama Rotası
+      try {
+        const res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
+        if (res.ok) {
+          const data = await res.json();
+          rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []);
+        }
+      } catch (e) {
+        // Deno yavaşlarsa veya yanıt vermezse pas geç
       }
 
-      const data = await res.json();
-      const rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []);
+      // 2. Deno boş dönerse ultra hızlı yerel motoru çalıştır
+      if (!rawList || rawList.length === 0) {
+        const r = await ytSearch(query);
+        rawList = r.videos || [];
+      }
 
-      const results = rawList.slice(0, 5).map(v => {
+      // 3. Veriyi anında temizle ve gönder
+      const results = rawList.slice(0, 6).map(v => {
         const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
         return {
           id: videoId,
@@ -76,11 +91,11 @@ io.on('connection', (socket) => {
           type: 'youtube',
           src: videoId
         };
-      }).filter(v => v.src);
+      }).filter(v => v.src && v.src.length === 11);
 
       socket.emit('search_results', results);
     } catch (err) {
-      console.error("Deno API Arama hatası:", err);
+      console.error("Arama hatası:", err);
       socket.emit('search_results', []);
     }
   });
