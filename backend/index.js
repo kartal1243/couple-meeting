@@ -51,7 +51,6 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
 
-  // ANLIK GENEL YOUTUBE ARAMA MOTORU
   socket.on('search_music', async ({ query }) => {
     try {
       if (!query || query.trim().length < 2) {
@@ -81,7 +80,7 @@ io.on('connection', (socket) => {
         return {
           id: videoId,
           title: v.title || v.name || 'YouTube Videosu',
-          timestamp: v.duration || v.timestamp || 'Video',
+          timestamp: v.duration || v.timestamp || 'Müzik',
           thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           type: 'youtube',
           src: videoId
@@ -112,6 +111,7 @@ io.on('connection', (socket) => {
         maxUsers: parseInt(maxUsers) || 2,
         users: [],
         playlist: [...DEFAULT_MUSIC_LIBRARY],
+        playMode: 'sequence', // 'sequence' | 'shuffle' | 'alphabetical'
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
@@ -136,6 +136,7 @@ io.on('connection', (socket) => {
       maxUsers: room.maxUsers,
       socketId: socket.id,
       playlist: room.playlist,
+      playMode: room.playMode,
       currentMedia: room.currentMedia
     });
 
@@ -147,7 +148,7 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (room) {
       room.playlist.push(item);
-      io.to(roomId).emit('playlist_updated', room.playlist);
+      io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
     }
   });
 
@@ -155,7 +156,15 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (room) {
       room.playlist = room.playlist.filter(i => i.id !== itemId);
-      io.to(roomId).emit('playlist_updated', room.playlist);
+      io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
+    }
+  });
+
+  socket.on('change_play_mode', ({ roomId, mode }) => {
+    const room = rooms[roomId];
+    if (room) {
+      room.playMode = mode;
+      io.to(roomId).emit('play_mode_changed', mode);
     }
   });
 
