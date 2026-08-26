@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
         maxUsers: parseInt(maxUsers) || 2,
         users: [],
         playlist: [...DEFAULT_MUSIC_LIBRARY],
-        playMode: 'sequence', // 'sequence' | 'shuffle' | 'alphabetical'
+        playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
       room = rooms[roomId];
@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
 
   socket.on('add_to_playlist', ({ roomId, item }) => {
     const room = rooms[roomId];
-    if (room) {
+    if (room && item) {
       room.playlist.push(item);
       io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
     }

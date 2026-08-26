@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://couple-meeting.onrender.com';
 let socket;
 
 try {
@@ -34,7 +34,7 @@ function App() {
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   const [playlist, setPlaylist] = useState([]);
-  const [playMode, setPlayMode] = useState('sequence'); // 'sequence' | 'shuffle' | 'alphabetical'
+  const [playMode, setPlayMode] = useState('sequence');
 
   const [searchInput, setSearchInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -93,11 +93,11 @@ function App() {
     socket.on('disconnect', () => setIsConnected(false));
 
     socket.on('public_rooms_update', (roomsList) => {
-      setPublicRooms(roomsList);
+      setPublicRooms(Array.isArray(roomsList) ? roomsList : []);
     });
 
     socket.on('search_results', (results) => {
-      setSearchResults(results);
+      setSearchResults(Array.isArray(results) ? results : []);
       setIsSearching(false);
     });
 
@@ -107,7 +107,7 @@ function App() {
       setRoomId(data.roomId);
       setMySocketId(data.socketId);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
-      if (data.playlist) setPlaylist(data.playlist);
+      setPlaylist(Array.isArray(data.playlist) ? data.playlist : []);
       if (data.playMode) setPlayMode(data.playMode);
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
@@ -120,9 +120,14 @@ function App() {
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
     });
 
+    // DONMA HATASINI ENGELLEYEN GÜVENLİ LİSTE HANDLER'I
     socket.on('playlist_updated', (data) => {
-      setPlaylist(data.playlist);
-      if (data.playMode) setPlayMode(data.playMode);
+      if (Array.isArray(data)) {
+        setPlaylist(data);
+      } else if (data && Array.isArray(data.playlist)) {
+        setPlaylist(data.playlist);
+        if (data.playMode) setPlayMode(data.playMode);
+      }
     });
 
     socket.on('play_mode_changed', (mode) => {
@@ -202,9 +207,8 @@ function App() {
     socket.emit('change_play_mode', { roomId, mode });
   };
 
-  // VİDEO BİTTİĞİNDE OTOMATİK SIRADAKİ PARÇAYA GEÇİŞ
   const handleMediaEnd = () => {
-    if (playlist.length === 0) return;
+    if (!playlist || playlist.length === 0) return;
 
     let nextTrack;
     if (playMode === 'shuffle') {
@@ -274,6 +278,7 @@ function App() {
   };
 
   const handleSelectSearchResult = (song, playImmediately = true) => {
+    if (!song) return;
     const trackItem = {
       id: Date.now() + Math.random().toString(),
       title: song.title,
@@ -344,26 +349,32 @@ function App() {
   };
 
   const getSortedPlaylist = () => {
+    if (!Array.isArray(playlist)) return [];
     if (playMode === 'alphabetical') {
       return [...playlist].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
     }
     return playlist;
   };
 
-  // GÖRSEL TASARIM CSS KODLARI
+  // %100 TAM EKRAN (FULL BLEED) TASARIM STİLLERİ
   const styles = {
     app: {
       background: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)',
       color: '#f1f5f9',
-      minHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      overflow: 'hidden',
       fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
     },
     glassCard: {
-      background: 'rgba(20, 26, 38, 0.75)',
+      background: 'rgba(20, 26, 38, 0.85)',
       backdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
       borderRadius: '20px',
-      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)'
+      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)'
     },
     buttonPrimary: {
       background: 'linear-gradient(135deg, #f5b041 0%, #e67e22 100%)',
@@ -373,7 +384,6 @@ function App() {
       borderRadius: '12px',
       fontWeight: '800',
       cursor: 'pointer',
-      transition: 'transform 0.2s, box-shadow 0.2s',
       boxShadow: '0 4px 15px rgba(245, 176, 65, 0.3)'
     },
     input: {
@@ -389,8 +399,8 @@ function App() {
 
   if (!inRoom) {
     return (
-      <div style={styles.app}>
-        <header style={{ padding: '24px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ ...styles.app, overflowY: 'auto' }}>
+        <header style={{ padding: '24px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', width: '100vw', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setInRoom(false)}>
             <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, #ff4757, #f5b041)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>❤️</div>
             <h1 style={{ margin: 0, fontSize: '24px', color: '#fff', fontWeight: '900', letterSpacing: '-0.5px' }}>Couple Meeting</h1>
@@ -400,19 +410,19 @@ function App() {
           </span>
         </header>
 
-        <div style={{ maxWidth: '520px', margin: '60px auto', padding: '0 20px', textAlign: 'center' }}>
+        <div style={{ width: '100%', margin: '40px 0', padding: '0 24px', textAlign: 'center', boxSizing: 'border-box' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '900', color: '#fff', marginBottom: '12px', letterSpacing: '-1px' }}>
             Aynı Anda <span style={{ color: '#f5b041' }}>İzle & Dinle</span>
           </h2>
           <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '32px' }}>Aramızdaki mesafeleri unutun. Odaya katılın, müziğinizi ortakça yönetin.</p>
 
           {errorMessage && (
-            <div style={{ background: '#ff4757', color: '#fff', padding: '14px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '20px' }}>
+            <div style={{ background: '#ff4757', color: '#fff', padding: '14px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '20px', maxWidth: '520px', margin: '0 auto 20px auto' }}>
               {errorMessage}
             </div>
           )}
 
-          <div style={{ ...styles.glassCard, padding: '36px', textAlign: 'left' }}>
+          <div style={{ ...styles.glassCard, padding: '36px', textAlign: 'left', maxWidth: '520px', margin: '0 auto' }}>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>KARAKTER SEÇİMİ</label>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', background: '#090d16', padding: '12px', borderRadius: '16px', border: '1px solid #232d3f' }}>
@@ -475,17 +485,49 @@ function App() {
               </form>
             )}
           </div>
+
+          {/* DÜZELTİLMİŞ ŞİFRELİ/ŞİFRESİZ CANLI ODALAR LİSTESİ */}
+          {publicRooms.length > 0 && (
+            <div style={{ maxWidth: '800px', margin: '40px auto 60px auto', textAlign: 'left' }}>
+              <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px', fontWeight: '800' }}>🌐 Canlı Aktif Odalar</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+                {publicRooms.map((r) => {
+                  const isFull = r.userCount >= r.maxUsers;
+                  return (
+                    <div key={r.id} style={{ background: '#141a23', padding: '16px', borderRadius: '12px', border: '1px solid #232d3f', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>
+                          {r.name} {r.hasPassword ? '🔒' : '🔓'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: isFull ? '#ff4757' : '#2ed573', marginTop: '4px', fontWeight: 'bold' }}>
+                          {isFull ? '⚠️ Oda Dolu' : `Kişi: ${r.userCount}/${r.maxUsers}`} {r.hasPassword && '| Şifreli'}
+                        </div>
+                      </div>
+                      <button 
+                        disabled={isFull}
+                        onClick={() => { setJoinRoomInput(r.id); setTab('join'); }}
+                        style={{ background: isFull ? '#2d3748' : '#f5b041', color: isFull ? '#718096' : '#090d16', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: isFull ? 'not-allowed' : 'pointer' }}
+                      >
+                        {isFull ? 'Dolu' : 'Katıl ➔'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // ODA SAYFASI (GÜNCELLENMİŞ OYNATMA MODLARI VE NEON TASARIM)
+  // ODA EKRANI (%100 FULLSCREEN EKRAINI DOLDURAN DÜZEN)
   return (
-    <div style={{ ...styles.app, height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
       <style>{`@keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }`}</style>
 
-      <header style={{ height: '60px', padding: '0 28px', background: 'rgba(14, 18, 26, 0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+      {/* ÜST LOGO VE NAVIGASYON BARI */}
+      <header style={{ height: '60px', padding: '0 28px', background: 'rgba(14, 18, 26, 0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #ff4757, #f5b041)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️</div>
           <h2 style={{ margin: 0, color: '#fff', fontSize: '18px', fontWeight: '900' }}>Couple Meeting</h2>
@@ -495,14 +537,15 @@ function App() {
         </div>
 
         <button onClick={handleLeaveRoom} style={{ background: '#1c2433', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-          Ayrıl 🚪
+          Ana Sayfa 🚪
         </button>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', width: '100vw', overflow: 'hidden' }}>
+      {/* EKRANI %100 DOLDURAN ANA ALAN */}
+      <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          {/* ARAMA VE LINK GİRİŞ ÇUBUĞU */}
+          {/* ARAMA BARI */}
           <div style={{ padding: '12px 20px', background: '#0e121a', borderBottom: '1px solid rgba(255,255,255,0.08)', zIndex: 999, display: 'flex', gap: '10px', position: 'relative' }}>
             <input 
               type="text" 
@@ -515,10 +558,10 @@ function App() {
             <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: '#2ed573' }}>▶ Oynat</button>
             <button onClick={handleAddToPlaylist} style={styles.buttonPrimary}>➕ Listeye Ekle</button>
 
-            {/* ARAMA SONUÇLARI AÇILIR KUTUSU */}
+            {/* ARAMA SONUÇLARI */}
             {(searchResults.length > 0 || isSearching) && (
               <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.glassCard, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {isSearching && <div style={{ color: '#f5b041', fontSize: '13px', fontWeight: 'bold' }}>⚡ Aranıyor...</div>}
+                {isSearching && <div style={{ color: '#f5b041', fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
                 {searchResults.map((song) => (
                   <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#090d16', padding: '8px 12px', borderRadius: '10px', border: '1px solid #232d3f' }}>
                     <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
@@ -531,7 +574,7 @@ function App() {
             )}
           </div>
 
-          {/* OYNATICI SAHNESİ (OTOMATİK GEÇİŞ DİNLEYİCİLİ) */}
+          {/* OYNATICI SAHNESİ */}
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#05070c' }}>
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#64748b' }}>
@@ -579,7 +622,7 @@ function App() {
         <div style={{ width: '360px', background: '#0e121a', borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'chat' ? '#0e121a' : 'transparent', color: sidebarTab === 'chat' ? '#f5b041' : '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'playlist' ? '#0e121a' : 'transparent', color: sidebarTab === 'playlist' ? '#f5b041' : '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>🎵 Liste ({playlist.length})</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'playlist' ? '#0e121a' : 'transparent', color: sidebarTab === 'playlist' ? '#f5b041' : '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>🎵 Liste ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
@@ -599,10 +642,7 @@ function App() {
               </form>
             </div>
           ) : (
-            /* ÇALMA LİSTESİ MODLARI VE DÜZENİ */
             <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              
-              {/* OYNATMA MODU BUTONLARI (SIRAYLA, RASTGELE, ALFABETİK) */}
               <div style={{ display: 'flex', gap: '6px', background: '#090d16', padding: '4px', borderRadius: '12px', border: '1px solid #232d3f' }}>
                 <button 
                   onClick={() => handleModeChange('sequence')} 
@@ -624,7 +664,6 @@ function App() {
                 </button>
               </div>
 
-              {/* LİSTE ÖĞELERİ */}
               {getSortedPlaylist().map((item) => (
                 <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(245, 176, 65, 0.12)' : '#141a23', border: mediaSrc === item.src ? '1px solid #f5b041' : '1px solid #232d3f', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
