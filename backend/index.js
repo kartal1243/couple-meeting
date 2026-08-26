@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const ytSearch = require('yt-search');
 
 const app = express();
 app.use(cors());
@@ -53,6 +54,25 @@ function updateRoomUsers(roomId) {
 
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
+
+  // YouTube Şarkı Arama Motoru Dinleyicisi
+  socket.on('search_music', async ({ query }) => {
+    try {
+      const r = await ytSearch(query);
+      const results = r.videos.slice(0, 5).map(v => ({
+        id: v.videoId,
+        title: v.title,
+        timestamp: v.timestamp,
+        thumbnail: v.thumbnail,
+        type: 'youtube',
+        src: v.videoId
+      }));
+      socket.emit('search_results', results);
+    } catch (err) {
+      console.error("Arama hatası:", err);
+      socket.emit('search_results', []);
+    }
+  });
 
   socket.on('join_room', ({ roomId, password, maxUsers }) => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {

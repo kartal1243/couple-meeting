@@ -33,9 +33,13 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
-  const [inputUrl, setInputUrl] = useState('');
   const [playlist, setPlaylist] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
+
+  // Arama State'leri
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -69,6 +73,11 @@ function App() {
 
     socket.on('public_rooms_update', (roomsList) => {
       setPublicRooms(roomsList);
+    });
+
+    socket.on('search_results', (results) => {
+      setSearchResults(results);
+      setIsSearching(false);
     });
 
     socket.on('room_joined', (data) => {
@@ -134,6 +143,7 @@ function App() {
       socket.off('connect');
       socket.off('disconnect');
       socket.off('public_rooms_update');
+      socket.off('search_results');
       socket.off('room_joined');
       socket.off('room_user_count_update');
       socket.off('playlist_updated');
@@ -179,44 +189,34 @@ function App() {
     }
   };
 
-  const processUrl = (url) => {
-    const trimmed = url.trim();
-    if (trimmed.includes('music.youtube.com') || trimmed.includes('youtu.be/') || trimmed.includes('watch?v=')) {
-      let id = '';
-      if (trimmed.includes('music.youtube.com/watch?v=')) {
-        id = trimmed.split('v=')[1].split('&')[0];
-      } else if (trimmed.includes('youtu.be/')) {
-        id = trimmed.split('youtu.be/')[1].split('?')[0];
-      } else {
-        id = trimmed.split('v=')[1].split('&')[0];
-      }
-      return { type: 'youtube', src: id };
-    } else if (trimmed.endsWith('.mp4') || trimmed.endsWith('.webm')) {
-      return { type: 'custom_video', src: trimmed };
-    } else {
-      return { type: 'iframe', src: trimmed };
-    }
+  // Şarkı Arama İşlemi
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    socket.emit('search_music', { query: searchQuery.trim() });
   };
 
-  const handleMediaSubmit = (e) => {
-    e.preventDefault();
-    if (!inputUrl) return;
-    const media = processUrl(inputUrl);
-    setMediaType(media.type);
-    setMediaSrc(media.src);
-    sendAction('CHANGE_MEDIA', media);
-
+  // Aramadan Şarkıyı Listeye Ekleme ve Çalma
+  const handleSelectSearchResult = (song, playImmediately = false) => {
     const trackItem = {
       id: Date.now() + Math.random().toString(),
-      title: inputUrl.length > 30 ? inputUrl.substring(0, 30) + '...' : inputUrl,
-      type: media.type,
-      src: media.src,
-      category: 'Özel Eklenenler',
+      title: song.title,
+      type: 'youtube',
+      src: song.src,
+      category: 'Arama Sonuçları',
       addedBy: username
     };
     socket.emit('add_to_playlist', { roomId, item: trackItem });
+    
+    if (playImmediately) {
+      setMediaType('youtube');
+      setMediaSrc(song.src);
+      sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src });
+    }
 
-    setInputUrl('');
+    setSearchResults([]);
+    setSearchQuery('');
   };
 
   const handleSelectPlaylistItem = (item) => {
@@ -276,8 +276,8 @@ function App() {
 
   if (!inRoom) {
     return (
-      <div style={{ backgroundColor: '#0b0e14', color: '#e0e6ed', minHeight: '100vh', width: '100vw', fontFamily: "'Inter', sans-serif" }}>
-        <header style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a202c' }}>
+      <div style={{ backgroundColor: '#0b0e14', color: '#e0e6ed', minHeight: '100vh', width: '100vw', margin: 0, padding: 0, fontFamily: "'Inter', sans-serif" }}>
+        <header style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a202c', width: '100vw', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '28px' }}>❤️</span>
             <h1 style={{ margin: 0, fontSize: '22px', color: '#fff', fontWeight: '900', letterSpacing: '-0.5px' }}>Couple Meeting</h1>
@@ -435,7 +435,7 @@ function App() {
   }
 
   return (
-    <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
+    <div style={{ backgroundColor: '#06080c', color: '#e0e6ed', height: '100vh', width: '100vw', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
       <style>{`
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
         @media (max-width: 900px) {
@@ -445,7 +445,7 @@ function App() {
         }
       `}</style>
       
-      <header style={{ height: '56px', width: '100vw', padding: '0 24px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
+      <header style={{ height: '56px', width: '100vw', padding: '0 24px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, boxSizing: 'border-box', margin: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h2 style={{ margin: 0, color: '#f5b041', fontSize: '16px', fontWeight: '900' }}>Couple Meeting ❤️</h2>
           <span style={{ fontSize: '11px', background: '#f5b04115', color: '#f5b041', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold', border: '1px solid #f5b04144' }}>
@@ -461,29 +461,55 @@ function App() {
         </button>
       </header>
 
-      <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+      <div className="room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 56px)', overflow: 'hidden', margin: 0, padding: 0 }}>
         
         <div className="video-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          <form onSubmit={handleMediaSubmit} style={{ padding: '10px 16px', background: '#0e121a', borderBottom: '1px solid #1a202c', display: 'flex', gap: '10px', flexShrink: 0 }}>
-            <input 
-              type="text" 
-              placeholder="🎵 YouTube Music, YouTube veya .MP4 Şarkı/Video Linki Yapıştırın..." 
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }}
-            />
-            <button type="submit" style={{ padding: '10px 18px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-              Listeye Ekle & Çal 🍿
-            </button>
-          </form>
+          {/* ARAMA VE LINK GIRIŞ BARI */}
+          <div style={{ padding: '10px 16px', background: '#0e121a', borderBottom: '1px solid #1a202c', position: 'relative', zIndex: 10 }}>
+            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px' }}>
+              <input 
+                type="text" 
+                placeholder="🔍 Şarkı veya Sanatçı Adı Yaz (Örn: Tarkan Yolla)..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #2d3748', background: '#06080c', color: '#fff', fontSize: '13px', outline: 'none' }}
+              />
+              <button type="submit" style={{ padding: '10px 18px', background: '#f5b041', color: '#06080c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                {isSearching ? 'Aranıyor...' : 'Şarkı Ara 🔎'}
+              </button>
+            </form>
+
+            {/* ARAMA SONUÇLARI KART LİSTESİ */}
+            {searchResults.length > 0 && (
+              <div style={{ position: 'absolute', top: '56px', left: '16px', right: '16px', background: '#141a23', border: '1px solid #f5b041', borderRadius: '10px', padding: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 99 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#f5b041', fontWeight: 'bold' }}>Arama Sonuçları:</span>
+                  <button onClick={() => setSearchResults([])} style={{ background: 'transparent', border: 'none', color: '#718096', cursor: 'pointer', fontSize: '12px' }}>Kapat ✖</button>
+                </div>
+                {searchResults.map((song) => (
+                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#0b0e14', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2d3748' }}>
+                    <img src={song.thumbnail} alt={song.title} style={{ width: '45px', height: '45px', borderRadius: '6px', objectFit: 'cover' }} />
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</div>
+                      <div style={{ fontSize: '11px', color: '#718096', marginTop: '2px' }}>Süre: {song.timestamp}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => handleSelectSearchResult(song, true)} style={{ background: '#2ed573', color: '#06080c', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>▶ Hemen Çal</button>
+                      <button onClick={() => handleSelectSearchResult(song, false)} style={{ background: '#f5b041', color: '#06080c', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>+ Listeye Ekle</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
             {mediaType === 'none' && (
               <div style={{ textAlign: 'center', color: '#4a5568', padding: '20px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '10px' }}>🎵</div>
                 <h3 style={{ color: '#a0aec0', margin: '0 0 8px 0', fontSize: '18px' }}>Müzik & Sinema Ekranı Hazır</h3>
-                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıya link yapıştırın veya sağdaki <b>🎵 Çalma Listesi</b> sekmesinden bir şarkı seçin!</p>
+                <p style={{ fontSize: '13px', margin: 0 }}>Yukarıya şarkı adı yazıp aratın veya sağdaki <b>🎵 Çalma Listesi</b> sekmesinden seçim yapın!</p>
               </div>
             )}
 
