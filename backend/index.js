@@ -14,7 +14,6 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// Odalar bellekte kalıcı tutuluyor.
 const rooms = {};
 
 function getPublicRoomsList() {
@@ -39,7 +38,11 @@ function updateRoomUsers(roomId) {
   if (rooms[roomId]) {
     io.to(roomId).emit('room_user_count_update', {
       userCount: rooms[roomId].users.length,
-      maxUsers: rooms[roomId].maxUsers
+      maxUsers: rooms[roomId].maxUsers,
+      users: rooms[roomId].users,
+      hostUserId: rooms[roomId].hostUserId,
+      roomName: rooms[roomId].name,
+      theme: rooms[roomId].theme || 'default'
     });
   }
 }
@@ -90,18 +93,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar }) => {
     let room = rooms[roomId];
 
-    // ODA YOKSA OLUŞTURULUR
     if (!room) {
       rooms[roomId] = {
         name: roomId,
         password: password || '',
         maxUsers: parseInt(maxUsers) || 2,
+        hostUserId: userId, // Odayı ilk kuran kullanıcı varsayılan Admin
+        theme: 'default',
         users: [],
-        playlist: [], // Tüm şarkılar/diziler burada kalıcı saklanır
-        categories: ['Genel'], // Oluşturulan klasörler kalıcı tutulur
+        playlist: [],
+        categories: ['Genel'],
         playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
       };
@@ -119,10 +123,12 @@ io.on('connection', (socket) => {
     }
 
     const existingUserIndex = room.users.findIndex(u => u.userId === userId);
+    const userInfo = { socketId: socket.id, userId, username: username || 'İzleyici', avatar: avatar || '🐱', userCity };
+    
     if (existingUserIndex !== -1) {
-      room.users[existingUserIndex].socketId = socket.id;
+      room.users[existingUserIndex] = userInfo;
     } else {
-      room.users.push({ socketId: socket.id, userId });
+      room.users.push(userInfo);
     }
 
     socket.currentRoom = roomId;
@@ -134,12 +140,15 @@ io.on('connection', (socket) => {
       calculatedTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
     }
 
-    // Katılan kullanıcıya mevcutta kayıtlı OLAN TÜM LİSTE VE KLASÖRLER gonderilir
     socket.emit('room_joined', {
       roomId,
+      roomName: room.name,
+      hostUserId: room.hostUserId,
+      theme: room.theme,
       userCount: room.users.length,
       maxUsers: room.maxUsers,
       socketId: socket.id,
+      users: room.users,
       playlist: room.playlist,
       categories: room.categories,
       playMode: room.playMode,
@@ -151,6 +160,38 @@ io.on('connection', (socket) => {
 
     updateRoomUsers(roomId);
     broadcastRooms();
+  });
+
+  // ODA AYARLARI ETKİLEŞİMLERİ
+  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId }) => {
+    const room = rooms[roomId];
+    if (room && room.hostUserId === socket.userId) {
+      if (newName && newName.trim()) room.name = newName.trim();
+      if (newTheme) room.theme = newTheme;
+      if (newHostUserId) room.hostUserId = newHostUserId;
+
+      io.to(roomId).emit('room_settings_updated', {
+        roomName: room.name,
+        theme: room.theme,
+        hostUserId: room.hostUserId
+      });
+      broadcastRooms();
+    }
+  });
+
+  socket.on('kick_user', ({ roomId, targetUserId }) => {
+    const room = rooms[roomId];
+    if (room && room.hostUserId === socket.userId && targetUserId !== socket.userId) {
+      const targetUser = room.users.find(u => u.userId === targetUserId);
+      if (targetUser) {
+        io.to(targetUser.socketId).emit('kicked_from_room', '⚠️ Oda yöneticisi tarafından odadan çıkarıldınız.');
+        const targetSocket = io.sockets.sockets.get(targetUser.socketId);
+        if (targetSocket) targetSocket.leave(roomId);
+        room.users = room.users.filter(u => u.userId !== targetUserId);
+        updateRoomUsers(roomId);
+        broadcastRooms();
+      }
+    }
   });
 
   socket.on('create_category', ({ roomId, categoryName }) => {
@@ -209,7 +250,6 @@ io.on('connection', (socket) => {
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       socket.leave(rId);
       updateRoomUsers(rId);
-      // DİKKAT: Herkes çıksa bile oda silinmiyor! Veriler korunuyor.
       socket.currentRoom = null;
       broadcastRooms();
     }

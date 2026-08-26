@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import YouTube from 'react-youtube';
 
-const BACKEND_URL = 'https://couple-meeting.onrender.com';
+const BACKEND_URL = 'http://localhost:3001';
 let socket;
 
 try {
@@ -13,6 +13,13 @@ try {
 
 const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
 const CITIES = ['Zonguldak', 'Tokat', 'İstanbul', 'Ankara', 'İzmir', 'Antalya', 'Bursa', 'Trabzon', 'Sivas', 'Adana', 'Eskişehir', 'Samsun', 'Kayseri', 'Konya', 'Diyarbakır'];
+
+const THEMES = {
+  default: { bg: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)', cardBg: '#111b21', primary: '#00a884' },
+  purple: { bg: 'linear-gradient(135deg, #130f40 0%, #000000 100%)', cardBg: '#1e1b4b', primary: '#a855f7' },
+  blue: { bg: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)', cardBg: '#1e293b', primary: '#38bdf8' },
+  rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
+};
 
 function App() {
   const [userId] = useState(() => {
@@ -33,6 +40,7 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('create');
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
@@ -53,6 +61,11 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('room') || localStorage.getItem('cm_saved_room') || '';
   });
+  const [roomName, setRoomName] = useState('');
+  const [hostUserId, setHostUserId] = useState('');
+  const [roomTheme, setRoomTheme] = useState('default');
+  const [roomUsersList, setRoomUsersList] = useState([]);
+
   const [roomPassword, setRoomPassword] = useState('');
   const [maxUsers, setMaxUsers] = useState('2');
   const [joinRoomInput, setJoinRoomInput] = useState('');
@@ -64,7 +77,6 @@ function App() {
   const [mediaType, setMediaType] = useState('none'); 
   const [mediaSrc, setMediaSrc] = useState('');
   
-  // Yerel cihaz belleğinde playlist ve kategorileri saklama
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch(e) { return []; }
   });
@@ -86,9 +98,14 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Ayarlar Formu State'leri
+  const [editRoomNameInput, setEditRoomNameInput] = useState('');
+
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
   const chatBottomRef = useRef(null);
+
+  const currentTheme = THEMES[roomTheme] || THEMES.default;
 
   const saveToRecentRooms = (targetRoomId) => {
     if (!targetRoomId) return;
@@ -136,7 +153,7 @@ function App() {
     const targetRoom = urlParams.get('room') || localStorage.getItem('cm_saved_room');
     if (targetRoom && socket) {
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId, userCity });
+      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId, userCity, username, avatar: myAvatar });
     }
   }, [userId]);
 
@@ -164,10 +181,13 @@ function App() {
       setInRoom(true);
       setErrorMessage('');
       setRoomId(data.roomId);
+      setRoomName(data.roomName || data.roomId);
+      setHostUserId(data.hostUserId);
+      setRoomTheme(data.theme || 'default');
       setMySocketId(data.socketId);
+      if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
 
-      // Verileri hem oda sunucusundan al hem yerel hafızaya yaz
       if (Array.isArray(data.playlist)) {
         setPlaylist(data.playlist);
         localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist));
@@ -199,8 +219,25 @@ function App() {
       }
     });
 
-    socket.on('room_user_count_update', (data) => setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers }));
-    
+    socket.on('room_user_count_update', (data) => {
+      setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+      if (data.users) setRoomUsersList(data.users);
+      if (data.hostUserId) setHostUserId(data.hostUserId);
+      if (data.roomName) setRoomName(data.roomName);
+      if (data.theme) setRoomTheme(data.theme);
+    });
+
+    socket.on('room_settings_updated', (data) => {
+      if (data.roomName) setRoomName(data.roomName);
+      if (data.theme) setRoomTheme(data.theme);
+      if (data.hostUserId) setHostUserId(data.hostUserId);
+    });
+
+    socket.on('kicked_from_room', (msg) => {
+      setErrorMessage(msg);
+      handleLeaveRoom();
+    });
+
     socket.on('categories_updated', (cats) => {
       setCategories(cats);
       localStorage.setItem('cm_local_categories', JSON.stringify(cats));
@@ -246,7 +283,8 @@ function App() {
     return () => {
       socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
-      socket.off('categories_updated'); socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
+      socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
+      socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
     };
   }, []);
 
@@ -258,14 +296,14 @@ function App() {
     e.preventDefault();
     const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', roomPassword.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId, userCity });
+    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId, userCity, username, avatar: myAvatar });
   };
 
   const handleJoinRoomSubmit = (e) => {
     e.preventDefault();
     if (!joinRoomInput.trim()) return;
     localStorage.setItem('cm_saved_pass', joinPassInput.trim());
-    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity });
+    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity, username, avatar: myAvatar });
   };
 
   const handleLeaveRoom = () => {
@@ -319,8 +357,6 @@ function App() {
     setMediaType(media.type);
     setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
-    setSearchInput('');
-    setSearchResults([]);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -350,8 +386,7 @@ function App() {
     socket.emit('add_to_playlist', { roomId, item: finalItem });
     setShowFolderModal(false);
     setPendingMediaItem(null);
-    setSearchInput('');
-    setSearchResults([]);
+    // ARAMA ÇUBUĞU SIFIRLANMIYOR: Kullanıcı üst üste ekleyebilsin
   };
 
   const handleSelectSearchResult = (song, playImmediately = true) => {
@@ -360,8 +395,6 @@ function App() {
       setMediaType('youtube');
       setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src });
-      setSearchResults([]);
-      setSearchInput('');
     } else {
       handleOpenAddModal(song);
     }
@@ -411,6 +444,23 @@ function App() {
     sendAction('REACTION', reaction);
   };
 
+  const handleSaveSettings = () => {
+    socket.emit('update_room_settings', {
+      roomId,
+      newName: editRoomNameInput.trim() || roomName,
+      newTheme: roomTheme
+    });
+    setShowSettingsModal(false);
+  };
+
+  const handleKickUser = (targetUserId) => {
+    socket.emit('kick_user', { roomId, targetUserId });
+  };
+
+  const handleTransferAdmin = (targetUserId) => {
+    socket.emit('update_room_settings', { roomId, newHostUserId: targetUserId });
+  };
+
   const getFilteredPlaylist = () => {
     if (!Array.isArray(playlist)) return [];
     let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
@@ -422,7 +472,7 @@ function App() {
 
   const styles = {
     app: {
-      background: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)',
+      background: currentTheme.bg,
       color: '#e9edef',
       width: '100vw',
       height: '100vh',
@@ -433,28 +483,27 @@ function App() {
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
     card: {
-      background: '#111b21',
+      background: currentTheme.cardBg,
       border: '1px solid #222d34',
       borderRadius: '16px',
       padding: '24px'
     },
     buttonPrimary: {
-      background: 'linear-gradient(135deg, #00a884 0%, #008f6f 100%)',
+      background: `linear-gradient(135deg, ${currentTheme.primary} 0%, #008f6f 100%)`,
       color: '#ffffff',
       border: 'none',
-      padding: '12px 20px',
-      borderRadius: '12px',
+      padding: '10px 16px',
+      borderRadius: '10px',
       fontWeight: '700',
-      cursor: 'pointer',
-      boxShadow: '0 4px 15px rgba(0, 168, 132, 0.3)'
+      cursor: 'pointer'
     },
     input: {
       background: '#111b21',
       border: '1px solid #222d34',
       color: '#e9edef',
-      padding: '12px 16px',
-      borderRadius: '12px',
-      fontSize: '14px',
+      padding: '10px 14px',
+      borderRadius: '10px',
+      fontSize: '13px',
       outline: 'none'
     }
   };
@@ -517,23 +566,8 @@ function App() {
           </h2>
 
           <p style={{ color: '#8696a0', fontSize: '18px', maxWidth: '720px', margin: '0 auto 40px auto', lineHeight: '1.6' }}>
-            Sevgilinizle veya arkadaşlarınızla YouTube videolarını, dizileri ve müzikleri kalıcı listeler halinde düzenleyin. Tekrar girdiğinizde listeniz olduğu gibi sizi karşılar.
+            Sevgilinizle veya arkadaşlarınızla YouTube videolarını, dizileri ve müzikleri kalıcı listeler halinde düzenleyin.
           </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', maxWidth: '850px', margin: '0 auto 60px auto' }}>
-            <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>0 ms</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Milisaniyelik Senkron</div>
-            </div>
-            <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>💾 Kalıcı</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Silinmeyen Listeler</div>
-            </div>
-            <div style={{ ...styles.card, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: '#00a884', fontWeight: '900' }}>🔒 Özel</div>
-              <div style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', marginTop: '4px' }}>Şifreli Gizli Odalar</div>
-            </div>
-          </div>
 
           <div style={{ ...styles.card, maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
             {errorMessage && (
@@ -580,7 +614,7 @@ function App() {
                 <span style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>SON GİRDİĞİN ODALAR</span>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {recentRooms.map((rId) => (
-                    <button key={rId} onClick={() => socket.emit('join_room', { roomId: rId, password: '', userId, userCity })} style={{ background: '#202c33', color: '#00a884', border: '1px solid #00a88433', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                    <button key={rId} onClick={() => socket.emit('join_room', { roomId: rId, password: '', userId, userCity, username, avatar: myAvatar })} style={{ background: '#202c33', color: '#00a884', border: '1px solid #00a88433', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
                       🚪 {rId}
                     </button>
                   ))}
@@ -588,59 +622,7 @@ function App() {
               </div>
             )}
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', textAlign: 'left', marginBottom: '80px' }}>
-            <div style={styles.card}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎬</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>Ortak Video & Müzik</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>YouTube veya özel video linklerini ortak oynatın. Biri durdurduğunda herkeste aynı anda durur.</p>
-            </div>
-
-            <div style={styles.card}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>WhatsApp Stili Sohbet</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>Siz sağ tarafta yeşil baloncukta, arkadaşınız sol tarafta koyu gri baloncukta anlık mesajlaşsın.</p>
-            </div>
-
-            <div style={styles.card}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📚</div>
-              <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 8px 0', fontWeight: '800' }}>Silinmeyen Dizi & Müzik Arşivi</h3>
-              <p style={{ color: '#8696a0', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>Oluşturduğunuz klasörler ve dizi sıralamalarınız çıkıp tekrar girdiğinizde kaybolmaz, aynen kalır.</p>
-            </div>
-          </div>
-
-          {publicRooms.length > 0 && (
-            <div style={{ textAlign: 'left', marginBottom: '80px' }}>
-              <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '16px', fontWeight: '800' }}>🌐 Canlı Katılabileceğin Odalar</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
-                {publicRooms.map((r) => {
-                  const isFull = r.userCount >= r.maxUsers;
-                  return (
-                    <div key={r.id} style={{ background: '#111b21', padding: '16px', borderRadius: '12px', border: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>
-                          {r.name} {r.hasPassword ? '🔒' : '🔓'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: isFull ? '#ff4757' : '#00a884', marginTop: '4px', fontWeight: 'bold' }}>
-                          {isFull ? '⚠️ Oda Dolu' : `Kişi: ${r.userCount}/${r.maxUsers}`}
-                        </div>
-                      </div>
-                      <button disabled={isFull} onClick={() => { setJoinRoomInput(r.id); setActiveTab('join'); }} style={{ background: isFull ? '#222d34' : '#00a884', color: isFull ? '#8696a0' : '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: isFull ? 'not-allowed' : 'pointer' }}>
-                        {isFull ? 'Dolu' : 'Katıl ➔'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </section>
-        
-        <footer style={{ padding: '20px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '13px', color: '#8696a0', background: '#090d16' }}>
-          <span style={{ color: isConnected ? '#00a884' : '#ff4757', fontWeight: 'bold' }}>
-            ● Sunucu Durumu: {isConnected ? 'Aktif (Bağlandı) 🌐' : 'Bağlanıyor... 🔴'}
-          </span>
-        </footer>
       </div>
     );
   }
@@ -649,21 +631,22 @@ function App() {
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column' }}>
       <style>{`
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #0b141a; }
         ::-webkit-scrollbar-thumb { background: #222d34; border-radius: 4px; }
       `}</style>
 
+      {/* KLASÖR POP-UP */}
       {showFolderModal && pendingMediaItem && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ ...styles.card, width: '400px', textAlign: 'left' }}>
-            <h3 style={{ margin: '0 0 12px 0', color: '#00a884', fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
+            <h3 style={{ margin: '0 0 12px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
             <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px' }}>
               <strong>{pendingMediaItem.title}</strong> öğesini eklemek istediğiniz klasörü seçin:
             </p>
 
             <div style={{ marginBottom: '20px' }}>
-              <select value={modalTargetCategory} onChange={(e) => setModalTargetCategory(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', fontWeight: 'bold', color: '#00a884', cursor: 'pointer' }}>
+              <select value={modalTargetCategory} onChange={(e) => setModalTargetCategory(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', fontWeight: 'bold', color: currentTheme.primary, cursor: 'pointer' }}>
                 {categories.map(cat => <option key={cat} value={cat} style={{ background: '#111b21', color: '#fff' }}>📁 {cat}</option>)}
               </select>
             </div>
@@ -676,26 +659,91 @@ function App() {
         </div>
       )}
 
-      <header style={{ height: '60px', padding: '0 28px', background: '#111b21', borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
+      {/* SAĞ ÜST ODA AYARLARI MODALI */}
+      {showSettingsModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ ...styles.card, width: '460px', textAlign: 'left' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>⚙️ Oda Ayarları & Kişiler</h3>
+
+            {/* ODA ADI VE TEMA DEĞİŞTİRME (Sadece Admin Yapabilir) */}
+            {hostUserId === userId ? (
+              <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA İSMİ DEĞİŞTİR</label>
+                  <input type="text" value={editRoomNameInput || roomName} onChange={(e) => setEditRoomNameInput(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA TEMASI SEÇ</label>
+                  <select value={roomTheme} onChange={(e) => setRoomTheme(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                    <option value="default" style={{ background: '#111b21' }}>Koyu Yeşil (Varsayılan)</option>
+                    <option value="purple" style={{ background: '#111b21' }}>Gece Moru</option>
+                    <option value="blue" style={{ background: '#111b21' }}>Okyanus Mavisi</option>
+                    <option value="rose" style={{ background: '#111b21' }}>Romantik Kırmızı</option>
+                  </select>
+                </div>
+
+                <button onClick={handleSaveSettings} style={{ ...styles.buttonPrimary, width: '100%' }}>Ayarları Kaydet</button>
+              </div>
+            ) : (
+              <div style={{ background: '#202c33', padding: '10px', borderRadius: '10px', fontSize: '12px', color: '#8696a0', marginBottom: '16px' }}>
+                ℹ️ Oda adını ve temasını sadece oda yöneticisi değiştirebilir.
+              </div>
+            )}
+
+            {/* AKTİF KİŞİ LİSTESİ VE KICK/DEVİR İŞLEMLERİ */}
+            <div>
+              <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>ODADAKİ KİŞİLER ({roomUsersList.length})</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                {roomUsersList.map(u => (
+                  <div key={u.userId} style={{ background: '#0b141a', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold' }}>
+                      {u.avatar} {u.username} {u.userId === hostUserId && '👑 (Admin)'}
+                    </span>
+                    {hostUserId === userId && u.userId !== userId && (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => handleTransferAdmin(u.userId)} style={{ background: '#ffa502', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>👑 Admin Yap</button>
+                        <button onClick={() => handleKickUser(u.userId)} style={{ background: '#ff4757', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>🚫 At</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={() => setShowSettingsModal(false)} style={{ background: '#202c33', color: '#fff', border: '1px solid #222d34', width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', marginTop: '16px' }}>Kapat</button>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER BAR */}
+      <header style={{ height: '60px', padding: '0 28px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
-          <h2 style={{ margin: 0, color: '#00a884', fontSize: '18px', fontWeight: '900' }}>Couple Meeting</h2>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
+          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '18px', fontWeight: '900' }}>{roomName}</h2>
           
-          <span style={{ fontSize: '11px', background: 'rgba(0, 168, 132, 0.15)', color: '#00a884', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(0, 168, 132, 0.3)' }}>
-            Oda: {roomId} ({currentRoomInfo.userCount}/{currentRoomInfo.maxUsers})
+          <span style={{ fontSize: '11px', background: 'rgba(0, 168, 132, 0.15)', color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(0, 168, 132, 0.3)' }}>
+            Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
           </span>
         </div>
 
-        <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-          Ana Sayfa 🚪
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+            ⚙️ Oda Ayarları
+          </button>
+          <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+            Ana Sayfa 🚪
+          </button>
+        </div>
       </header>
 
       <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         
+        {/* SOL: PLAYER EKRANI */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           
-          <div style={{ padding: '12px 20px', background: '#111b21', borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
+          {/* ARAMA BAR */}
+          <div style={{ padding: '12px 20px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
             <input 
               type="text" 
               placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..." 
@@ -704,17 +752,17 @@ function App() {
               style={{ ...styles.input, flex: 1 }}
             />
 
-            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: '#00a884' }}>▶ Oynat</button>
+            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
             <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
 
             {(searchResults.length > 0 || isSearching) && (
               <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.card, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {isSearching && <div style={{ color: '#00a884', fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
+                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
                 {searchResults.map((song) => (
                   <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#111b21', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34' }}>
                     <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
                     <div style={{ flex: 1, overflow: 'hidden', fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
-                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#00a884' }}>▶ Çal</button>
+                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}>▶ Çal</button>
                     <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Klasöre Ekle</button>
                   </div>
                 ))}
@@ -745,8 +793,8 @@ function App() {
             ))}
           </div>
 
-          <div style={{ padding: '14px 24px', background: '#111b21', borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
-            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, background: '#00a884' }}>▶ Ortak Oynat</button>
+          <div style={{ padding: '14px 24px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
+            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1 }}>▶ Ortak Oynat</button>
             <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
             <div style={{ display: 'flex', gap: '6px' }}>
               {['❤️', '🔥', '😂', '😮', '👏', '😍'].map((emoji) => (
@@ -758,15 +806,18 @@ function App() {
           </div>
         </div>
 
-        <div style={{ width: '380px', background: '#111b21', borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
+        {/* SAĞ: SOHBET (MESAJ BOYUTLARI KÜÇÜLTÜLDÜ) */}
+        <div style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'chat' ? '#111b21' : 'transparent', color: sidebarTab === 'chat' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '14px', border: 'none', background: sidebarTab === 'playlist' ? '#111b21' : 'transparent', color: sidebarTab === 'playlist' ? '#00a884' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
+            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0b141a' }}>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              
+              {/* KÜÇÜLTÜLMÜŞ SIKI SOHBET BALONCUKLARI */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
                   return (
@@ -776,29 +827,29 @@ function App() {
                         display: 'flex', 
                         flexDirection: isMe ? 'row-reverse' : 'row',
                         alignItems: 'flex-end',
-                        gap: '8px',
+                        gap: '6px',
                         maxWidth: '85%',
                         alignSelf: isMe ? 'flex-end' : 'flex-start'
                       }}
                     >
-                      <span style={{ fontSize: '18px', paddingBottom: '2px' }}>{msg.avatar || '🐱'}</span>
+                      <span style={{ fontSize: '14px', paddingBottom: '1px' }}>{msg.avatar || '🐱'}</span>
                       <div 
                         style={{ 
                           background: isMe ? '#005c4b' : '#202c33', 
                           color: '#e9edef', 
-                          padding: '8px 12px', 
-                          borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                          minWidth: '80px'
+                          padding: '5px 9px', 
+                          borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                          minWidth: '60px'
                         }}
                       >
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '2px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '1px' }}>
                           {msg.sender}
                         </div>
-                        <div style={{ fontSize: '13px', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                        <div style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>
                           {msg.text}
                         </div>
-                        <div style={{ fontSize: '9px', color: '#8696a0', textAlign: 'right', marginTop: '4px' }}>
+                        <div style={{ fontSize: '8px', color: '#8696a0', textAlign: 'right', marginTop: '2px' }}>
                           {msg.time}
                         </div>
                       </div>
@@ -808,20 +859,19 @@ function App() {
                 <div ref={chatBottomRef} />
               </div>
 
-              <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #222d34', display: 'flex', gap: '8px', background: '#111b21' }}>
-                <input type="text" placeholder="Bir mesaj yazın..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ ...styles.input, flex: 1, borderRadius: '20px', background: '#202c33', border: 'none', padding: '10px 16px' }} />
-                <button type="submit" style={{ ...styles.buttonPrimary, borderRadius: '50%', width: '42px', height: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>➤</button>
+              <form onSubmit={handleSendMessage} style={{ padding: '8px 10px', borderTop: '1px solid #222d34', display: 'flex', gap: '6px', background: currentTheme.cardBg }}>
+                <input type="text" placeholder="Bir mesaj yazın..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ ...styles.input, flex: 1, borderRadius: '16px', background: '#202c33', border: 'none', padding: '8px 12px', fontSize: '12px' }} />
+                <button type="submit" style={{ ...styles.buttonPrimary, borderRadius: '50%', width: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>➤</button>
               </form>
             </div>
           ) : (
-            <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: '#0b141a' }}>
-              
+            <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b141a' }}>
               <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {categories.map((cat) => (
                   <button 
                     key={cat} 
                     onClick={() => setSelectedCategory(cat)}
-                    style={{ background: selectedCategory === cat ? '#00a884' : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                    style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '5px 10px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
                   >
                     📁 {cat}
                   </button>
@@ -829,22 +879,22 @@ function App() {
               </div>
 
               <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '6px' }}>
-                <input type="text" placeholder="+ Yeni Klasör Oluştur..." value={newCategoryInput} onChange={(e) => setNewCategoryInput(e.target.value)} style={{ ...styles.input, flex: 1, padding: '8px 12px', fontSize: '12px' }} />
-                <button type="submit" style={{ ...styles.buttonPrimary, padding: '8px 12px', fontSize: '12px' }}>Aç</button>
+                <input type="text" placeholder="+ Yeni Klasör..." value={newCategoryInput} onChange={(e) => setNewCategoryInput(e.target.value)} style={{ ...styles.input, flex: 1, padding: '6px 10px', fontSize: '11px' }} />
+                <button type="submit" style={{ ...styles.buttonPrimary, padding: '6px 10px', fontSize: '11px' }}>Aç</button>
               </form>
 
-              <div style={{ display: 'flex', gap: '6px', background: '#111b21', padding: '4px', borderRadius: '12px', border: '1px solid #222d34' }}>
-                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'sequence' ? '#00a884' : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>▶ Sırayla</button>
-                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'shuffle' ? '#00a884' : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔀 Rastgele</button>
-                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: playMode === 'alphabetical' ? '#00a884' : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>🔤 A-Z</button>
+              <div style={{ display: 'flex', gap: '4px', background: '#111b21', padding: '3px', borderRadius: '10px', border: '1px solid #222d34' }}>
+                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'sequence' ? currentTheme.primary : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>▶ Sırayla</button>
+                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'shuffle' ? currentTheme.primary : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔀 Rastgele</button>
+                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'alphabetical' ? currentTheme.primary : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔤 A-Z</button>
               </div>
 
               {getFilteredPlaylist().length === 0 ? (
-                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş. Arama yaparak ekleyebilirsiniz!</div>
+                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş.</div>
               ) : (
                 getFilteredPlaylist().map((item) => (
-                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? '1px solid #00a884' : '1px solid #222d34', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
+                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
                     <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}>🗑️</button>
                   </div>
                 ))
