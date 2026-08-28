@@ -26,31 +26,23 @@ const GLOBAL_CSS = `
   button:active { transform: translateY(0) scale(.98); }
   input, select, textarea { transition: border-color .2s ease, box-shadow .2s ease !important; }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--cm-primary, #00a884) !important; box-shadow: 0 0 0 3px rgba(0,168,132,.25); }
-  .cm-glass {
-    background: rgba(17, 27, 33, 0.72) !important;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
-  }
-  .cm-gradient-text {
-    background: linear-gradient(90deg, var(--cm-primary,#00a884), #53bdeb, var(--cm-primary,#00a884));
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: shimmer 4s linear infinite;
-  }
-  .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
+  
   html, body { overflow-x: hidden !important; overflow-y: auto !important; max-width: 100vw !important; min-height: 100% !important; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   * { min-width: 0; box-sizing: border-box !important; }
+
+  /* MOBİL VE ODA İÇİ DÜZELTMELERİ */
+  .cm-room-container { display: flex; width: 100vw; height: calc(100vh - 60px); overflow: hidden; }
+  .cm-player-section { flex: 1; display: flex; flexDirection: column; background: #000; position: relative; min-height: 0; }
+  .cm-chat-section { width: 380px; background: var(--cm-card-bg, #111b21); border-left: 1px solid #222d34; display: flex; flex-direction: column; }
+
   @media (max-width: 768px) {
-    header { padding: 12px 16px !important; flex-direction: column !important; gap: 10px !important; text-align: center; }
-    h1 { font-size: 28px !important; }
-    section { margin-top: 24px !important; margin-bottom: 20px !important; padding: 0 14px !important; }
-    h2 { font-size: 26px !important; letter-spacing: -0.5px !important; }
-    p { font-size: 14px !important; padding: 0 6px; }
-    .cm-glass { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
-    input, select, button { max-width: 100%; box-sizing: border-box !important; }
+    .cm-room-container { flex-direction: column !important; height: auto !important; min-height: calc(100vh - 60px); overflow-y: auto !important; }
+    .cm-player-section { height: auto !important; flex: none !important; }
+    .cm-video-wrapper { height: 260px !important; min-height: 260px !important; }
+    .cm-chat-section { width: 100% !important; height: 500px !important; border-left: none !important; border-top: 1px solid #222d34 !important; }
+    .cm-controls-bar { flex-wrap: wrap !important; gap: 8px !important; padding: 10px 12px !important; }
+    .cm-controls-bar button { flex: 1 1 40% !important; font-size: 11px !important; padding: 8px !important; }
+    .cm-reaction-btns { width: 100%; justify-content: center; margin-top: 4px; }
   }
 `;
 
@@ -72,15 +64,11 @@ function App() {
   });
 
   const [activeTab, setActiveTab] = useState('create');
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
-
   const [sidebarTab, setSidebarTab] = useState('chat');
-
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
@@ -88,7 +76,6 @@ function App() {
   const [username, setUsername] = useState(() => localStorage.getItem('cm_username') || 'İzleyici');
   const [userCity, setUserCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
   const [mySocketId, setMySocketId] = useState('');
-
   const [recentRooms, setRecentRooms] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_recent_rooms')) || []; } catch (e) { return []; }
   });
@@ -134,7 +121,6 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // --- OPSİYONEL ÜYELİK / SOSYAL SİSTEM ---
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch (e) { return null; }
   });
@@ -153,7 +139,6 @@ function App() {
   const [profileBioInput, setProfileBioInput] = useState('');
   const [profileStatusInput, setProfileStatusInput] = useState('');
   const [showSocialModal, setShowSocialModal] = useState(false);
-
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
   const ytPlayerRef = useRef(null);
@@ -192,26 +177,24 @@ function App() {
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) {
-      alert('Tarayıcınızın menüsünden (sağ üst üç nokta) "Ana Ekrana Ekle" veya "Uygulamayı Yükle" seçeneğini seçerek siteyi telefonunuza indirebilirsiniz!');
+      alert('Tarayıcınızın menüsünden "Ana Ekrana Ekle" seçeneğini seçebilirsiniz!');
       return;
     }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShowInstallBtn(false);
-    }
+    if (outcome === 'accepted') setShowInstallBtn(false);
     setDeferredPrompt(null);
   };
 
   const currentTheme = THEMES[roomTheme] || THEMES.default;
-  const cssVars = { '--cm-primary': currentTheme.primary };
+  const cssVars = { '--cm-primary': currentTheme.primary, '--cm-card-bg': currentTheme.cardBg };
   const leaveRoomRef = useRef(() => { });
 
   useEffect(() => {
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
-      navigator.mediaSession.setActionHandler('pause', () => { handlePause(); });
-      navigator.mediaSession.setActionHandler('nexttrack', () => { handleMediaEnd(); });
+      navigator.mediaSession.setActionHandler('play', () => handlePlay());
+      navigator.mediaSession.setActionHandler('pause', () => handlePause());
+      navigator.mediaSession.setActionHandler('nexttrack', () => handleMediaEnd());
     }
   }, [mediaSrc, mediaType, playMode, playlist]);
 
@@ -222,10 +205,7 @@ function App() {
         title: currentTrackTitle,
         artist: 'Couple Meeting',
         album: 'Birlikte Dinleme Odası',
-        artwork: [
-          { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '96x96', type: 'image/png' },
-          { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '512x512', type: 'image/png' },
-        ]
+        artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '512x512', type: 'image/png' }]
       });
     }
   }, [mediaSrc, mediaType, playlist, roomName]);
@@ -235,21 +215,6 @@ function App() {
     const updated = [targetRoomId, ...recentRooms.filter(r => r !== targetRoomId)].slice(0, 5);
     setRecentRooms(updated);
     localStorage.setItem('cm_recent_rooms', JSON.stringify(updated));
-  };
-
-  const handleAvatarSelect = (emoji) => {
-    setMyAvatar(emoji);
-    localStorage.setItem('cm_user_avatar', emoji);
-  };
-
-  const handleUsernameChange = (val) => {
-    setUsername(val);
-    localStorage.setItem('cm_username', val);
-  };
-
-  const handleCityChange = (val) => {
-    setUserCity(val);
-    localStorage.setItem('cm_user_city', val);
   };
 
   const showFloatingEmoji = (reaction) => {
@@ -311,14 +276,8 @@ function App() {
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
 
-      if (Array.isArray(data.playlist)) {
-        setPlaylist(data.playlist);
-        localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist));
-      }
-      if (Array.isArray(data.categories)) {
-        setCategories(data.categories);
-        localStorage.setItem('cm_local_categories', JSON.stringify(data.categories));
-      }
+      if (Array.isArray(data.playlist)) setPlaylist(data.playlist);
+      if (Array.isArray(data.categories)) setCategories(data.categories);
       if (data.playMode) setPlayMode(data.playMode);
 
       localStorage.setItem('cm_saved_room', data.roomId);
@@ -330,17 +289,6 @@ function App() {
       if (data.currentMedia && data.currentMedia.type !== 'none') {
         setMediaType(data.currentMedia.type);
         setMediaSrc(data.currentMedia.src);
-        setTimeout(() => {
-          if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
-            ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
-            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo();
-            else ytPlayerRef.current.pauseVideo();
-          } else if (data.currentMedia.type === 'custom_video' && customVideoRef.current) {
-            customVideoRef.current.currentTime = data.currentMedia.time || 0;
-            if (data.currentMedia.isPlaying) customVideoRef.current.play();
-            else customVideoRef.current.pause();
-          }
-        }, 800);
       }
     });
 
@@ -363,15 +311,10 @@ function App() {
       leaveRoomRef.current();
     });
 
-    socket.on('categories_updated', (cats) => {
-      setCategories(cats);
-      localStorage.setItem('cm_local_categories', JSON.stringify(cats));
-    });
-
+    socket.on('categories_updated', (cats) => setCategories(cats));
     socket.on('playlist_updated', (data) => {
       const newPlaylist = Array.isArray(data) ? data : (data.playlist || []);
       setPlaylist(newPlaylist);
-      localStorage.setItem('cm_local_playlist', JSON.stringify(newPlaylist));
       if (data && data.playMode) setPlayMode(data.playMode);
     });
 
@@ -417,13 +360,9 @@ function App() {
       setAuthBusy(false);
       if (data?.ok) {
         persistAuth(data.user, data.token);
-        setProfileBioInput(data.user?.bio || '');
-        setProfileStatusInput(data.user?.status || '');
-        setAuthForm({ username: '', email: '', password: '', bio: '', avatar: data.user?.avatar || '🐱' });
         setShowAuthModal(false);
         setShowSocialModal(true);
         setErrorMessage('');
-        socket.emit('social_sync', { token: data.token });
       } else {
         setErrorMessage(data?.message || 'İşlem başarısız.');
       }
@@ -432,14 +371,6 @@ function App() {
       setFriends(Array.isArray(data?.friends) ? data.friends : []);
       setFriendRequests(Array.isArray(data?.requests) ? data.requests : []);
     });
-    socket.on('friend_search_results', (items) => setFriendSearchResults(Array.isArray(items) ? items : []));
-    socket.on('friend_request_received', (data) => {
-      setFriendRequests((prev) => [data, ...prev.filter((x) => x.id !== data.id)]);
-    });
-    socket.on('friend_request_status', (data) => {
-      if (data?.message) setErrorMessage(data.message);
-      socket.emit('social_sync', { token: authToken });
-    });
 
     return () => {
       socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
@@ -447,7 +378,7 @@ function App() {
       socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
-      socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received'); socket.off('friend_request_status');
+      socket.off('friends_update');
     };
   }, []);
 
@@ -466,18 +397,11 @@ function App() {
     if (authBusy) return;
     setAuthBusy(true);
     socket.emit(authMode === 'register' ? 'auth_register' : 'auth_login', authForm);
-
-    // Güvenlik zaman aşımı: Sunucu yanıt vermezse tıkanıklığı aç
-    setTimeout(() => {
-      setAuthBusy(false);
-    }, 5000);
+    setTimeout(() => setAuthBusy(false), 5000);
   };
 
   const handleLogout = () => {
     persistAuth(null, '');
-    setFriends([]);
-    setFriendRequests([]);
-    setFriendSearchResults([]);
     setShowSocialModal(false);
   };
 
@@ -485,19 +409,13 @@ function App() {
     e.preventDefault();
     const text = globalChatInput.trim();
     if (!text) return;
-    socket.emit('global_chat_message', {
-      text,
-      username: authUser?.username || username || 'Misafir',
-      avatar: authUser?.avatar || myAvatar,
-      token: authToken || ''
-    });
+    socket.emit('global_chat_message', { text, username: authUser?.username || username || 'Misafir', avatar: authUser?.avatar || myAvatar, token: authToken || '' });
     setGlobalChatInput('');
   };
 
   const searchFriends = () => {
-    const q = friendSearch.trim();
-    if (!q) return setFriendSearchResults([]);
-    socket.emit('friend_search', { q, token: authToken });
+    if (!friendSearch.trim()) return setFriendSearchResults([]);
+    socket.emit('friend_search', { q: friendSearch.trim(), token: authToken });
   };
 
   const sendFriendRequest = (targetUsername) => {
@@ -511,12 +429,7 @@ function App() {
 
   const saveProfile = () => {
     if (!authUser) return;
-    socket.emit('update_profile', {
-      token: authToken,
-      bio: profileBioInput.trim().slice(0, 120),
-      status: profileStatusInput.trim().slice(0, 80),
-      avatar: myAvatar
-    });
+    socket.emit('update_profile', { token: authToken, bio: profileBioInput.trim().slice(0, 120), status: profileStatusInput.trim().slice(0, 80), avatar: myAvatar });
   };
 
   const handleCreateRoomSubmit = (e) => {
@@ -544,9 +457,7 @@ function App() {
     window.history.replaceState({}, '', window.location.pathname);
   };
 
-  useEffect(() => {
-    leaveRoomRef.current = handleLeaveRoom;
-  }, [handleLeaveRoom]);
+  useEffect(() => { leaveRoomRef.current = handleLeaveRoom; }, [handleLeaveRoom]);
 
   const sendAction = (type, payload) => {
     if (socket) socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
@@ -581,10 +492,8 @@ function App() {
 
   const handleDirectPlay = () => {
     if (!searchInput.trim()) return;
-    let media;
-    if (searchInput.includes('http://') || searchInput.includes('https://')) media = processUrl(searchInput);
-    else if (searchResults.length > 0) media = { type: 'youtube', src: searchResults[0].src };
-    else return;
+    let media = searchInput.includes('http://') || searchInput.includes('https://') ? processUrl(searchInput) : (searchResults.length > 0 ? { type: 'youtube', src: searchResults[0].src } : null);
+    if (!media) return;
     setMediaType(media.type);
     setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
@@ -597,10 +506,9 @@ function App() {
     } else if (searchInput.trim()) {
       if (searchInput.includes('http://') || searchInput.includes('https://')) {
         const media = processUrl(searchInput);
-        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya / Dizi Linki', type: media.type, src: media.src, addedBy: username };
+        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya', type: media.type, src: media.src, addedBy: username };
       } else if (searchResults.length > 0) {
-        const s = searchResults[0];
-        item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
+        item = { id: Date.now() + Math.random().toString(), title: searchResults[0].title, type: 'youtube', src: searchResults[0].src, addedBy: username };
       }
     }
 
@@ -613,8 +521,7 @@ function App() {
 
   const confirmAddToPlaylist = () => {
     if (!pendingMediaItem) return;
-    const finalItem = { ...pendingMediaItem, category: modalTargetCategory };
-    socket.emit('add_to_playlist', { roomId, item: finalItem });
+    socket.emit('add_to_playlist', { roomId, item: { ...pendingMediaItem, category: modalTargetCategory } });
     setShowFolderModal(false);
     setPendingMediaItem(null);
   };
@@ -675,31 +582,15 @@ function App() {
   };
 
   const handleSaveSettings = () => {
-    socket.emit('update_room_settings', {
-      roomId,
-      newName: editRoomNameInput.trim() || roomName,
-      newTheme: roomTheme
-    });
+    socket.emit('update_room_settings', { roomId, newName: editRoomNameInput.trim() || roomName, newTheme: roomTheme });
     setShowSettingsModal(false);
   };
 
-  const handleKickUser = (targetUserId) => {
-    socket.emit('kick_user', { roomId, targetUserId });
-  };
-
-  const handleTransferAdmin = (targetUserId) => {
-    socket.emit('update_room_settings', { roomId, newHostUserId: targetUserId });
-  };
-
-  const getFilteredPlaylist = () => {
+  const filteredPlaylist = useMemo(() => {
     if (!Array.isArray(playlist)) return [];
     let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
-    if (playMode === 'alphabetical') {
-      return [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
-    }
-    return filtered;
-  };
-  const filteredPlaylist = useMemo(getFilteredPlaylist, [playlist, selectedCategory, playMode]);
+    return playMode === 'alphabetical' ? [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr')) : filtered;
+  }, [playlist, selectedCategory, playMode]);
 
   const styles = {
     app: {
@@ -709,328 +600,77 @@ function App() {
       minHeight: '100vh',
       margin: 0,
       padding: 0,
-      boxSizing: 'border-box',
-      overflowX: 'hidden',
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
-    card: {
-      background: currentTheme.cardBg,
-      border: '1px solid #22303a',
-      borderRadius: '20px',
-      padding: '24px'
-    },
-    buttonPrimary: {
-      background: `linear-gradient(135deg, ${currentTheme.primary} 0%, #008f6f 100%)`,
-      color: '#ffffff',
-      border: 'none',
-      padding: '10px 16px',
-      borderRadius: '12px',
-      fontWeight: '700',
-      cursor: 'pointer',
-      boxShadow: '0 6px 18px rgba(0,0,0,0.35)'
-    },
-    input: {
-      background: '#111b21',
-      border: '1px solid #222d34',
-      color: '#e9edef',
-      padding: '10px 14px',
-      borderRadius: '10px',
-      fontSize: '13px',
-      outline: 'none'
-    }
+    card: { background: currentTheme.cardBg, border: '1px solid #22303a', borderRadius: '20px', padding: '24px' },
+    buttonPrimary: { background: `linear-gradient(135deg, ${currentTheme.primary} 0%, #008f6f 100%)`, color: '#ffffff', border: 'none', padding: '10px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer' },
+    input: { background: '#111b21', border: '1px solid #222d34', color: '#e9edef', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', outline: 'none' }
   };
 
   if (!inRoom) {
     return (
       <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
-        <style>{GLOBAL_CSS + `
-          .cm-home { min-height: 100%; position: relative; overflow: hidden; }
-          .cm-home::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px); background-size:42px 42px; mask-image:linear-gradient(to bottom,black,transparent 90%); pointer-events:none; }
-          .cm-orb { position:absolute; border-radius:50%; filter:blur(10px); opacity:.48; animation:cmFloat 10s ease-in-out infinite; pointer-events:none; }
-          .cm-orb.one { width:420px;height:420px; background:#00a884; top:-170px;left:-140px; }
-          .cm-orb.two { width:340px;height:340px; background:#7c3aed; right:-120px;top:180px;animation-delay:-3s; }
-          .cm-orb.three { width:280px;height:280px; background:#ff4757; left:32%;top:420px;animation-delay:-6s; }
-          @keyframes cmFloat { 0%,100%{transform:translate3d(0,0,0)} 50%{transform:translate3d(25px,-22px,0)} }
-          .cm-home-nav { position:relative; z-index:5; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:18px 5vw; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(5,7,12,.54); backdrop-filter:blur(18px); position:sticky; top:0; }
-          .cm-home-brand { display:flex; align-items:center; gap:11px; }
-          .cm-home-logo { width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#ff4757,#00a884);font-size:22px;box-shadow:0 12px 35px rgba(0,168,132,.26); }
-          .cm-nav-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-          .cm-home-main { position:relative; z-index:2; width:min(1200px,92vw); margin:0 auto; padding:48px 0 50px; }
-          .cm-hero { display:grid; grid-template-columns:1.15fr .85fr; gap:34px; align-items:center; }
-          .cm-badge { display:inline-flex; align-items:center; gap:8px; padding:8px 13px;border-radius:999px;background:rgba(0,168,132,.1);border:1px solid rgba(0,168,132,.22);color:#63f0c0;font-size:12px;font-weight:800; }
-          .cm-hero h1 { margin:16px 0 16px;font-size:clamp(42px,6.2vw,78px);line-height:.98;letter-spacing:-3px;color:#fff;font-weight:950; }
-          .cm-hero h1 span { background:linear-gradient(90deg,#fff,#68ffd2 45%,#8bd8ff);-webkit-background-clip:text;background-clip:text;color:transparent; }
-          .cm-hero p { margin:0; color:#93a1ad; font-size:17px;line-height:1.65;max-width:690px; }
-          .cm-hero-actions { display:flex; gap:12px; margin-top:28px; flex-wrap:wrap; }
-          .cm-big-btn { border:none;padding:14px 18px;border-radius:14px;font-weight:900;cursor:pointer;color:white;box-shadow:0 12px 30px rgba(0,0,0,.28); }
-          .cm-hero-card { min-height:360px; position:relative; border:1px solid rgba(255,255,255,.08); border-radius:28px; background:linear-gradient(145deg,rgba(17,27,33,.85),rgba(10,14,22,.67)); backdrop-filter:blur(20px); box-shadow:0 30px 80px rgba(0,0,0,.36); overflow:hidden; padding:22px; }
-          .cm-now-playing { height:100%; display:flex; flex-direction:column; justify-content:space-between; }
-          .cm-mini-top { display:flex;justify-content:space-between;align-items:center;color:#91a0ac;font-size:11px;font-weight:800; }
-          .cm-cover { margin:20px auto 14px; width:172px;height:172px;border-radius:28px;background:radial-gradient(circle at 30% 25%,#ff94a1 0 12%,transparent 13%),radial-gradient(circle at 72% 70%,#4be6c0 0 14%,transparent 15%),linear-gradient(135deg,#7c3aed,#00a884); box-shadow:0 22px 45px rgba(0,0,0,.38); animation:cmPulse 3s ease-in-out infinite; }
-          @keyframes cmPulse { 0%,100%{transform:scale(1)}50%{transform:scale(1.035)} }
-          .cm-wave { display:flex;justify-content:center;align-items:flex-end;gap:4px;height:40px;margin-top:12px; }
-          .cm-wave i { width:4px;border-radius:6px;background:linear-gradient(to top,#00a884,#8bd8ff);animation:cmWave 1s ease-in-out infinite; }
-          .cm-wave i:nth-child(2){animation-delay:.12s}.cm-wave i:nth-child(3){animation-delay:.22s}.cm-wave i:nth-child(4){animation-delay:.1s}.cm-wave i:nth-child(5){animation-delay:.28s}.cm-wave i:nth-child(6){animation-delay:.18s}.cm-wave i:nth-child(7){animation-delay:.36s}
-          @keyframes cmWave {0%,100%{height:10px;opacity:.5}50%{height:36px;opacity:1}}
-          .cm-floating-chip { position:absolute; padding:9px 12px;border-radius:14px;background:rgba(9,13,22,.86);border:1px solid rgba(255,255,255,.08);box-shadow:0 12px 30px rgba(0,0,0,.25);font-size:11px;font-weight:800;color:#fff;animation:cmFloat 8s ease-in-out infinite; }
-          .cm-chip-a{left:18px;top:96px}.cm-chip-b{right:18px;top:150px;animation-delay:-2s}.cm-chip-c{right:30px;bottom:34px;animation-delay:-4s}
-          .cm-section { margin-top:56px; }
-          .cm-section-head { text-align: center; margin-bottom: 24px; }
-          .cm-section-head h3 { margin:0 0 6px;color:#fff;font-size:26px;letter-spacing:-.8px; }
-          .cm-section-head p { margin:0;color:#7d8b97;font-size:13px; }
-          .cm-feature-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px; }
-          .cm-feature { padding:18px;border-radius:20px;background:rgba(17,27,33,.68);border:1px solid rgba(255,255,255,.06);min-height:145px;transition:.25s; }
-          .cm-feature:hover { transform:translateY(-4px);border-color:rgba(0,168,132,.25);box-shadow:0 18px 36px rgba(0,0,0,.22); }
-          .cm-feature .ico { font-size:26px; }.cm-feature b{display:block;color:#fff;margin-top:12px}.cm-feature span{display:block;color:#7f8b96;font-size:12px;line-height:1.5;margin-top:6px}
-          .cm-room-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px; }
-          .cm-room { padding:16px;border-radius:18px;background:rgba(17,27,33,.7);border:1px solid rgba(255,255,255,.06); }
-          .cm-room-row{display:flex;justify-content:space-between;gap:10px;align-items:center}.cm-room-name{color:#fff;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-room-meta{color:#7e8a95;font-size:11px}.cm-room button{margin-top:12px;width:100%;padding:10px;border:1px solid rgba(0,168,132,.22);background:rgba(0,168,132,.08);color:#5de9c0;border-radius:12px;font-weight:800;cursor:pointer}
-          .cm-social-card { padding:20px;border-radius:24px;background:linear-gradient(145deg,rgba(17,27,33,.82),rgba(10,14,22,.72));border:1px solid rgba(255,255,255,.07); }
-          .cm-social-grid { display:grid;grid-template-columns:1.1fr .9fr;gap:14px; }
-          .cm-global-preview { display:flex;flex-direction:column;gap:8px;max-height:230px;overflow:hidden; }
-          .cm-preview-msg { display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border-radius:12px;background:#0b141a;border:1px solid rgba(255,255,255,.045); }
-          .cm-preview-msg b{font-size:11px;color:#fff}.cm-preview-msg span{font-size:11px;color:#8794a0}
-          @media(max-width:900px){ .cm-hero{grid-template-columns:1fr}.cm-feature-grid{grid-template-columns:1fr 1fr}.cm-room-grid{grid-template-columns:1fr 1fr}.cm-social-grid{grid-template-columns:1fr}.cm-hero-card{min-height:330px} }
-          @media(max-width:600px){ .cm-home-nav{padding:12px 14px}.cm-nav-actions{width:100%}.cm-nav-actions button{flex:1}.cm-home-main{width:min(94vw,560px);padding:32px 0 24px}.cm-hero h1{font-size:42px;letter-spacing:-2px}.cm-hero p{font-size:14px}.cm-hero-actions{display:grid;grid-template-columns:1fr}.cm-feature-grid,.cm-room-grid{grid-template-columns:1fr}.cm-cover{width:145px;height:145px}.cm-floating-chip{display:none}.cm-section{margin-top:36px}.cm-section-head h3{font-size:22px} }
-        `}</style>
+        <style>{GLOBAL_CSS}</style>
         <div className="cm-home">
-          <div className="cm-orb one"/><div className="cm-orb two"/><div className="cm-orb three"/>
-
-          <header className="cm-home-nav">
-            <div className="cm-home-brand">
-              <div className="cm-home-logo">❤️⚡</div>
-              <div><div style={{fontWeight:950,color:'#fff',fontSize:17}}>Couple Meeting</div><div style={{fontSize:10,color:'#53e6bc',fontWeight:800}}>WATCH • LISTEN • CONNECT</div></div>
+          <header className="cm-home-nav" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(5,7,12,.7)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg,#ff4757,#00a884)', display: 'grid', placeItems: 'center', fontSize: 20 }}>❤️⚡</div>
+              <span style={{ fontWeight: 900, color: '#fff', fontSize: 18 }}>Couple Meeting</span>
             </div>
-            <div className="cm-nav-actions">
-              <button onClick={() => setShowSocialModal(true)} style={{background:'#111b21',border:'1px solid #25313a',color:'#fff',padding:'10px 13px',borderRadius:12,fontWeight:800,cursor:'pointer'}}>🌐 Global Chat</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setShowSocialModal(true)} style={{ background: '#111b21', border: '1px solid #25313a', color: '#fff', padding: '8px 12px', borderRadius: 10, fontWeight: 800 }}>🌐 Global Chat</button>
               {authUser ? (
-                <button onClick={() => setShowSocialModal(true)} style={{background:'#00a884',border:'none',color:'#fff',padding:'10px 13px',borderRadius:12,fontWeight:900,cursor:'pointer'}}>{authUser.avatar || myAvatar} {authUser.username}</button>
+                <button onClick={() => setShowSocialModal(true)} style={{ background: '#00a884', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: 10, fontWeight: 900 }}>{authUser.avatar} {authUser.username}</button>
               ) : (
-                <>
-                  <button onClick={() => openAuth('login')} style={{background:'#111b21',border:'1px solid #25313a',color:'#fff',padding:'10px 13px',borderRadius:12,fontWeight:800,cursor:'pointer'}}>Giriş Yap</button>
-                  <button onClick={() => openAuth('register')} style={{background:'#00a884',border:'none',color:'#fff',padding:'10px 13px',borderRadius:12,fontWeight:900,cursor:'pointer'}}>Ücretsiz Katıl</button>
-                </>
+                <button onClick={() => openAuth('login')} style={{ background: '#00a884', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: 10, fontWeight: 900 }}>Giriş Yap</button>
               )}
             </div>
           </header>
 
-          <main className="cm-home-main">
-            <section className="cm-hero">
-              <div>
-                <div className="cm-badge"><span className="cm-live-dot"/> Uzaklık sadece bir detay.</div>
-                <h1>Birlikte izleyin.<br/><span>Birlikte hissedin.</span></h1>
-                <p>Sevgilinle, arkadaşınla veya yeni insanlarla aynı videoyu aynı anda izle, müzik dinle ve anlık sohbet et. Hesap açmak zorunda değilsin; ama hesabın olursa profilin, arkadaşların ve sosyal özelliklerin yanında kalır.</p>
-                <div className="cm-hero-actions">
-                  <button className="cm-big-btn" onClick={() => { setActiveTab('create'); setInRoom(false); }} style={{background:'linear-gradient(135deg,#00a884,#008f6f)'}}>🚀 Hemen Oda Oluştur</button>
-                  <button className="cm-big-btn" onClick={() => openAuth(authUser ? 'login' : 'register')} style={{background:'#202c33',border:'1px solid #34424c'}}>👤 Hesapla Daha Fazlasını Yap</button>
-                </div>
-                <div style={{display:'flex',gap:18,flexWrap:'wrap',marginTop:22,color:'#778590',fontSize:11,fontWeight:800}}>
-                  <span>✓ Misafir giriş</span><span>✓ Arkadaş sistemi</span><span>✓ Global sohbet</span><span>✓ Profil & durum</span>
-                </div>
-              </div>
+          <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: 36 }}>
+              <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', margin: '0 0 12px', color: '#fff', fontWeight: 950 }}>Birlikte İzleyin. <span style={{ color: '#00a884' }}>Birlikte Hissedin.</span></h1>
+              <p style={{ color: '#93a1ad', fontSize: 16, maxWidth: 600, margin: '0 auto' }}>Aynı anda senkronize video izleyin, müzik dinleyin ve canlı sohbet edin.</p>
+            </div>
 
-              <div className="cm-hero-card">
-                <div className="cm-floating-chip cm-chip-a">💬 “Başlattım, gelsene ❤️”</div>
-                <div className="cm-floating-chip cm-chip-b">🟢 {roomUsersList.length || 1} kişi canlı</div>
-                <div className="cm-floating-chip cm-chip-c">❤️ birlikte anı yakala</div>
-                <div className="cm-now-playing">
-                  <div className="cm-mini-top"><span>NOW PLAYING</span><span style={{color:'#53e6bc'}}>● LIVE</span></div>
-                  <div>
-                    <div className="cm-cover"></div>
-                    <div style={{textAlign:'center'}}><div style={{color:'#fff',fontSize:18,fontWeight:900}}>Our Little Moment</div><div style={{color:'#778590',fontSize:11,marginTop:5}}>Couple Meeting Radio</div></div>
-                    <div className="cm-wave">{Array.from({length:7}).map((_,i)=><i key={i}/>)}</div>
+            <div style={{ maxWidth: 500, margin: '0 auto', background: '#111b21', padding: 20, borderRadius: 20, border: '1px solid #222d34' }}>
+              {errorMessage && <div style={{ background: '#ea0038', color: '#fff', padding: 10, borderRadius: 10, fontSize: 12, marginBottom: 12 }}>{errorMessage}</div>}
+              <div style={{ display: 'flex', gap: 6, background: '#0b141a', padding: 4, borderRadius: 10, marginBottom: 14 }}>
+                <button onClick={() => setActiveTab('create')} style={{ flex: 1, padding: 10, border: 'none', borderRadius: 8, background: activeTab === 'create' ? '#00a884' : 'transparent', color: '#fff', fontWeight: 900 }}>Oda Oluştur</button>
+                <button onClick={() => setActiveTab('join')} style={{ flex: 1, padding: 10, border: 'none', borderRadius: 8, background: activeTab === 'join' ? '#3742fa' : 'transparent', color: '#fff', fontWeight: 900 }}>Odaya Katıl</button>
+              </div>
+              {activeTab === 'create' ? (
+                <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <input placeholder="Oda ismi (Opsiyonel)" value={roomId} onChange={e => setRoomId(e.target.value)} style={styles.input} />
+                  <input type="password" placeholder="Şifre (Opsiyonel)" value={roomPassword} onChange={e => setRoomPassword(e.target.value)} style={styles.input} />
+                  <button type="submit" style={styles.buttonPrimary}>Odayı Başlat 🚀</button>
+                </form>
+              ) : (
+                <form onSubmit={handleJoinRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <input placeholder="Oda ismi" value={joinRoomInput} onChange={e => setJoinRoomInput(e.target.value)} style={styles.input} />
+                  <input type="password" placeholder="Şifre" value={joinPassInput} onChange={e => setJoinPassInput(e.target.value)} style={styles.input} />
+                  <button type="submit" style={{ ...styles.buttonPrimary, background: '#3742fa' }}>Odaya Katıl 🚪</button>
+                </form>
+              )}
+            </div>
+
+            <div style={{ marginTop: 40, textAlign: 'center' }}>
+              <h3 style={{ color: '#fff', marginBottom: 16 }}>🔥 Aktif Odalar</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+                {publicRooms.map(r => (
+                  <div key={r.id} style={{ background: '#111b21', padding: 14, borderRadius: 14, border: '1px solid #222d34', textAlign: 'left' }}>
+                    <div style={{ color: '#fff', fontWeight: 'bold' }}>{r.name}</div>
+                    <div style={{ color: '#8696a0', fontSize: 12, marginTop: 4 }}>{r.userCount}/{r.maxUsers} Kişi</div>
+                    <button onClick={() => { setJoinRoomInput(r.id); setActiveTab('join'); }} style={{ width: '100%', marginTop: 10, background: '#00a884', color: '#fff', border: 'none', padding: 8, borderRadius: 8, fontWeight: 'bold' }}>Katıl</button>
                   </div>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',color:'#7f8c98',fontSize:12}}><span>♡ 248</span><span style={{color:'#53e6bc'}}>◀︎ 2:18 ━━━━━ 4:12 ▶︎</span><span>♡</span></div>
-                </div>
+                ))}
               </div>
-            </section>
-
-            <section className="cm-section">
-              <div className="cm-section-head">
-                <h3>🔥 Aktif Odalar</h3>
-                <p>Bir odaya katılmak için tek dokunuş yeterli.</p>
-              </div>
-              {publicRooms.length ? (
-                <div className="cm-room-grid">{publicRooms.slice(0,6).map((r)=><div className="cm-room" key={r.id}><div className="cm-room-row"><div className="cm-room-name">{r.name}</div><div className="cm-room-meta">{r.userCount}/{r.maxUsers} 👥</div></div><div className="cm-room-meta" style={{marginTop:6}}>{r.hasPassword?'🔒 Şifreli oda':'🌍 Açık oda'}</div><button onClick={()=>{setJoinRoomInput(r.id);setActiveTab('join');}}>🚪 Katıl</button></div>)}</div>
-              ) : <div className="cm-social-card" style={{textAlign: 'center'}}><div style={{color:'#fff',fontWeight:800}}>Henüz herkese açık oda görünmüyor.</div><div style={{color:'#7f8c98',fontSize:12,marginTop:5}}>İlk odayı sen oluştur ve burayı hareketlendirelim. 🚀</div></div>}
-            </section>
-
-            <section className="cm-section">
-              <div className="cm-section-head">
-                <h3>Neden Couple Meeting?</h3>
-                <p>Oda aç, arkadaşını bul, konuş, müzik ekle. Hepsi tek yerde.</p>
-              </div>
-              <div className="cm-feature-grid">
-                <div className="cm-feature"><div className="ico">🎬</div><b>Senkron İzleme</b><span>Aynı videoda aynı saniye. Oynat, durdur ve oda ile eşleştir.</span></div>
-                <div className="cm-feature"><div className="ico">🎵</div><b>Ortak Müzik</b><span>Arat, çalma listene ekle ve birlikte dinle.</span></div>
-                <div className="cm-feature"><div className="ico">💬</div><b>Global Sohbet</b><span>Odanın dışındaki insanlarla da konuş, keşfet.</span></div>
-                <div className="cm-feature"><div className="ico">🤝</div><b>Arkadaşlık</b><span>Profilini oluştur, durumunu yaz ve arkadaş ekle.</span></div>
-              </div>
-            </section>
-
-            <section className="cm-section">
-              <div className="cm-social-card">
-                <div className="cm-social-grid">
-                  <div><div style={{color:'#53e6bc',fontSize:11,fontWeight:900}}>🌐 GLOBAL TOPLULUK</div><div style={{fontSize:26,color:'#fff',fontWeight:950,letterSpacing:-1,marginTop:7}}>Sadece odada değil, dünyada da bağlan.</div><div style={{color:'#7f8c98',fontSize:13,lineHeight:1.6,marginTop:8}}>Global sohbette konuş, profilini doldur, arkadaşlık isteği gönder. Misafir olarak okuyabilir ve konuşabilirsin; arkadaşlık ve profil özellikleri hesapla açılır.</div><button className="cm-big-btn" onClick={()=>setShowSocialModal(true)} style={{marginTop:18,background:'linear-gradient(135deg,#3742fa,#5352ed)'}}>🌍 Sosyal Alanı Aç</button></div>
-                  <div className="cm-global-preview">{globalMessages.slice(-5).reverse().map((m,i)=><div className="cm-preview-msg" key={m.id||i}><div style={{fontSize:19}}>{m.avatar||'🐱'}</div><div><b>{m.username||'Misafir'}</b><div style={{color:'#8d9aa5',fontSize:11,marginTop:2}}>{m.text}</div></div></div>)}{globalMessages.length===0&&<div style={{color:'#75838e',fontSize:12,padding:20,textAlign:'center'}}>Global sohbet burada görünecek. İlk mesajı sen yaz. 👋</div>}</div>
-                </div>
-              </div>
-            </section>
-
-            <section className="cm-section">
-              <div style={{maxWidth:650,margin:'0 auto'}}>
-                <div className="cm-social-card">
-                  {errorMessage && <div style={{background:'#ea0038',color:'#fff',padding:'11px 13px',borderRadius:12,fontWeight:800,fontSize:12,marginBottom:14}}>{errorMessage}</div>}
-                  <div style={{display:'flex',gap:6,background:'#0b141a',padding:5,borderRadius:13,marginBottom:16}}>
-                    <button onClick={()=>setActiveTab('create')} style={{flex:1,padding:11,border:'none',borderRadius:10,background:activeTab==='create'?'#00a884':'transparent',color:'#fff',fontWeight:900}}>🚀 Oda Oluştur</button>
-                    <button onClick={()=>setActiveTab('join')} style={{flex:1,padding:11,border:'none',borderRadius:10,background:activeTab==='join'?'#3742fa':'transparent',color:'#fff',fontWeight:900}}>🚪 Odaya Katıl</button>
-                  </div>
-                  {activeTab==='create'?<form onSubmit={handleCreateRoomSubmit} style={{display:'flex',flexDirection:'column',gap:10}}><input placeholder="Oda ismi (boş bırakırsan otomatik)" value={roomId} onChange={e=>setRoomId(e.target.value)} style={styles.input}/><input type="password" placeholder="Şifre (isteğe bağlı)" value={roomPassword} onChange={e=>setRoomPassword(e.target.value)} style={styles.input}/><div style={{display:'flex',gap:10}}><select value={maxUsers} onChange={e=>setMaxUsers(e.target.value)} style={{...styles.input,flex:1}}><option value="2">2 Kişi</option><option value="4">4 Kişi</option><option value="8">8 Kişi</option></select><button type="submit" style={{...styles.buttonPrimary,flex:1}}>Odayı Başlat 🚀</button></div></form>:<form onSubmit={handleJoinRoomSubmit} style={{display:'flex',flexDirection:'column',gap:10}}><input placeholder="Oda ismi" value={joinRoomInput} onChange={e=>setJoinRoomInput(e.target.value)} style={styles.input}/><input type="password" placeholder="Şifre (varsa)" value={joinPassInput} onChange={e=>setJoinPassInput(e.target.value)} style={styles.input}/><button type="submit" style={{...styles.buttonPrimary,background:'linear-gradient(135deg,#3742fa,#5352ed)'}}>Odaya Giriş Yap 🚪</button></form>}
-                  <div style={{display:'flex',gap:10,justifyContent:'center',marginTop:16,color:'#6f7d88',fontSize:11,fontWeight:800,flexWrap:'wrap'}}><span>👤 Hesapsız giriş</span><span>🔒 Oda şifresi</span><span>⚡ Anında senkron</span></div>
-                </div>
-              </div>
-            </section>
+            </div>
           </main>
 
-          <footer style={{ borderTop: '1px solid #222d34', padding: '24px 16px', textAlign: 'center', background: '#05070c', color: '#8696a0', fontSize: '13px', position: 'relative', zIndex: 5 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 'bold' }}>
-              <span>Tarafından Sevgiyle Geliştirildi</span> ❤️ <span style={{ color: '#00a884' }}>Ömer Yaman</span>
-            </div>
-            <div style={{ fontSize: '11px', marginTop: '6px', opacity: 0.7 }}>
-              © {new Date().getFullYear()} Couple Meeting. Tüm hakları saklıdır.
-            </div>
+          <footer style={{ borderTop: '1px solid #222d34', padding: 20, textAlign: 'center', color: '#8696a0', fontSize: 12 }}>
+            Geliştirici: <b style={{ color: '#00a884' }}>Ömer Yaman</b> © 2026 Couple Meeting.
           </footer>
-
-          {showAuthModal && (
-            <div style={{position:'fixed',inset:0,zIndex:20000,background:'rgba(0,0,0,.78)',backdropFilter:'blur(16px)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}>
-              <div style={{width:'min(460px,100%)',background:'#111b21',border:'1px solid #2a3942',borderRadius:24,padding:22,boxShadow:'0 35px 100px rgba(0,0,0,.5)'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <div>
-                    <div style={{color:'#53e6bc',fontSize:11,fontWeight:900}}>{authMode==='register'?'HESAP OLUŞTUR':'TEKRAR HOŞ GELDİN'}</div>
-                    <h3 style={{margin:'6px 0 0',color:'#fff',fontSize:24}}>{authMode==='register'?'Profilini yanında taşı':'Hesabına giriş yap'}</h3>
-                  </div>
-                  <button type="button" onClick={()=>{ setShowAuthModal(false); setAuthBusy(false); }} style={{background:'#202c33',border:'none',color:'#fff',width:34,height:34,borderRadius:10}}>✕</button>
-                </div>
-                <form onSubmit={submitAuth} style={{display:'flex',flexDirection:'column',gap:10,marginTop:18}}>
-                  {authMode==='register' && <input placeholder="Kullanıcı adı" value={authForm.username} onChange={e=>setAuthForm({...authForm,username:e.target.value})} style={styles.input}/>} 
-                  <input type="email" placeholder="E-posta" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={styles.input}/>
-                  <input type="password" placeholder="Şifre (en az 6 karakter)" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={styles.input}/>
-                  {authMode==='register' && (
-                    <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                      <textarea placeholder="Kendini anlat (opsiyonel)" value={authForm.bio} onChange={e=>setAuthForm({...authForm,bio:e.target.value})} style={{...styles.input,minHeight:80,resize:'vertical'}}/>
-                      <select value={authForm.avatar} onChange={e=>setAuthForm({...authForm,avatar:e.target.value})} style={styles.input}>
-                        {AVATARS.map(a=><option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  <button type="submit" disabled={authBusy} style={{...styles.buttonPrimary,width:'100%',marginTop:4}}>{authBusy?'İşleniyor...':(authMode==='register'?'Hesabı Oluştur ✨':'Giriş Yap 🚀')}</button>
-                </form>
-                <div style={{display:'flex',justifyContent:'center',gap:6,marginTop:14,fontSize:12,color:'#778590'}}>
-                  {authMode==='register' ? (
-                    <div>Zaten hesabın var mı? <button type="button" onClick={()=>setAuthMode('login')} style={{background:'none',border:'none',color:'#53e6bc',fontWeight:900}}>Giriş yap</button></div>
-                  ) : (
-                    <div>Hesabın yok mu? <button type="button" onClick={()=>setAuthMode('register')} style={{background:'none',border:'none',color:'#53e6bc',fontWeight:900}}>Kayıt ol</button></div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {showSocialModal && (
-            <div style={{position:'fixed',inset:0,zIndex:19000,background:'rgba(0,0,0,.78)',backdropFilter:'blur(16px)',display:'flex',alignItems:'center',justifyContent:'center',padding:14}}>
-              <div style={{width:'min(900px,100%)',height:'min(760px,94vh)',background:'#0f171d',border:'1px solid #2a3942',borderRadius:24,display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 35px 100px rgba(0,0,0,.5)'}}>
-                <div style={{padding:'14px 16px',background:'#111b21',borderBottom:'1px solid #25313a',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <div><div style={{color:'#53e6bc',fontSize:10,fontWeight:900}}>COUPLE MEETING SOCIAL</div><div style={{color:'#fff',fontSize:18,fontWeight:900}}>🌍 Topluluk</div></div>
-                  <div style={{display:'flex',gap:7,alignItems:'center'}}>
-                    {authUser ? <button type="button" onClick={handleLogout} style={{background:'#202c33',color:'#fff',border:'1px solid #2c3b44',padding:'8px 10px',borderRadius:10,fontWeight:800}}>Çıkış</button> : <button type="button" onClick={()=>openAuth('login')} style={{background:'#00a884',color:'#fff',border:'none',padding:'8px 10px',borderRadius:10,fontWeight:900}}>Giriş</button>}
-                    <button type="button" onClick={()=>setShowSocialModal(false)} style={{background:'#202c33',color:'#fff',border:'none',width:34,height:34,borderRadius:10}}>✕</button>
-                  </div>
-                </div>
-                <div style={{display:'flex',flex:1,minHeight:0}}>
-                  <div style={{width:220,borderRight:'1px solid #25313a',background:'#0b141a',padding:10,display:'flex',flexDirection:'column',gap:8}}>
-                    <button type="button" onClick={()=>setSocialTab('global')} style={{padding:11,border:'none',borderRadius:11,textAlign:'left',background:socialTab==='global'?'#00a884':'#111b21',color:'#fff',fontWeight:900}}>🌐 Global Sohbet</button>
-                    <button type="button" onClick={()=>setSocialTab('friends')} style={{padding:11,border:'none',borderRadius:11,textAlign:'left',background:socialTab==='friends'?'#00a884':'#111b21',color:'#fff',fontWeight:900}}>🤝 Arkadaşlar {friendRequests.length?`(${friendRequests.length})`:''}</button>
-                    <button type="button" onClick={()=>setSocialTab('profile')} style={{padding:11,border:'none',borderRadius:11,textAlign:'left',background:socialTab==='profile'?'#00a884':'#111b21',color:'#fff',fontWeight:900}}>👤 Profilim</button>
-                    <div style={{marginTop:'auto',padding:10,borderRadius:12,background:'#111b21',color:'#7f8c98',fontSize:11,lineHeight:1.5}}>{authUser?'Hesabın aktif. Profil ve arkadaşlıkların bu cihazdaki oturumunda tutulur.':'Misafir olarak sohbet edebilirsin. Arkadaşlık ve profil için ücretsiz hesap aç.'}</div>
-                  </div>
-                  <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
-                    {socialTab==='global' && (
-                      <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
-                        <div style={{flex:1,overflowY:'auto',padding:14,display:'flex',flexDirection:'column',gap:8}}>
-                          {globalMessages.map((m,i)=>(
-                            <div key={m.id||i} style={{display:'flex',gap:9,alignItems:'flex-start'}}>
-                              <div style={{fontSize:22}}>{m.avatar||'🐱'}</div>
-                              <div style={{background:'#111b21',padding:'8px 10px',borderRadius:12,maxWidth:'80%'}}>
-                                <div style={{fontSize:11,color:'#53e6bc',fontWeight:900}}>{m.username||'Misafir'} <span style={{color:'#63727d',fontWeight:600}}>• {m.time||''}</span></div>
-                                <div style={{fontSize:13,color:'#e9edef',marginTop:3,wordBreak:'break-word'}}>{m.text}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <form onSubmit={sendGlobalMessage} style={{padding:10,borderTop:'1px solid #25313a',display:'flex',gap:7,background:'#111b21'}}>
-                          <input value={globalChatInput} onChange={e=>setGlobalChatInput(e.target.value)} placeholder="Global sohbete bir şey yaz..." style={{...styles.input,flex:1}}/>
-                          <button type="submit" style={{...styles.buttonPrimary,padding:'10px 14px'}}>➤</button>
-                        </form>
-                      </div>
-                    )}
-                    {socialTab==='friends' && (
-                      <div style={{padding:16,overflowY:'auto'}}>
-                        {!authUser ? (
-                          <div style={{padding:30,textAlign:'center',color:'#7f8c98'}}>Arkadaşlık sistemi için önce hesap açmalısın.<br/><button type="button" onClick={()=>openAuth('register')} style={{...styles.buttonPrimary,marginTop:12}}>Ücretsiz Hesap Aç</button></div>
-                        ) : (
-                          <div>
-                            <div style={{display:'flex',gap:7}}><input value={friendSearch} onChange={e=>setFriendSearch(e.target.value)} placeholder="Kullanıcı adı ara..." style={{...styles.input,flex:1}}/><button type="button" onClick={searchFriends} style={styles.buttonPrimary}>Ara</button></div>
-                            <div style={{marginTop:16}}>
-                              {friendSearchResults.map(u=>(
-                                <div key={u.username} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,padding:10,background:'#111b21',borderRadius:12,marginBottom:7}}>
-                                  <div><div style={{color:'#fff',fontWeight:900}}>{u.avatar} {u.username}</div><div style={{color:'#7f8c98',fontSize:11}}>{u.status||u.bio||'Henüz bir durum yazılmadı.'}</div></div>
-                                  <button type="button" onClick={()=>sendFriendRequest(u.username)} style={{...styles.buttonPrimary,padding:'7px 10px',fontSize:11}}>➕ Ekle</button>
-                                </div>
-                              ))}
-                            </div>
-                            {friendRequests.length>0 && (
-                              <div>
-                                <div style={{color:'#fff',fontWeight:900,margin:'18px 0 8px'}}>Gelen istekler</div>
-                                {friendRequests.map(r=>(
-                                  <div key={r.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:10,background:'#111b21',borderRadius:12,marginBottom:7}}>
-                                    <span style={{color:'#fff',fontWeight:800}}>{r.avatar||'🐱'} {r.fromUsername}</span>
-                                    <div style={{display:'flex',gap:6}}><button type="button" onClick={()=>respondFriendRequest(r.id,'accept')} style={{...styles.buttonPrimary,padding:'7px 10px',fontSize:11}}>Kabul</button><button type="button" onClick={()=>respondFriendRequest(r.id,'reject')} style={{background:'#202c33',color:'#fff',border:'1px solid #2d3b44',padding:'7px 10px',borderRadius:10,fontWeight:800}}>Sil</button></div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {friends.length>0 && (
-                              <div>
-                                <div style={{color:'#fff',fontWeight:900,margin:'18px 0 8px'}}>Arkadaşların</div>
-                                {friends.map(f=>(
-                                  <div key={f.username} style={{display:'flex',justifyContent:'space-between',padding:10,background:'#111b21',borderRadius:12,marginBottom:7}}><span style={{color:'#fff',fontWeight:800}}>{f.avatar} {f.username}</span><span style={{color:'#53e6bc',fontSize:11}}>{f.status||'Çevrimiçi'}</span></div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {socialTab==='profile' && (
-                      <div style={{padding:16,overflowY:'auto'}}>
-                        {!authUser ? <div style={{padding:30,textAlign:'center',color:'#7f8c98'}}>Profilini kaydetmek için hesap açman yeterli.</div> : (
-                          <div style={{maxWidth:520}}>
-                            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}><div style={{fontSize:44,width:66,height:66,borderRadius:18,display:'grid',placeItems:'center',background:'#111b21',border:'1px solid #2a3942'}}>{authUser.avatar}</div><div><div style={{fontSize:20,color:'#fff',fontWeight:900}}>{authUser.username}</div><div style={{fontSize:11,color:'#53e6bc'}}>{authUser.email}</div></div></div>
-                            <label style={{fontSize:11,color:'#7f8c98',fontWeight:900}}>DURUM</label>
-                            <input value={profileStatusInput} onChange={e=>setProfileStatusInput(e.target.value)} placeholder="Şu an ne yapıyorsun?" style={{...styles.input,width:'100%',margin:'6px 0 12px'}}/>
-                            <label style={{fontSize:11,color:'#7f8c98',fontWeight:900}}>HAKKINDA</label>
-                            <textarea value={profileBioInput} onChange={e=>setProfileBioInput(e.target.value)} placeholder="Kendinden biraz bahset..." style={{...styles.input,width:'100%',minHeight:100,resize:'vertical',margin:'6px 0 12px'}}/>
-                            <select value={myAvatar} onChange={e=>{setMyAvatar(e.target.value);localStorage.setItem('cm_user_avatar',e.target.value)}} style={{...styles.input,width:'100%',marginBottom:12}}>{AVATARS.map(a=><option key={a} value={a}>{a}</option>)}</select>
-                            <button type="button" onClick={saveProfile} style={{...styles.buttonPrimary,width:'100%'}}>Profili Kaydet ✓</button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -1038,153 +678,61 @@ function App() {
 
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `
-        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
-      `}</style>
-
-      {/* KLASÖR POP-UP */}
-      {showFolderModal && pendingMediaItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ ...styles.card, width: '400px', textAlign: 'left' }}>
-            <h3 style={{ margin: '0 0 12px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
-            <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px' }}>
-              <strong>{pendingMediaItem.title}</strong> öğesini eklemek istediğiniz klasörü seçin:
-            </p>
-
-            <div style={{ marginBottom: '20px' }}>
-              <select value={modalTargetCategory} onChange={(e) => setModalTargetCategory(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', fontWeight: 'bold', color: currentTheme.primary, cursor: 'pointer' }}>
-                {categories.map(cat => <option key={cat} value={cat} style={{ background: '#111b21', color: '#fff' }}>📁 {cat}</option>)}
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setShowFolderModal(false)} style={{ flex: 1, padding: '10px', background: '#202c33', color: '#fff', border: '1px solid #222d34', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>İptal</button>
-              <button onClick={confirmAddToPlaylist} style={{ flex: 1, ...styles.buttonPrimary }}>Listeye Kaydet ➕</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SAĞ ÜST ODA AYARLARI MODALI */}
-      {showSettingsModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ ...styles.card, width: '460px', textAlign: 'left' }}>
-            <h3 style={{ margin: '0 0 16px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>⚙️ Oda Ayarları & Kişiler</h3>
-
-            {hostUserId === userId ? (
-              <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA İSMİ DEĞİŞTİR</label>
-                  <input type="text" value={editRoomNameInput || roomName} onChange={(e) => setEditRoomNameInput(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' }} />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA TEMASI SEÇ</label>
-                  <select value={roomTheme} onChange={(e) => setRoomTheme(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
-                    <option value="default" style={{ background: '#111b21' }}>Koyu Yeşil (Varsayılan)</option>
-                    <option value="purple" style={{ background: '#111b21' }}>Gece Moru</option>
-                    <option value="blue" style={{ background: '#111b21' }}>Okyanus Mavisi</option>
-                    <option value="rose" style={{ background: '#111b21' }}>Romantik Kırmızı</option>
-                  </select>
-                </div>
-
-                <button onClick={handleSaveSettings} style={{ ...styles.buttonPrimary, width: '100%' }}>Ayarları Kaydet</button>
-              </div>
-            ) : (
-              <div style={{ background: '#202c33', padding: '10px', borderRadius: '10px', fontSize: '12px', color: '#8696a0', marginBottom: '16px' }}>
-                ℹ️ Oda adını ve temasını sadece oda yöneticisi değiştirebilir.
-              </div>
-            )}
-
-            <div>
-              <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>ODADAKİ KİŞİLER ({roomUsersList.length})</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                {roomUsersList.map(u => (
-                  <div key={u.userId} style={{ background: '#0b141a', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold' }}>
-                      {u.avatar} {u.username} {u.userId === hostUserId && '👑 (Admin)'}
-                    </span>
-                    {hostUserId === userId && u.userId !== userId && (
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => handleTransferAdmin(u.userId)} style={{ background: '#ffa502', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>👑 Admin Yap</button>
-                        <button onClick={() => handleKickUser(u.userId)} style={{ background: '#ff4757', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>🚫 At</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={() => setShowSettingsModal(false)} style={{ background: '#202c33', color: '#fff', border: '1px solid #222d34', width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', marginTop: '16px' }}>Kapat</button>
-          </div>
-        </div>
-      )}
+      <style>{GLOBAL_CSS}</style>
 
       {/* HEADER BAR */}
-      <header style={{ height: '60px', padding: '0 28px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
-          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '18px', fontWeight: '900' }}>{roomName}</h2>
-
-          <span style={{ fontSize: '11px', background: currentTheme.cardBg, color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} /> Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+      <header style={{ height: '60px', padding: '0 16px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>❤️⚡</div>
+          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '16px', fontWeight: '900' }}>{roomName}</h2>
+          <span style={{ fontSize: '11px', background: '#0b141a', color: '#53e6bc', padding: '3px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+            👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {showInstallBtn && (
-            <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
-              📲 Uygulamayı İndir
-            </button>
-          )}
-          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-            ⚙️ Oda Ayarları
-          </button>
-          {authUser && <span style={{ background: '#0d201d', color: '#53e6bc', border: '1px solid #1c4a41', padding: '8px 10px', borderRadius: '10px', fontWeight: '800', fontSize: '11px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser.avatar} {authUser.username}</span>}
-          <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-            Ana Sayfa 🚪
-          </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#fff', border: '1px solid #222d34', padding: '6px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>⚙️</button>
+          <button onClick={handleLeaveRoom} style={{ background: '#ff4757', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>Çık 🚪</button>
         </div>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+      {/* ODA ANA İÇERİK (FLEX ESNEK DÜZEN) */}
+      <div className="cm-room-container">
 
-        {/* SOL: PLAYER EKRANI */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
-
-          {/* ARAMA BAR */}
-          <div style={{ padding: '12px 20px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
+        {/* SOL/ÜST: VİDEO OYNATICI VESAİR */}
+        <div className="cm-player-section">
+          {/* Arama Bar */}
+          <div style={{ padding: '8px 12px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', gap: '8px', position: 'relative', zIndex: 10 }}>
             <input
               type="text"
-              placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
+              placeholder="🔍 Şarkı/Video aratın veya link yapıştırın..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              style={{ ...styles.input, flex: 1 }}
+              style={{ ...styles.input, flex: 1, padding: '8px 10px', fontSize: '12px' }}
             />
-
-            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
-            <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
+            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, padding: '8px 12px', fontSize: '12px' }}>▶ Çal</button>
+            <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f', padding: '8px 10px', fontSize: '12px' }}>+ Liste</button>
 
             {(searchResults.length > 0 || isSearching) && (
-              <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.card, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
+              <div style={{ position: 'absolute', top: '48px', left: '10px', right: '10px', background: '#111b21', border: '1px solid #222d34', borderRadius: '12px', padding: '10px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '12px' }}>Aranıyor...</div>}
                 {searchResults.map((song) => (
-                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#111b21', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34' }}>
-                    <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
-                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
-                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}>▶ Çal</button>
-                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Klasöre Ekle</button>
+                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b141a', padding: '6px 10px', borderRadius: '8px' }}>
+                    <img src={song.thumbnail} alt="" style={{ width: '45px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '11px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
+                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '4px 8px', fontSize: '11px' }}>▶</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a' }}>
+          {/* Oynatıcı Ekranı */}
+          <div className="cm-video-wrapper" style={{ flex: 1, position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {mediaType === 'none' && (
-              <div style={{ textAlign: 'center', color: '#8696a0' }}>
-                <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
+              <div style={{ textAlign: 'center', color: '#8696a0', padding: 20 }}>
+                <div style={{ fontSize: '42px', marginBottom: '8px' }}>🎵</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Medya aratın veya kütüphaneden seçin</div>
               </div>
             )}
 
@@ -1197,18 +745,21 @@ function App() {
             )}
 
             {reactions.map((r) => (
-              <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '42px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
+              <div key={r.id} style={{ position: 'absolute', bottom: '20px', left: `${r.left}%`, fontSize: '36px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
               </div>
             ))}
           </div>
 
-          <div style={{ padding: '14px 24px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
-            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1 }}>▶ Ortak Oynat</button>
-            <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {['❤️', '🔥', '😂', '😮', '👏', '😍'].map((emoji) => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '20px', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer' }}>
+          {/* Kontrol Butonları & Reaksiyonlar */}
+          <div className="cm-controls-bar" style={{ padding: '10px 16px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+              <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, padding: '8px 12px', fontSize: '12px' }}>▶ Ortak Oynat</button>
+              <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502', padding: '8px 12px', fontSize: '12px' }}>⏸ Ortak Durdur</button>
+            </div>
+            <div className="cm-reaction-btns" style={{ display: 'flex', gap: '4px' }}>
+              {['❤️', '🔥', '😂', '👏'].map((emoji) => (
+                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '16px', padding: '6px 10px', borderRadius: '8px' }}>
                   {emoji}
                 </button>
               ))}
@@ -1216,11 +767,11 @@ function App() {
           </div>
         </div>
 
-        {/* SAĞ: SOHBET */}
-        <div style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
+        {/* SAĞ/ALT: SOHBET VEYA KİTAPLIK */}
+        <div className="cm-chat-section">
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
+            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>💬 Sohbet</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
@@ -1229,37 +780,11 @@ function App() {
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
                   return (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        flexDirection: isMe ? 'row-reverse' : 'row',
-                        alignItems: 'flex-end',
-                        gap: '6px',
-                        maxWidth: '85%',
-                        alignSelf: isMe ? 'flex-end' : 'flex-start'
-                      }}
-                    >
-                      <span style={{ fontSize: '14px', paddingBottom: '1px' }}>{msg.avatar || '🐱'}</span>
-                      <div
-                        style={{
-                          background: isMe ? '#005c4b' : '#202c33',
-                          color: '#e9edef',
-                          padding: '5px 9px',
-                          borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                          minWidth: '60px'
-                        }}
-                      >
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '1px' }}>
-                          {msg.sender}
-                        </div>
-                        <div style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>
-                          {msg.text}
-                        </div>
-                        <div style={{ fontSize: '8px', color: '#8696a0', textAlign: 'right', marginTop: '2px' }}>
-                          {msg.time}
-                        </div>
+                    <div key={idx} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '6px', maxWidth: '85%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
+                      <span style={{ fontSize: '12px' }}>{msg.avatar || '🐱'}</span>
+                      <div style={{ background: isMe ? '#005c4b' : '#202c33', color: '#e9edef', padding: '6px 10px', borderRadius: isMe ? '10px 10px 2px 10px' : '10px 10px 10px 2px', fontSize: '12px' }}>
+                        <div style={{ fontSize: '9px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366' }}>{msg.sender}</div>
+                        <div>{msg.text}</div>
                       </div>
                     </div>
                   );
@@ -1267,49 +792,33 @@ function App() {
                 <div ref={chatBottomRef} />
               </div>
 
-              <form onSubmit={handleSendMessage} style={{ padding: '8px 10px', borderTop: '1px solid #222d34', display: 'flex', gap: '6px', background: currentTheme.cardBg }}>
-                <input type="text" placeholder="Bir mesaj yazın..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ ...styles.input, flex: 1, borderRadius: '16px', background: '#202c33', border: 'none', padding: '8px 12px', fontSize: '12px' }} />
-                <button type="submit" style={{ ...styles.buttonPrimary, borderRadius: '50%', width: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>➤</button>
+              <form onSubmit={handleSendMessage} style={{ padding: '8px', borderTop: '1px solid #222d34', display: 'flex', gap: '6px', background: currentTheme.cardBg }}>
+                <input type="text" placeholder="Mesaj yazın..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ ...styles.input, flex: 1, borderRadius: '16px', background: '#202c33', border: 'none', padding: '8px 12px', fontSize: '12px' }} />
+                <button type="submit" style={{ ...styles.buttonPrimary, borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>➤</button>
               </form>
             </div>
           ) : (
-            <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b141a' }}>
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+            <div style={{ flex: 1, padding: '10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', background: '#0b141a' }}>
+              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '5px 10px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
-                  >
-                    📁 {cat}
-                  </button>
+                  <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: '#fff', border: '1px solid #222d34', padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>📁 {cat}</button>
                 ))}
               </div>
 
-              <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '6px' }}>
-                <input type="text" placeholder="+ Yeni Klasör..." value={newCategoryInput} onChange={(e) => setNewCategoryInput(e.target.value)} style={{ ...styles.input, flex: 1, padding: '6px 10px', fontSize: '11px' }} />
-                <button type="submit" style={{ ...styles.buttonPrimary, padding: '6px 10px', fontSize: '11px' }}>Aç</button>
-              </form>
-
-              <div style={{ display: 'flex', gap: '4px', background: '#111b21', padding: '3px', borderRadius: '10px', border: '1px solid #222d34' }}>
-                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'sequence' ? currentTheme.primary : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>▶ Sırayla</button>
-                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'shuffle' ? currentTheme.primary : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔀 Rastgele</button>
-                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'alphabetical' ? currentTheme.primary : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔤 A-Z</button>
-              </div>
-
               {filteredPlaylist.length === 0 ? (
-                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş.</div>
+                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '10px' }}>Bu klasör boş.</div>
               ) : (
                 filteredPlaylist.map((item) => (
-                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
-                    <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}>🗑️</button>
+                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.2)' : '#111b21', border: '1px solid #222d34', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
+                    <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757' }}>🗑️</button>
                   </div>
                 ))
               )}
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
