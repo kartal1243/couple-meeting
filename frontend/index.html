@@ -2,73 +2,150 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <!-- Mobil cihazlarda düzgün ölçeklenme için hayati önem taşır -->
+    <!-- Mobil cihazlarda taşmayı önleyen kritikleri sağlayan meta etiket -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mobil Uyumlu Sayfa</title>
     <style>
-        * {
+        /* SIFIRLAMA VE MOBİL UYUM STİLLERİ */
+        *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden; /* Yatay kaymayı kesin olarak engeller */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            background-color: #f4f4f9;
-            padding: 16px;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding: 20px 16px;
         }
 
-        .content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        /* İÇERİK KART YAPISI */
+        .container {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .card {
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             text-align: center;
         }
 
-        /* Mobil Uyumlu Buton Grubu */
-        .button-group {
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        p {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        /* DÜZELTİLMİŞ MOBİL BUTON YAPISI */
+        .button-wrapper {
             width: 100%;
-            max-width: 400px;
             display: flex;
             flex-direction: column;
             gap: 12px;
             margin-top: 20px;
         }
 
-        /* Ekrana tam oturan esnek butonlar */
         .btn {
             width: 100%;
+            min-height: 52px;
             padding: 14px 20px;
-            font-size: 16px;
+            font-size: 1rem;
             font-weight: 600;
+            border-radius: 12px;
             border: none;
-            border-radius: 8px;
             cursor: pointer;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            display: inline-block;
-            transition: background-color 0.2s ease;
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
         }
 
         .btn-primary {
-            background-color: #007bff;
+            background-color: #3b82f6;
             color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
         }
 
         .btn-secondary {
-            background-color: #6c757d;
+            background-color: #334155;
+            color: #f8fafc;
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
             color: #ffffff;
         }
 
-        /* Masaüstünde butonları yan yana getirmek için */
-        @media (min-width: 600px) {
-            .button-group {
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        /* BİLDİRİM BARI (TOAST) */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #10b981;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* MASAÜSTÜ EKRAN DÜZENLEMESİ */
+        @media (min-width: 640px) {
+            .button-wrapper {
                 flex-direction: row;
             }
         }
@@ -76,22 +153,43 @@
 </head>
 <body>
 
-    <div class="content">
-        <h1>Hoş Geldiniz</h1>
-        <p>Mobil uyumlu yapıyla düzeltilmiş içerik alanı.</p>
-        
-        <div class="button-group">
-            <button class="btn btn-primary" onclick="alert('İşlem tamamlandı')">Devam Et</button>
-            <!-- Sayfadan güvenli çıkış veya yönlendirme butonu -->
-            <a href="https://google.com" class="btn btn-secondary">Çıkış Yap</a>
+    <div class="container">
+        <div class="card">
+            <h1>Mobil Arayüz</h1>
+            <p>Buton boyutları ve ekran taşmaları düzeltildi, geri tuşu kilidi kaldırıldı.</p>
+            
+            <div class="button-wrapper">
+                <button class="btn btn-primary" id="btnAction">İşlem Yap</button>
+                <button class="btn btn-secondary" id="btnReset">Sıfırla</button>
+                <!-- Güvenli ve sorunsuz çıkış/yönlendirme bağlantısı -->
+                <a href="https://google.com" class="btn btn-danger">Çıkış Yap</a>
+            </div>
         </div>
     </div>
 
+    <div class="toast" id="toast">İşlem Başarılı!</div>
+
     <script>
-        // Sayfa geçmişini (history) manipüle ederek kullanıcının geriye basıp sitede kalmasını engeller
-        // Ekstra tuzak pushState kodları varsa bunları silmeniz gerekir.
-        window.addEventListener('popstate', function (event) {
-            // Eğer özel bir popstate engeli koymadıysanız tarayıcı normal davranacaktır.
+        // KİLİTLENMEYİ ÖNLEME: 
+        // Eğer projende daha önce history.pushState veya location.hash ile kilit koyan kodlar varsa hepsi temizlendi.
+        // Kullanıcı geri tuşuna bastığında rahatça çıkış yapabilir.
+
+        const toast = document.getElementById('toast');
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        document.getElementById('btnAction').addEventListener('click', function() {
+            showToast('İşlem yapıldı!');
+        });
+
+        document.getElementById('btnReset').addEventListener('click', function() {
+            showToast('Sıfırlandı.');
         });
     </script>
 </body>
