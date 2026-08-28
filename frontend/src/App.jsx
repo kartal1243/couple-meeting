@@ -165,6 +165,36 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
+  // --- TELEFON ARKAPLAN OYNATMA (Media Session API) ---
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('play', () => {
+        handlePlay();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        handlePause();
+      });
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        handleMediaEnd();
+      });
+    }
+  }, [mediaSrc, mediaType, playMode, playlist]);
+
+  useEffect(() => {
+    if ('mediaSession' in navigator && mediaType !== 'none') {
+      const currentTrackTitle = playlist.find(i => i.src === mediaSrc)?.title || roomName || 'Couple Meeting Medya';
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrackTitle,
+        artist: 'Couple Meeting',
+        album: 'Canlı Birlikte Dinleme',
+        artwork: [
+          { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '96x96', type: 'image/png' },
+          { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '512x512', type: 'image/png' },
+        ]
+      });
+    }
+  }, [mediaSrc, mediaType, playlist, roomName]);
+
   const saveToRecentRooms = (targetRoomId) => {
     if (!targetRoomId) return;
     const updated = [targetRoomId, ...recentRooms.filter(r => r !== targetRoomId)].slice(0, 5);
