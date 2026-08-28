@@ -14,7 +14,6 @@ const THEMES = {
   rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
 };
 
-// Tüm sayfalara enjekte edilen global stil ve kusursuz boyutlandırma / responsive kuralları
 const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
   @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
@@ -30,6 +29,7 @@ const GLOBAL_CSS = `
     height: 100% !important;
     margin: 0;
     padding: 0;
+    scroll-behavior: smooth !important;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -65,7 +65,7 @@ const GLOBAL_CSS = `
   @keyframes cmOrb { 0% { transform: translate3d(-8%, 2%, 0) scale(1); } 50% { transform: translate3d(7%, -6%, 0) scale(1.08); } 100% { transform: translate3d(-8%, 2%, 0) scale(1); } }
   @keyframes cmReveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
   
-  .cm-landing { position:relative; overflow:hidden; background:#060810; min-height:100vh; }
+  .cm-landing { position:relative; overflow-x:hidden; background:#060810; min-height:100vh; }
   .cm-landing::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 20% 10%, rgba(0,168,132,.15), transparent 26%), radial-gradient(circle at 85% 15%, rgba(111,76,255,.16), transparent 24%), radial-gradient(circle at 50% 85%, rgba(0,168,132,.08), transparent 28%); pointer-events:none; }
   .cm-grid { position:absolute; inset:0; opacity:.18; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 90%); pointer-events:none; }
   .cm-orb { position:absolute; border-radius:999px; filter: blur(12px); pointer-events:none; animation: cmOrb 14s ease-in-out infinite; }
@@ -87,7 +87,7 @@ const GLOBAL_CSS = `
   .cm-proof-item { display:flex; gap:7px; align-items:center; }
   .cm-demo-wrap { position:relative; min-height:470px; display:flex; align-items:center; justify-content:center; animation:cmReveal .9s .12s ease both; }
   .cm-demo-card { width:min(100%,430px); border:1px solid rgba(255,255,255,.09); border-radius:28px; padding:14px; background:linear-gradient(180deg,rgba(20,29,36,.88),rgba(8,14,20,.88)); box-shadow:0 35px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter:blur(20px); transform:rotate(2deg); }
-  .cm-demo-player { height:236px; border-radius:20px; background: radial-gradient(circle at 45% 35%, rgba(0,168,132,.26), transparent 28%), linear-gradient(135deg,#111827,#071116 55%,#15102b); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .cm-demo-player { height:236px; border-radius:20px; background: radial-gradient(circle at 45% 35%, rgba(0,168,132,.26), transparent 28%), linear-gradient(135deg,#111827,#071116 55%,#15102b); position:relative; overflow:hidden; display:flex; align-items:center; justifyContent:center; }
   .cm-demo-play { width:68px; height:68px; border-radius:50%; display:grid; place-items:center; font-size:27px; color:#fff; background:rgba(255,255,255,.11); border:1px solid rgba(255,255,255,.15); box-shadow:0 16px 35px rgba(0,0,0,.3); }
   .cm-wave { position:absolute; left:14px; right:14px; bottom:16px; display:flex; align-items:flex-end; gap:4px; height:32px; }
   .cm-wave span { flex:1; border-radius:99px; background:linear-gradient(to top,rgba(0,168,132,.35),rgba(83,189,235,.8)); animation:cmPulse 1.4s ease-in-out infinite; }
@@ -108,7 +108,6 @@ const GLOBAL_CSS = `
   .cm-feature h3 { margin:0 0 8px; color:#fff; font-size:16px; }
   .cm-feature p { margin:0; color:#84909d; font-size:13px; line-height:1.65; }
 
-  /* KESİN MOBİL BOYUTLANDIRMA VE DÜZEN REFAKTÖRÜ (Oda İçi & Landing) */
   @media (max-width: 900px) { 
     .cm-hero { grid-template-columns:1fr; padding-top:35px; }
     .cm-demo-wrap { min-height:390px; }
@@ -118,7 +117,6 @@ const GLOBAL_CSS = `
   }
 
   @media (max-width: 768px) {
-    /* Oda içi ekran düzenini alt alta kaydırılabilir esnek yapıya çevir */
     .cm-room-container {
       height: 100vh !important;
       height: 100dvh !important;
@@ -134,12 +132,11 @@ const GLOBAL_CSS = `
     }
     .cm-player-pane {
       width: 100% !important;
-      min-height: 300px !important;
-      max-height: 45vh !important;
+      min-height: 280px !important;
     }
     .cm-sidebar-pane {
       width: 100% !important;
-      height: 460px !important;
+      height: 450px !important;
       border-left: none !important;
       border-top: 1px solid #222d34 !important;
     }
@@ -208,7 +205,6 @@ function App() {
 
   const [sidebarTab, setSidebarTab] = useState('chat');
 
-  // PWA Kurulum Butonu State'leri
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
@@ -267,6 +263,7 @@ function App() {
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const roomCardRef = useRef(null);
   const socketRef = useRef(null);
 
   if (!socketRef.current) {
@@ -306,7 +303,11 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
-  // --- ARKA PLAN SES VE KİLİT EKRANI KONTROLÜ (MEDIA SESSION API) ---
+  const scrollToRoomBox = (tabName) => {
+    setActiveTab(tabName);
+    roomCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
@@ -795,8 +796,8 @@ function App() {
             <h2>Birlikte izle.<br /><span className="cm-gradient-text">Birlikte dinle.</span><br />Birlikte hisset.</h2>
             <p className="cm-hero-sub">Sevgilinle ya da arkadaşlarınla tek bir odada buluş. YouTube videoları, müzikler, sohbet, reaksiyonlar ve ortak oynatma deneyimi tek yerde.</p>
             <div className="cm-hero-actions">
-              <button className="cm-hero-primary" onClick={() => setActiveTab('create')}>🚀 Hemen Oda Oluştur</button>
-              <button className="cm-hero-secondary" onClick={() => setActiveTab('join')}>🚪 Odaya Katıl</button>
+              <button className="cm-hero-primary" onClick={() => scrollToRoomBox('create')}>🚀 Hemen Oda Oluştur</button>
+              <button className="cm-hero-secondary" onClick={() => scrollToRoomBox('join')}>🚪 Odaya Katıl</button>
             </div>
             <div className="cm-proof-row">
               <span className="cm-proof-item">✓ Ücretsiz kullanım</span>
@@ -832,6 +833,41 @@ function App() {
           </div>
         )}
 
+        <section className="cm-section" style={{ paddingBottom: '10px' }}>
+          <div style={{ display:'flex', alignItems:'end', justifyContent:'space-between', gap:15, flexWrap:'wrap', marginBottom:16 }}>
+            <div>
+              <div style={{ color:'#64dfc1', fontSize:11, fontWeight:900, letterSpacing:'.8px', marginBottom:7 }}>CANLI AKIŞ</div>
+              <h3 className="cm-section-title" style={{ fontSize:'24px' }}>Aktif Odalar</h3>
+              <p className="cm-section-sub" style={{ margin:0, fontSize:'13px' }}>Şu an açık olan odalara doğrudan katılabilirsin.</p>
+            </div>
+          </div>
+
+          {publicRooms.length === 0 ? (
+            <div className="cm-glass" style={{ padding: '20px', borderRadius: '16px', textAlign: 'center', color: '#8696a0', fontSize: '13px', border: '1px solid rgba(255,255,255,.06)' }}>
+              Şu an açık aktif oda bulunmuyor. Kendi odanı oluşturup sevgilini/arkadaşını davet edebilirsin! 🚀
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+              {publicRooms.map((room) => (
+                <div key={room.roomId} className="cm-glass" style={{ padding: '16px', borderRadius: '16px', border: '1px solid rgba(0,168,132,.2)', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(17,27,33,.8)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '15px' }}>🚪 {room.roomName || room.roomId}</span>
+                    <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '999px', background: 'rgba(37,211,102,.12)', color: '#6ee7c2', border: '1px solid rgba(37,211,102,.2)', fontWeight: 'bold' }}>
+                      🟢 {room.userCount}/{room.maxUsers} Kişi
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => socket.emit('join_room', { roomId: room.roomId, password: '', userId, userCity, username, avatar: myAvatar })} 
+                    style={{ ...styles.buttonPrimary, padding: '8px', fontSize: '12px', width: '100%', textAlign: 'center' }}
+                  >
+                    Odaya Katıl →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="cm-section">
           <div style={{ display:'flex', alignItems:'end', justifyContent:'space-between', gap:15, flexWrap:'wrap', marginBottom:22 }}>
             <div>
@@ -847,62 +883,65 @@ function App() {
           </div>
         </section>
 
-        <section style={{ position:'relative', zIndex:2, maxWidth:1180, margin:'0 auto', padding:'10px 26px 65px' }}>
+        <section style={{ position:'relative', zIndex:2, maxWidth:1180, margin:'0 auto', padding:'10px 26px 45px' }}>
           <div className="cm-glass" style={{ borderRadius:28, padding:'28px', border:'1px solid rgba(0,168,132,.18)', display:'grid', gridTemplateColumns:'1fr auto', gap:20, alignItems:'center', background:'linear-gradient(135deg,rgba(13,23,29,.82),rgba(10,15,22,.72))' }}>
             <div>
               <div style={{ color:'#fff', fontSize:22, fontWeight:900, marginBottom:7 }}>Hazırsan kendi odanı oluştur. 💚</div>
               <div style={{ color:'#7f8b99', fontSize:13 }}>Oda adını belirle, arkadaşını/sevgilini davet et ve birlikte eğlenmeye başla.</div>
             </div>
-            <button className="cm-hero-primary" onClick={() => setActiveTab('create')}>Odamı Oluştur →</button>
+            <button className="cm-hero-primary" onClick={() => scrollToRoomBox('create')}>Odamı Oluştur →</button>
           </div>
         </section>
 
-        <section style={{ position:'relative', zIndex:3, maxWidth:660, margin:'0 auto', padding:'0 16px 80px' }}>
-          <div className="cm-glass" style={{ ...styles.card, borderRadius:24, border:'1px solid rgba(255,255,255,.08)' }}>
-            <div style={{ display:'flex', gap:7, background:'#0b141a', padding:5, borderRadius:13, border:'1px solid #222d34', marginBottom:20 }}>
-              <button onClick={() => setActiveTab('create')} style={{ flex:1, padding:12, borderRadius:10, border:'none', background:activeTab === 'create' ? '#00a884' : 'transparent', color:activeTab === 'create' ? '#fff' : '#8696a0', fontWeight:'bold', cursor:'pointer' }}>🚀 Oda Oluştur</button>
-              <button onClick={() => setActiveTab('join')} style={{ flex:1, padding:12, borderRadius:10, border:'none', background:activeTab === 'join' ? '#6c5ce7' : 'transparent', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>🚪 Odaya Katıl</button>
-            </div>
-            {activeTab === 'create' ? (
-              <form onSubmit={handleCreateRoomSubmit} style={{ display:'grid', gap:12 }}>
-                <input type="text" placeholder="Oda ismi (ör. askimiz)" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
-                <input type="password" placeholder="Şifre (isteğe bağlı)" value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
-                <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:12, alignItems:'center', background:'#0b141a', padding:'12px 14px', borderRadius:13, border:'1px solid #222d34' }}>
-                  <span style={{ color:'#8696a0', fontSize:12 }}>Kişi sınırı</span>
-                  <select value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} style={{ background:'transparent', border:'none', color:'#67dfc1', fontWeight:800, outline:'none' }}>
-                    <option value="2" style={{ background:'#111b21' }}>2 Kişi</option>
-                    <option value="4" style={{ background:'#111b21' }}>4 Kişi</option>
-                    <option value="8" style={{ background:'#111b21' }}>8 Kişi</option>
-                  </select>
-                </div>
-                <button type="submit" className="cm-hero-primary" style={{ width:'100%' }}>Odayı Başlat ve Bağlan 🚀</button>
-              </form>
-            ) : (
-              <form onSubmit={handleJoinRoomSubmit} style={{ display:'grid', gap:12 }}>
-                <input type="text" placeholder="Oda ismini gir" value={joinRoomInput} onChange={(e) => setJoinRoomInput(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
-                <input type="password" placeholder="Şifre (varsa)" value={joinPassInput} onChange={(e) => setJoinPassInput(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
-                <button type="submit" style={{ ...styles.buttonPrimary, width:'100%', padding:'14px', background:'linear-gradient(135deg,#6c5ce7,#8f7cff)' }}>Odaya Giriş Yap 🚪</button>
-              </form>
-            )}
-            {recentRooms.length > 0 && (
-              <div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #222d34' }}>
-                <div style={{ fontSize:10, color:'#8696a0', fontWeight:'bold', marginBottom:8 }}>SON GİRDİĞİN ODALAR</div>
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                  {recentRooms.map((rId) => <button key={rId} onClick={() => socket.emit('join_room', { roomId:rId, password:'', userId, userCity, username, avatar:myAvatar })} style={{ background:'#202c33', color:'#63d9bd', border:'1px solid rgba(0,168,132,.2)', padding:'7px 11px', borderRadius:9, cursor:'pointer', fontWeight:'bold', fontSize:11 }}>🚪 {rId}</button>)}
-                </div>
+        <div ref={roomCardRef} style={{ scrollMarginTop: '40px' }}>
+          <section style={{ position:'relative', zIndex:3, maxWidth:660, margin:'0 auto', padding:'0 16px 80px' }}>
+            <div className="cm-glass" style={{ ...styles.card, borderRadius:24, border:'1px solid rgba(255,255,255,.08)' }}>
+              <div style={{ display:'flex', gap:7, background:'#0b141a', padding:5, borderRadius:13, border:'1px solid #222d34', marginBottom:20 }}>
+                <button onClick={() => setActiveTab('create')} style={{ flex:1, padding:12, borderRadius:10, border:'none', background:activeTab === 'create' ? '#00a884' : 'transparent', color:activeTab === 'create' ? '#fff' : '#8696a0', fontWeight:'bold', cursor:'pointer' }}>🚀 Oda Oluştur</button>
+                <button onClick={() => setActiveTab('join')} style={{ flex:1, padding:12, borderRadius:10, border:'none', background:activeTab === 'join' ? '#6c5ce7' : 'transparent', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>🚪 Odaya Katıl</button>
               </div>
-            )}
-          </div>
-        </section>
+              {activeTab === 'create' ? (
+                <form onSubmit={handleCreateRoomSubmit} style={{ display:'grid', gap:12 }}>
+                  <input type="text" placeholder="Oda ismi (ör. askimiz)" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
+                  <input type="password" placeholder="Şifre (isteğe bağlı)" value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:12, alignItems:'center', background:'#0b141a', padding:'12px 14px', borderRadius:13, border:'1px solid #222d34' }}>
+                    <span style={{ color:'#8696a0', fontSize:12 }}>Kişi sınırı</span>
+                    <select value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} style={{ background:'transparent', border:'none', color:'#67dfc1', fontWeight:800, outline:'none' }}>
+                      <option value="2" style={{ background:'#111b21' }}>2 Kişi</option>
+                      <option value="4" style={{ background:'#111b21' }}>4 Kişi</option>
+                      <option value="8" style={{ background:'#111b21' }}>8 Kişi</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="cm-hero-primary" style={{ width:'100%' }}>Odayı Başlat ve Bağlan 🚀</button>
+                </form>
+              ) : (
+                <form onSubmit={handleJoinRoomSubmit} style={{ display:'grid', gap:12 }}>
+                  <input type="text" placeholder="Oda ismini gir" value={joinRoomInput} onChange={(e) => setJoinRoomInput(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
+                  <input type="password" placeholder="Şifre (varsa)" value={joinPassInput} onChange={(e) => setJoinPassInput(e.target.value)} style={{ ...styles.input, padding:'13px 14px' }} />
+                  <button type="submit" style={{ ...styles.buttonPrimary, width:'100%', padding:'14px', background:'linear-gradient(135deg,#6c5ce7,#8f7cff)' }}>Odaya Giriş Yap 🚪</button>
+                </form>
+              )}
+              {recentRooms.length > 0 && (
+                <div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #222d34' }}>
+                  <div style={{ fontSize:10, color:'#8696a0', fontWeight:'bold', marginBottom:8 }}>SON GİRDİĞİN ODALAR</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {recentRooms.map((rId) => <button key={rId} onClick={() => socket.emit('join_room', { roomId:rId, password:'', userId, userCity, username, avatar:myAvatar })} style={{ background:'#202c33', color:'#63d9bd', border:'1px solid rgba(0,168,132,.2)', padding:'7px 11px', borderRadius:9, cursor:'pointer', fontWeight:'bold', fontSize:11 }}>🚪 {rId}</button>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="cm-room-container" style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `\n        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }\n      `}</style>
+      <style>{GLOBAL_CSS + `
+        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
+      `}</style>
 
-      {/* KLASÖR POP-UP */}
       {showFolderModal && pendingMediaItem && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ ...styles.card, width: '100%', maxWidth: '380px', textAlign: 'left' }}>
@@ -925,7 +964,6 @@ function App() {
         </div>
       )}
 
-      {/* SAĞ ÜST ODA AYARLARI MODALI */}
       {showSettingsModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ ...styles.card, width: '100%', maxWidth: '440px', textAlign: 'left' }}>
@@ -980,7 +1018,6 @@ function App() {
         </div>
       )}
 
-      {/* HEADER BAR */}
       <header className="cm-header-bar" style={{ height: '60px', padding: '0 24px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', overflow: 'hidden' }} onClick={handleLeaveRoom}>
           <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>❤️⚡</div>
@@ -1006,13 +1043,10 @@ function App() {
         </div>
       </header>
 
-      {/* ANA ODA DÜZENİ (MOBİL UYUMLU ESNEK YAPI) */}
       <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
 
-        {/* SOL: PLAYER EKRANI */}
         <div className="cm-player-pane" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative', overflow: 'hidden' }}>
 
-          {/* ARAMA BAR */}
           <div className="cm-search-bar" style={{ padding: '10px 16px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }}>
             <input
               type="text"
@@ -1063,12 +1097,14 @@ function App() {
             ))}
           </div>
 
-          <div style={{ padding: '10px 16px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, padding: '8px 10px', fontSize: '12px' }}>▶ Oynat</button>
-            <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502', padding: '8px 10px', fontSize: '12px' }}>⏸ Durdur</button>
-            <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ padding: '10px 16px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '180px' }}>
+              <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, padding: '8px 10px', fontSize: '12px' }}>▶ Oynat</button>
+              <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502', padding: '8px 10px', fontSize: '12px' }}>⏸ Durdur</button>
+            </div>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'nowrap' }}>
               {['❤️', '🔥', '😂', '👏'].map((emoji) => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '16px', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}>
+                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '15px', padding: '6px 9px', borderRadius: '8px', cursor: 'pointer' }}>
                   {emoji}
                 </button>
               ))}
@@ -1076,7 +1112,6 @@ function App() {
           </div>
         </div>
 
-        {/* SAĞ: SOHBET */}
         <div className="cm-sidebar-pane" style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a', flexShrink: 0 }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>💬 Sohbet</button>
