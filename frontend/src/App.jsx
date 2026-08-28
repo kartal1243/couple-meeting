@@ -180,18 +180,69 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
-  // --- ARKA PLAN SES VE KİLİT EKRANI KONTROLÜ (MEDIA SESSION API) ---
+  // --- TELEFON KİLİT EKRANI / ARKA PLAN MEDYA KONTROLÜ ---
+  // Media Session API, destekleyen Android/iOS tarayıcılarında kilit ekranındaki
+  // oynat/durdur/sonraki kontrollerini medya oynatıcımıza bağlar.
   useEffect(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
-      navigator.mediaSession.setActionHandler('pause', () => { handlePause(); });
-      navigator.mediaSession.setActionHandler('nexttrack', () => { handleMediaEnd(); });
-    }
+    if (!('mediaSession' in navigator)) return;
+
+    const safeSetHandler = (action, handler) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (e) {
+        // Tarayıcı bazı action'ları desteklemeyebilir. Uygulamanın çalışmasını bozma.
+      }
+    };
+
+    safeSetHandler('play', () => handlePlay());
+    safeSetHandler('pause', () => handlePause());
+    safeSetHandler('nexttrack', () => handleMediaEnd());
+    safeSetHandler('previoustrack', () => {
+      if (!playlist.length) return;
+      const activeList = playMode === 'alphabetical'
+        ? [...playlist].sort((a, b) => a.title.localeCompare(b.title, 'tr'))
+        : playlist;
+      const currentIndex = activeList.findIndex(item => item.src === mediaSrc);
+      const previousTrack = activeList[(currentIndex - 1 + activeList.length) % activeList.length];
+      if (previousTrack) {
+        setMediaType(previousTrack.type);
+        setMediaSrc(previousTrack.src);
+        sendAction('CHANGE_MEDIA', { type: previousTrack.type, src: previousTrack.src });
+      }
+    });
+
+    safeSetHandler('seekbackward', (details) => {
+      const offset = details.seekOffset || 10;
+      if (mediaType === 'youtube' && ytPlayerRef.current) {
+        const nextTime = Math.max(0, ytPlayerRef.current.getCurrentTime() - offset);
+        ytPlayerRef.current.seekTo(nextTime, true);
+      } else if (mediaType === 'custom_video' && customVideoRef.current) {
+        customVideoRef.current.currentTime = Math.max(0, customVideoRef.current.currentTime - offset);
+      }
+    });
+
+    safeSetHandler('seekforward', (details) => {
+      const offset = details.seekOffset || 10;
+      if (mediaType === 'youtube' && ytPlayerRef.current) {
+        ytPlayerRef.current.seekTo(ytPlayerRef.current.getCurrentTime() + offset, true);
+      } else if (mediaType === 'custom_video' && customVideoRef.current) {
+        customVideoRef.current.currentTime += offset;
+      }
+    });
+
+    return () => {
+      const actions = ['play', 'pause', 'nexttrack', 'previoustrack', 'seekbackward', 'seekforward'];
+      actions.forEach((action) => {
+        try { navigator.mediaSession.setActionHandler(action, null); } catch (e) {}
+      });
+    };
   }, [mediaSrc, mediaType, playMode, playlist]);
 
   useEffect(() => {
-    if ('mediaSession' in navigator && mediaType !== 'none') {
-      const currentTrackTitle = playlist.find(i => i.src === mediaSrc)?.title || roomName || 'Couple Meeting Medya';
+    if (!('mediaSession' in navigator) || mediaType === 'none') return;
+
+    const currentTrackTitle = playlist.find(i => i.src === mediaSrc)?.title || roomName || 'Couple Meeting Medya';
+    try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrackTitle,
         artist: 'Couple Meeting',
@@ -201,8 +252,30 @@ function App() {
           { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '512x512', type: 'image/png' },
         ]
       });
-    }
+      navigator.mediaSession.playbackState = 'paused';
+    } catch (e) {}
   }, [mediaSrc, mediaType, playlist, roomName]);
+
+  // Telefon ekranı kapanınca uygulama görünür olmaktan çıksa bile video/audio
+  // elementini durdurmaya çalışma. Destekleyen tarayıcılar oynatmayı arka planda sürdürebilir.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') return;
+
+      // Sayfa tekrar öne geldiğinde medya zaten oynuyorsa kilit ekranı durumunu yenile.
+      if ('mediaSession' in navigator) {
+        try {
+          const playing = mediaType === 'youtube'
+            ? ytPlayerRef.current?.getPlayerState?.() === 1
+            : !!customVideoRef.current && !customVideoRef.current.paused;
+          navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+        } catch (e) {}
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [mediaType]);
 
   const saveToRecentRooms = (targetRoomId) => {
     if (!targetRoomId) return;
@@ -513,19 +586,31 @@ function App() {
 
   const handlePlay = () => {
     let time = 0;
+
     if (mediaType === 'youtube' && ytPlayerRef.current) {
       time = ytPlayerRef.current.getCurrentTime();
       ytPlayerRef.current.playVideo();
     } else if (mediaType === 'custom_video' && customVideoRef.current) {
       time = customVideoRef.current.currentTime;
-      customVideoRef.current.play();
+      const playPromise = customVideoRef.current.play();
+      if (playPromise?.catch) playPromise.catch(() => {});
     }
+
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+    }
+
     sendAction('PLAY', { time });
   };
 
   const handlePause = () => {
     if (mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
     if (mediaType === 'custom_video') customVideoRef.current?.pause();
+
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+    }
+
     sendAction('PAUSE', {});
   };
 
@@ -887,11 +972,61 @@ function App() {
             )}
 
             {mediaType === 'youtube' && (
-              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 1 } }} style={{ width: '100%', height: '100%' }} onReady={(e) => { ytPlayerRef.current = e.target; }} onEnd={handleMediaEnd} />
+              <YouTube
+                videoId={mediaSrc}
+                opts={{
+                  height: '100%',
+                  width: '100%',
+                  playerVars: {
+                    autoplay: 1,
+                    controls: 1,
+                    playsinline: 1,
+                    enablejsapi: 1,
+                    rel: 0,
+                    modestbranding: 1
+                  }
+                }}
+                style={{ width: '100%', height: '100%' }}
+                onReady={(e) => {
+                  ytPlayerRef.current = e.target;
+                  if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'paused'; } catch (err) {}
+                  }
+                }}
+                onPlay={() => {
+                  if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'playing'; } catch (err) {}
+                  }
+                }}
+                onPause={() => {
+                  if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'paused'; } catch (err) {}
+                  }
+                }}
+                onEnd={handleMediaEnd}
+              />
             )}
 
             {mediaType === 'custom_video' && (
-              <video ref={customVideoRef} src={mediaSrc} controls onEnded={handleMediaEnd} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <video
+                ref={customVideoRef}
+                src={mediaSrc}
+                controls
+                playsInline
+                preload="auto"
+                onPlay={() => {
+                  if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'playing'; } catch (err) {}
+                  }
+                }}
+                onPause={() => {
+                  if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'paused'; } catch (err) {}
+                  }
+                }}
+                onEnded={handleMediaEnd}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             )}
 
             {reactions.map((r) => (
