@@ -62,7 +62,30 @@ function verifyPassword(password, stored) {
     return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(check, 'hex'));
   } catch { return false; }
 }
-function createToken() { return crypto.randomBytes(32).toString('hex'); }
+function createToken(username) {
+  // Eski tokenları temizle (aynı kullanıcıya ait)
+  for (const [t, u] of Object.entries(socialData.tokens)) {
+    if (u === username) delete socialData.tokens[t];
+  }
+  return crypto.randomBytes(32).toString('hex');
+}
+const TOKEN_CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 saatte bir
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 günden eski tokenları sil
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [t, u] of Object.entries(socialData.tokens)) {
+    const user = socialData.users[u];
+    if (!user || (now - user.createdAt) > TOKEN_MAX_AGE) {
+      delete socialData.tokens[t];
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`🧹 ${cleaned} eski token temizlendi.`);
+    saveSocialData();
+  }
+}, TOKEN_CLEANUP_INTERVAL);
 function publicUser(u) { if (!u) return null; return { username:u.username, email:u.email, avatar:u.avatar || '🐱', bio:u.bio || '', status:u.status || '', createdAt:u.createdAt }; }
 function getUserByToken(token) { const username = socialData.tokens[token]; return username ? socialData.users[username] : null; }
 function getFriends(username) {
@@ -142,7 +165,7 @@ io.on('connection', (socket) => {
     if (socialData.emailToUsername[cleanEmail]) return socket.emit('auth_result', { ok:false, message:'Bu e-posta zaten kayıtlı.' });
     socialData.users[cleanUsername] = { username:cleanUsername, email:cleanEmail, passwordHash:hashPassword(password), avatar:avatar || '🐱', bio:String(bio || '').trim().slice(0,120), status:'', createdAt:Date.now() };
     socialData.emailToUsername[cleanEmail] = cleanUsername;
-    const token = createToken(); socialData.tokens[token] = cleanUsername;
+    const token = createToken(cleanUsername); socialData.tokens[token] = cleanUsername;
     saveSocialData();
     socket.socialUsername = cleanUsername;
     socket.emit('auth_result', { ok:true, user:publicUser(socialData.users[cleanUsername]), token });
@@ -153,7 +176,7 @@ io.on('connection', (socket) => {
     const username = socialData.emailToUsername[cleanEmail];
     const user = username ? socialData.users[username] : null;
     if (!user || !verifyPassword(password || '', user.passwordHash)) return socket.emit('auth_result', { ok:false, message:'E-posta veya şifre hatalı.' });
-    const token = createToken(); socialData.tokens[token] = username;
+    const token = createToken(username); socialData.tokens[token] = username;
     socket.socialUsername = username;
     socket.emit('auth_result', { ok:true, user:publicUser(user), token });
     socket.emit('friends_update', { friends:getFriends(username), requests:Object.values(socialData.friendRequests).filter(r => r.toUsername === username && r.status === 'pending') });
