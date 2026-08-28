@@ -14,6 +14,7 @@ const THEMES = {
   rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
 };
 
+// Tüm sayfalara enjekte edilen global stil: hover/focus animasyonları, cam efektleri, scrollbar
 const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
   @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
@@ -41,31 +42,18 @@ const GLOBAL_CSS = `
     animation: shimmer 4s linear infinite;
   }
   .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
-  
-  html, body { overflow-x: hidden !important; width: 100% !important; margin: 0; padding: 0; }
-  * { box-sizing: border-box; min-width: 0; }
-
+  /* MOBİL DÜZELTMELER: Yatay kaydırmayı tamamen engelle */
+  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+  * { min-width: 0; }
   @media (max-width: 768px) {
-    .main-room-layout {
-      flex-direction: column !important;
-      height: auto !important;
-      overflow-y: auto !important;
-    }
-    .player-section {
-      width: 100% !important;
-      height: 300px !important;
-      min-height: 300px !important;
-    }
-    .sidebar-section {
-      width: 100% !important;
-      height: 450px !important;
-      border-left: none !important;
-      border-top: 1px solid #222d34;
-    }
-    header { padding: 10px 14px !important; flex-wrap: wrap !important; }
+    header { padding: 12px 16px !important; flex-direction: column !important; gap: 10px !important; text-align: center; }
     h1 { font-size: 18px !important; }
-  }
-`;
+    section { margin-top: 24px !important; margin-bottom: 20px !important; padding: 0 14px !important; }
+    h2 { font-size: 30px !important; letter-spacing: -0.5px !important; }
+    p { font-size: 15px !important; padding: 0 6px; }
+    .cm-glass { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+    input, select, button { max-width: 100%; box-sizing: border-box !important; }
+  }`;
 
 function App() {
   const [userId] = useState(() => {
@@ -87,11 +75,14 @@ function App() {
   const [activeTab, setActiveTab] = useState('create');
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
+
   const [sidebarTab, setSidebarTab] = useState('chat');
 
+  // PWA Kurulum Butonu State'leri
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
@@ -174,7 +165,7 @@ function App() {
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) {
-      alert('Tarayıcınızın menüsünden (sağ üstteki üç nokta) "Ana Ekrana Ekle" veya "Uygulamayı Yükle" seçeneğini seçerek uygulamayı indirebilirsiniz!');
+      alert('Tarayıcınızın menüsünden (sağ üst üç nokta) "Ana Ekrana Ekle" veya "Uygulamayı Yükle" seçeneğini seçerek siteyi telefonunuza indirebilirsiniz!');
       return;
     }
     deferredPrompt.prompt();
@@ -189,6 +180,7 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
+  // --- ARKA PLAN SES VE KİLİT EKRANI KONTROLÜ (MEDIA SESSION API) ---
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
@@ -203,7 +195,7 @@ function App() {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrackTitle,
         artist: 'Couple Meeting',
-        album: 'Canlı Birlikte Dinleme',
+        album: 'Birlikte Dinleme Odası',
         artwork: [
           { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '96x96', type: 'image/png' },
           { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '512x512', type: 'image/png' },
@@ -481,6 +473,7 @@ function App() {
         item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
       }
     }
+
     if (item) {
       setPendingMediaItem(item);
       setModalTargetCategory(selectedCategory || 'Genel');
@@ -568,25 +561,26 @@ function App() {
     socket.emit('update_room_settings', { roomId, newHostUserId: targetUserId });
   };
 
-  const filteredPlaylist = useMemo(() => {
+  const getFilteredPlaylist = () => {
     if (!Array.isArray(playlist)) return [];
     let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
     if (playMode === 'alphabetical') {
       return [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
     }
     return filtered;
-  }, [playlist, selectedCategory, playMode]);
+  };
+  const filteredPlaylist = useMemo(getFilteredPlaylist, [playlist, selectedCategory, playMode]);
 
   const styles = {
     app: {
       background: currentTheme.bg,
       color: '#e9edef',
       width: '100vw',
-      minHeight: '100vh',
+      height: '100vh',
       margin: 0,
       padding: 0,
       boxSizing: 'border-box',
-      overflowX: 'hidden',
+      overflow: 'hidden',
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
     card: {
@@ -620,7 +614,7 @@ function App() {
     return (
       <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
         <style>{GLOBAL_CSS}</style>
-        <header style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
+        <header className="cm-landing-header" style={{ padding: '20px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#090d16' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setInRoom(false)}>
             <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ff4757, #00a884)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>❤️⚡</div>
             <div>
@@ -628,6 +622,7 @@ function App() {
               <span style={{ fontSize: '11px', color: '#00a884', fontWeight: 'bold' }}>Aynı Anda İzle & Dinle</span>
             </div>
           </div>
+
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             {showInstallBtn && (
               <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '10px 16px', borderRadius: '12px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', boxShadow: '0 4px 12px rgba(37,211,102,0.4)' }}>
@@ -642,12 +637,12 @@ function App() {
         </header>
 
         {showProfileModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
-            <div style={{ ...styles.card, width: '100%', maxWidth: '420px', textAlign: 'center' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ ...styles.card, width: '420px', textAlign: 'center' }}>
               <h3 style={{ margin: '0 0 16px 0', color: '#00a884', fontSize: '20px', fontWeight: '800' }}>👤 Çift Profil Kartı</h3>
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ fontSize: '12px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>AVATAR SEÇİN</label>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#0b141a', padding: '12px', borderRadius: '14px', border: '1px solid #222d34', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#0b141a', padding: '12px', borderRadius: '14px', border: '1px solid #222d34' }}>
                   {AVATARS.map((emoji) => (
                     <span key={emoji} onClick={() => handleAvatarSelect(emoji)} style={{ fontSize: '26px', padding: '6px', borderRadius: '10px', cursor: 'pointer', background: myAvatar === emoji ? '#00a884' : 'transparent' }}>
                       {emoji}
@@ -670,24 +665,27 @@ function App() {
           </div>
         )}
 
-        <section style={{ width: '100%', maxWidth: '1100px', margin: '40px auto', padding: '0 20px', textAlign: 'center', boxSizing: 'border-box' }}>
+        <section style={{ width: '100%', maxWidth: '1100px', margin: '50px auto 40px auto', padding: '0 24px', textAlign: 'center', boxSizing: 'border-box' }}>
           <span style={{ background: 'rgba(0, 168, 132, 0.15)', color: '#00a884', padding: '6px 18px', borderRadius: '30px', border: '1px solid rgba(0, 168, 132, 0.3)', fontWeight: 'bold', fontSize: '13px' }}>
             ✨ Uzak Mesafeleri Yakınlaştıran Canlı Birlikte İzleme Platformu
           </span>
-          <h2 style={{ fontSize: 'clamp(26px, 5vw, 48px)', fontWeight: '900', color: '#fff', margin: '20px 0 16px 0', letterSpacing: '-1px', lineHeight: '1.2' }}>
+
+          <h2 style={{ fontSize: 'clamp(28px, 7vw, 52px)', fontWeight: '900', color: '#fff', margin: '20px 0 16px 0', letterSpacing: '-1.5px', lineHeight: '1.2', wordBreak: 'break-word', padding: '0 8px' }}>
             Aynı Anda İzleyin & Dinleyin,<br />
             <span className="cm-gradient-text">Aramızdaki Mesafeleri Unutun.</span>
           </h2>
-          <p style={{ color: '#8696a0', fontSize: '16px', maxWidth: '720px', margin: '0 auto 30px auto', lineHeight: '1.6' }}>
+
+          <p style={{ color: '#8696a0', fontSize: '18px', maxWidth: '720px', margin: '0 auto 40px auto', lineHeight: '1.6' }}>
             Sevgilinizle veya arkadaşlarınızla YouTube videolarını, dizileri ve müzikleri kalıcı listeler halinde düzenleyin.
           </p>
 
-          <div className="cm-glass" style={{ ...styles.card, width: '100%', maxWidth: '520px', margin: '0 auto', textAlign: 'left', border: '1px solid #00a88444', boxSizing: 'border-box' }}>
+          <div className="cm-glass" style={{ ...styles.card, width: '100%', maxWidth: '560px', margin: '0 auto 60px auto', textAlign: 'left', border: '1px solid #00a88444', boxSizing: 'border-box' }}>
             {errorMessage && (
               <div style={{ background: '#ea0038', color: '#fff', padding: '12px 16px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '20px', fontSize: '14px' }}>
                 {errorMessage}
               </div>
             )}
+
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: '#0b141a', padding: '6px', borderRadius: '14px', border: '1px solid #222d34' }}>
               <button onClick={() => setActiveTab('create')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: activeTab === 'create' ? '#00a884' : 'transparent', color: activeTab === 'create' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer' }}>
                 🚀 Oda Oluştur
@@ -701,6 +699,7 @@ function App() {
               <form onSubmit={handleCreateRoomSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <input type="text" placeholder="Oda İsmi Belirleyin" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={styles.input} />
                 <input type="password" placeholder="Şifre (İsteğe Bağlı)" value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} style={styles.input} />
+
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0b141a', padding: '12px 16px', borderRadius: '12px', border: '1px solid #222d34' }}>
                   <span style={{ fontSize: '13px', color: '#8696a0' }}>Kişi Sınırı:</span>
                   <select value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#00a884', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}>
@@ -709,6 +708,7 @@ function App() {
                     <option value="8" style={{ background: '#111b21' }}>8 Kişi (Kalabalık)</option>
                   </select>
                 </div>
+
                 <button type="submit" style={styles.buttonPrimary}>Odayı Başlat ve Bağlan 🚀</button>
               </form>
             ) : (
@@ -739,20 +739,23 @@ function App() {
 
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS}</style>
+      <style>{GLOBAL_CSS + `\n        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n      `}</style>
 
+      {/* KLASÖR POP-UP */}
       {showFolderModal && pendingMediaItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
-          <div style={{ ...styles.card, width: '100%', maxWidth: '400px', textAlign: 'left' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ ...styles.card, width: '400px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 12px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
             <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px' }}>
               <strong>{pendingMediaItem.title}</strong> öğesini eklemek istediğiniz klasörü seçin:
             </p>
+
             <div style={{ marginBottom: '20px' }}>
               <select value={modalTargetCategory} onChange={(e) => setModalTargetCategory(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', fontWeight: 'bold', color: currentTheme.primary, cursor: 'pointer' }}>
                 {categories.map(cat => <option key={cat} value={cat} style={{ background: '#111b21', color: '#fff' }}>📁 {cat}</option>)}
               </select>
             </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setShowFolderModal(false)} style={{ flex: 1, padding: '10px', background: '#202c33', color: '#fff', border: '1px solid #222d34', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>İptal</button>
               <button onClick={confirmAddToPlaylist} style={{ flex: 1, ...styles.buttonPrimary }}>Listeye Kaydet ➕</button>
@@ -761,16 +764,19 @@ function App() {
         </div>
       )}
 
+      {/* SAĞ ÜST ODA AYARLARI MODALI */}
       {showSettingsModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
-          <div style={{ ...styles.card, width: '100%', maxWidth: '460px', textAlign: 'left' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ ...styles.card, width: '460px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 16px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>⚙️ Oda Ayarları & Kişiler</h3>
+
             {hostUserId === userId ? (
               <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA İSMİ DEĞİŞTİR</label>
                   <input type="text" value={editRoomNameInput || roomName} onChange={(e) => setEditRoomNameInput(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' }} />
                 </div>
+
                 <div>
                   <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA TEMASI SEÇ</label>
                   <select value={roomTheme} onChange={(e) => setRoomTheme(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
@@ -780,6 +786,7 @@ function App() {
                     <option value="rose" style={{ background: '#111b21' }}>Romantik Kırmızı</option>
                   </select>
                 </div>
+
                 <button onClick={handleSaveSettings} style={{ ...styles.buttonPrimary, width: '100%' }}>Ayarları Kaydet</button>
               </div>
             ) : (
@@ -787,6 +794,7 @@ function App() {
                 ℹ️ Oda adını ve temasını sadece oda yöneticisi değiştirebilir.
               </div>
             )}
+
             <div>
               <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>ODADAKİ KİŞİLER ({roomUsersList.length})</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
@@ -805,62 +813,65 @@ function App() {
                 ))}
               </div>
             </div>
+
             <button onClick={() => setShowSettingsModal(false)} style={{ background: '#202c33', color: '#fff', border: '1px solid #222d34', width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', marginTop: '16px' }}>Kapat</button>
           </div>
         </div>
       )}
 
       {/* HEADER BAR */}
-      <header style={{ height: '60px', padding: '0 20px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
+      <header style={{ height: '60px', padding: '0 28px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
-          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '16px', fontWeight: '900', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>{roomName}</h2>
-          <span style={{ fontSize: '10px', background: currentTheme.cardBg, color: currentTheme.primary, padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} /> {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '18px', fontWeight: '900' }}>{roomName}</h2>
+
+          <span style={{ fontSize: '11px', background: currentTheme.cardBg, color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} /> Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {showInstallBtn && (
-            <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>
-              📲 İndir
+            <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+              📲 Uygulamayı İndir
             </button>
           )}
-          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
-            ⚙️ Ayarlar
+          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+            ⚙️ Oda Ayarları
           </button>
-          <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+          <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
             Ana Sayfa 🚪
           </button>
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="main-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
 
         {/* SOL: PLAYER EKRANI */}
-        <div className="player-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative', minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
+
           {/* ARAMA BAR */}
-          <div style={{ padding: '10px 14px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '8px', alignItems: 'center', position: 'relative', flexWrap: 'wrap' }}>
+          <div style={{ padding: '12px 20px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
             <input
               type="text"
-              placeholder="🔍 Şarkı/Dizi Adı veya Link..."
+              placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              style={{ ...styles.input, flex: 1, minWidth: '140px' }}
+              style={{ ...styles.input, flex: 1 }}
             />
-            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: currentTheme.primary, padding: '8px 12px', fontSize: '12px' }}>▶ Çal</button>
-            <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f', padding: '8px 12px', fontSize: '12px' }}>+ Ekle</button>
+
+            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
+            <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
 
             {(searchResults.length > 0 || isSearching) && (
-              <div style={{ position: 'absolute', top: '56px', left: '10px', right: '10px', ...styles.card, padding: '12px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
-                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '12px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
+              <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.card, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
                 {searchResults.map((song) => (
-                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#111b21', padding: '6px 10px', borderRadius: '8px', border: '1px solid #222d34' }}>
-                    <img src={song.thumbnail} alt={song.title} style={{ width: '50px', height: '30px', borderRadius: '4px', objectFit: 'cover' }} />
-                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '12px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
-                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '4px 8px', fontSize: '11px' }}>▶</button>
-                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '4px 8px', fontSize: '11px', background: '#008f6f' }}>+</button>
+                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#111b21', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34' }}>
+                    <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
+                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}>▶ Çal</button>
+                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Klasöre Ekle</button>
                   </div>
                 ))}
               </div>
@@ -869,30 +880,33 @@ function App() {
 
           <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a' }}>
             {mediaType === 'none' && (
-              <div style={{ textAlign: 'center', color: '#8696a0', padding: '20px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎵</div>
-                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
+              <div style={{ textAlign: 'center', color: '#8696a0' }}>
+                <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
               </div>
             )}
+
             {mediaType === 'youtube' && (
-              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 1 } }} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} onReady={(e) => { ytPlayerRef.current = e.target; }} onEnd={handleMediaEnd} />
+              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 1 } }} style={{ width: '100%', height: '100%' }} onReady={(e) => { ytPlayerRef.current = e.target; }} onEnd={handleMediaEnd} />
             )}
+
             {mediaType === 'custom_video' && (
               <video ref={customVideoRef} src={mediaSrc} controls onEnded={handleMediaEnd} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             )}
+
             {reactions.map((r) => (
-              <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '36px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
+              <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '42px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
               </div>
             ))}
           </div>
 
-          <div style={{ padding: '10px 16px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, padding: '8px 10px', fontSize: '12px' }}>▶ Oynat</button>
-            <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502', padding: '8px 10px', fontSize: '12px' }}>⏸ Durdur</button>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {['❤️', '🔥', '😂', '😮', '👏'].map((emoji) => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '16px', padding: '6px 8px', borderRadius: '8px', cursor: 'pointer' }}>
+          <div style={{ padding: '14px 24px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
+            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1 }}>▶ Ortak Oynat</button>
+            <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {['❤️', '🔥', '😂', '😮', '👏', '😍'].map((emoji) => (
+                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '20px', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer' }}>
                   {emoji}
                 </button>
               ))}
@@ -900,11 +914,11 @@ function App() {
           </div>
         </div>
 
-        {/* SAĞ: SOHBET & KİTAPLIK */}
-        <div className="sidebar-section" style={{ width: '340px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* SAĞ: SOHBET */}
+        <div style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
+            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
@@ -913,12 +927,37 @@ function App() {
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
                   return (
-                    <div key={idx} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '6px', maxWidth: '85%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
-                      <span style={{ fontSize: '12px', paddingBottom: '1px' }}>{msg.avatar || '🐱'}</span>
-                      <div style={{ background: isMe ? '#005c4b' : '#202c33', color: '#e9edef', padding: '6px 10px', borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', minWidth: '50px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '1px' }}>{msg.sender}</div>
-                        <div style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>{msg.text}</div>
-                        <div style={{ fontSize: '8px', color: '#8696a0', textAlign: 'right', marginTop: '2px' }}>{msg.time}</div>
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        flexDirection: isMe ? 'row-reverse' : 'row',
+                        alignItems: 'flex-end',
+                        gap: '6px',
+                        maxWidth: '85%',
+                        alignSelf: isMe ? 'flex-end' : 'flex-start'
+                      }}
+                    >
+                      <span style={{ fontSize: '14px', paddingBottom: '1px' }}>{msg.avatar || '🐱'}</span>
+                      <div
+                        style={{
+                          background: isMe ? '#005c4b' : '#202c33',
+                          color: '#e9edef',
+                          padding: '5px 9px',
+                          borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                          minWidth: '60px'
+                        }}
+                      >
+                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '1px' }}>
+                          {msg.sender}
+                        </div>
+                        <div style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>
+                          {msg.text}
+                        </div>
+                        <div style={{ fontSize: '8px', color: '#8696a0', textAlign: 'right', marginTop: '2px' }}>
+                          {msg.time}
+                        </div>
                       </div>
                     </div>
                   );
@@ -932,13 +971,13 @@ function App() {
               </form>
             </div>
           ) : (
-            <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', background: '#0b141a' }}>
+            <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b141a' }}>
               <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '4px 8px', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                    style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '5px 10px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
                   >
                     📁 {cat}
                   </button>
@@ -950,19 +989,19 @@ function App() {
                 <button type="submit" style={{ ...styles.buttonPrimary, padding: '6px 10px', fontSize: '11px' }}>Aç</button>
               </form>
 
-              <div style={{ display: 'flex', gap: '4px', background: '#111b21', padding: '3px', borderRadius: '8px', border: '1px solid #222d34' }}>
-                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '4px', borderRadius: '6px', border: 'none', background: playMode === 'sequence' ? currentTheme.primary : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>▶ Sıra</button>
-                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '4px', borderRadius: '6px', border: 'none', background: playMode === 'shuffle' ? currentTheme.primary : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔀 Rastgele</button>
-                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '4px', borderRadius: '6px', border: 'none', background: playMode === 'alphabetical' ? currentTheme.primary : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔤 A-Z</button>
+              <div style={{ display: 'flex', gap: '4px', background: '#111b21', padding: '3px', borderRadius: '10px', border: '1px solid #222d34' }}>
+                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'sequence' ? currentTheme.primary : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>▶ Sırayla</button>
+                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'shuffle' ? currentTheme.primary : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔀 Rastgele</button>
+                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'alphabetical' ? currentTheme.primary : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔤 A-Z</button>
               </div>
 
               {filteredPlaylist.length === 0 ? (
                 <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş.</div>
               ) : (
                 filteredPlaylist.map((item) => (
-                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
-                    <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer', fontSize: '12px' }}>🗑️</button>
+                    <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}>🗑️</button>
                   </div>
                 ))
               )}
