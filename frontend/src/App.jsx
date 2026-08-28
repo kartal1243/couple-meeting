@@ -92,6 +92,9 @@ function App() {
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
   const [sidebarTab, setSidebarTab] = useState('chat');
 
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
   const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [username, setUsername] = useState(() => localStorage.getItem('cm_username') || 'İzleyici');
   const [userCity, setUserCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
@@ -155,17 +158,37 @@ function App() {
   const socket = socketRef.current;
 
   useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
   }, []);
 
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+      alert('Tarayıcınızın menüsünden (sağ üstteki üç nokta) "Ana Ekrana Ekle" veya "Uygulamayı Yükle" seçeneğini seçerek uygulamayı indirebilirsiniz!');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
+
   const currentTheme = THEMES[roomTheme] || THEMES.default;
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
-  // --- TELEFON ARKAPLAN OYNATMA (Media Session API) ---
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
@@ -605,10 +628,17 @@ function App() {
               <span style={{ fontSize: '11px', color: '#00a884', fontWeight: 'bold' }}>Aynı Anda İzle & Dinle</span>
             </div>
           </div>
-          <button onClick={() => setShowProfileModal(true)} style={{ background: '#111b21', color: '#e9edef', border: '1px solid #222d34', padding: '10px 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{myAvatar} {username} ({userCity})</span>
-            <span>⚙️ Profil Düzenle</span>
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {showInstallBtn && (
+              <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '10px 16px', borderRadius: '12px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', boxShadow: '0 4px 12px rgba(37,211,102,0.4)' }}>
+                📲 Uygulamayı İndir
+              </button>
+            )}
+            <button onClick={() => setShowProfileModal(true)} style={{ background: '#111b21', color: '#e9edef', border: '1px solid #222d34', padding: '10px 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>{myAvatar} {username} ({userCity})</span>
+              <span>⚙️ Profil Düzenle</span>
+            </button>
+          </div>
         </header>
 
         {showProfileModal && (
@@ -791,6 +821,11 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {showInstallBtn && (
+            <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>
+              📲 İndir
+            </button>
+          )}
           <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
             ⚙️ Ayarlar
           </button>
