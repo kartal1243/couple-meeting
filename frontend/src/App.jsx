@@ -41,44 +41,45 @@ const GLOBAL_CSS = `
     animation: shimmer 4s linear infinite;
   }
   .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
-  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
-  * { min-width: 0; }
+  html, body { overflow-x: hidden !important; max-width: 100vw !important; margin: 0; padding: 0; }
+  * { min-width: 0; box-sizing: border-box !important; }
+  
   @media (max-width: 768px) {
-    header { padding: 12px 16px !important; flex-direction: column !important; gap: 10px !important; text-align: center; }
-    h1 { font-size: 18px !important; }
-    section { margin-top: 24px !important; margin-bottom: 20px !important; padding: 0 14px !important; }
-    h2 { font-size: 30px !important; letter-spacing: -0.5px !important; }
-    p { font-size: 15px !important; padding: 0 6px; }
-    .cm-glass { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
-    input, select, button { max-width: 100%; box-sizing: border-box !important; }
-    .cm-room-layout { flex-direction: column !important; height: auto !important; min-height: calc(100dvh - 70px) !important; overflow: visible !important; }
-    .cm-player-column { width: 100% !important; min-height: auto !important; overflow: visible !important; z-index: 1 !important; }
-    .cm-search-bar { flex-wrap: wrap !important; padding: 10px !important; position: relative !important; z-index: 100 !important; }
+    .cm-room-header { 
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: 60px !important; 
+      padding: 0 12px !important; 
+      z-index: 99999 !important; 
+      background: #111b21 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      border-bottom: 1px solid #222d34 !important;
+    }
+    .cm-room-header-actions { display: flex !important; gap: 6px !important; }
+    .cm-room-header-actions button { padding: 6px 10px !important; font-size: 11px !important; }
+    .cm-room-layout { 
+      margin-top: 60px !important; 
+      flex-direction: column !important; 
+      height: calc(100dvh - 60px) !important; 
+      overflow-y: auto !important; 
+    }
+    .cm-player-column { width: 100% !important; min-height: auto !important; overflow: visible !important; }
+    .cm-search-bar { flex-wrap: wrap !important; padding: 8px !important; position: relative !important; z-index: 100 !important; }
     .cm-search-bar input { flex: 1 1 100% !important; min-width: 0 !important; }
     .cm-search-bar .cm-action-btn { flex: 1 1 calc(50% - 5px) !important; }
-    .cm-search-results { left: 10px !important; right: 10px !important; top: 112px !important; z-index: 99999 !important; }
-    .cm-search-result-row { flex-wrap: wrap !important; }
-    .cm-search-result-row img { width: 52px !important; height: 32px !important; }
-    .cm-search-result-row .cm-result-actions { width: 100% !important; display: grid !important; grid-template-columns: 1fr 1fr !important; }
-    .cm-video-wrap { width: 100% !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: 220px !important; flex: none !important; z-index: 1 !important; }
-    .cm-controls { flex-wrap: wrap !important; padding: 10px !important; gap: 8px !important; }
+    .cm-search-results { left: 8px !important; right: 8px !important; top: 95px !important; z-index: 99999 !important; }
+    .cm-video-wrap { width: 100% !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: 200px !important; flex: none !important; }
+    .cm-controls { flex-wrap: wrap !important; padding: 8px !important; gap: 6px !important; }
     .cm-controls > button { flex: 1 1 calc(50% - 4px) !important; }
     .cm-reactions { width: 100% !important; display: grid !important; grid-template-columns: repeat(6, 1fr) !important; }
-    .cm-reactions button { padding: 8px 2px !important; font-size: 18px !important; }
-    .cm-sidebar { width: 100% !important; height: 520px !important; min-height: 420px !important; border-left: none !important; border-top: 1px solid #222d34 !important; }
-    .cm-room-header { 
-      height: auto !important; 
-      min-height: 60px !important; 
-      padding: 10px 12px !important; 
-      gap: 8px !important; 
-      flex-wrap: wrap !important;
-      position: relative !important;
-      z-index: 99999 !important; /* MOBİLDE EN ÜST KATMANA ALINDI */
-    }
-    .cm-room-header-actions { width: 100% !important; justify-content: center !important; flex-wrap: wrap !important; }
-    .cm-room-header-actions button { flex: 1 1 auto !important; }
-    .cm-fallback-grid { grid-template-columns: 1fr !important; }
-  }`;
+    .cm-reactions button { padding: 6px 2px !important; font-size: 16px !important; }
+    .cm-sidebar { width: 100% !important; height: 450px !important; border-left: none !important; border-top: 1px solid #222d34 !important; }
+  }
+`;
 
 function App() {
   const [userId] = useState(() => {
@@ -219,14 +220,12 @@ function App() {
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) {
-      alert('Tarayıcınızın menüsünden (sağ üst üç nokta) "Ana Ekrana Ekle" veya "Uygulamayı Yükle" seçeneğini seçerek siteyi telefonunuza indirebilirsiniz!');
+      alert('Tarayıcınızın menüsünden "Ana Ekrana Ekle" seçeneğiyle uygulamayı cihazınıza yükleyebilirsiniz!');
       return;
     }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShowInstallBtn(false);
-    }
+    if (outcome === 'accepted') setShowInstallBtn(false);
     setDeferredPrompt(null);
   };
 
@@ -1079,7 +1078,7 @@ function App() {
 
       {/* KLASÖR POP-UP */}
       {showFolderModal && pendingMediaItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ ...styles.card, width: '400px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 12px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
             <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px' }}>
@@ -1102,7 +1101,7 @@ function App() {
 
       {/* SAĞ ÜST ODA AYARLARI MODALI */}
       {showSettingsModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ ...styles.card, width: '460px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 16px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>⚙️ Oda Ayarları & Kişiler</h3>
 
@@ -1155,7 +1154,7 @@ function App() {
         </div>
       )}
 
-      {/* HEADER BAR */}
+      {/* HEADER BAR (MOBİLDE FIXED SABİTLENDİ) */}
       <header className="cm-room-header" style={{ height: '60px', padding: '0 28px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
@@ -1169,11 +1168,11 @@ function App() {
         <div className="cm-room-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {showInstallBtn && (
             <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
-              📲 Uygulamayı İndir
+              📲 İndir
             </button>
           )}
           <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-            ⚙️ Oda Ayarları
+            ⚙️ Ayarlar
           </button>
           {authUser && <span style={{ background: '#0d201d', color: '#53e6bc', border: '1px solid #1c4a41', padding: '8px 10px', borderRadius: '10px', fontWeight: '800', fontSize: '11px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser.avatar} {authUser.username}</span>}
           <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
