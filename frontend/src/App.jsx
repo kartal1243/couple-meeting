@@ -25,8 +25,9 @@ const GLOBAL_CSS = `
 
   html, body {
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     max-width: 100vw !important;
-    height: 100% !important;
+    min-height: 100% !important;
     margin: 0;
     padding: 0;
     scroll-behavior: smooth !important;
@@ -65,7 +66,7 @@ const GLOBAL_CSS = `
   @keyframes cmOrb { 0% { transform: translate3d(-8%, 2%, 0) scale(1); } 50% { transform: translate3d(7%, -6%, 0) scale(1.08); } 100% { transform: translate3d(-8%, 2%, 0) scale(1); } }
   @keyframes cmReveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
   
-  .cm-landing { position:relative; overflow-x:hidden; background:#060810; min-height:100vh; }
+  .cm-landing { position:relative; overflow-x:hidden; background:#060810; min-height:100vh; overflow-y:auto; }
   .cm-landing::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 20% 10%, rgba(0,168,132,.15), transparent 26%), radial-gradient(circle at 85% 15%, rgba(111,76,255,.16), transparent 24%), radial-gradient(circle at 50% 85%, rgba(0,168,132,.08), transparent 28%); pointer-events:none; }
   .cm-grid { position:absolute; inset:0; opacity:.18; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 90%); pointer-events:none; }
   .cm-orb { position:absolute; border-radius:999px; filter: blur(12px); pointer-events:none; animation: cmOrb 14s ease-in-out infinite; }
@@ -87,7 +88,7 @@ const GLOBAL_CSS = `
   .cm-proof-item { display:flex; gap:7px; align-items:center; }
   .cm-demo-wrap { position:relative; min-height:470px; display:flex; align-items:center; justify-content:center; animation:cmReveal .9s .12s ease both; }
   .cm-demo-card { width:min(100%,430px); border:1px solid rgba(255,255,255,.09); border-radius:28px; padding:14px; background:linear-gradient(180deg,rgba(20,29,36,.88),rgba(8,14,20,.88)); box-shadow:0 35px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter:blur(20px); transform:rotate(2deg); }
-  .cm-demo-player { height:236px; border-radius:20px; background: radial-gradient(circle at 45% 35%, rgba(0,168,132,.26), transparent 28%), linear-gradient(135deg,#111827,#071116 55%,#15102b); position:relative; overflow:hidden; display:flex; align-items:center; justifyContent:center; }
+  .cm-demo-player { height:236px; border-radius:20px; background: radial-gradient(circle at 45% 35%, rgba(0,168,132,.26), transparent 28%), linear-gradient(135deg,#111827,#071116 55%,#15102b); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
   .cm-demo-play { width:68px; height:68px; border-radius:50%; display:grid; place-items:center; font-size:27px; color:#fff; background:rgba(255,255,255,.11); border:1px solid rgba(255,255,255,.15); box-shadow:0 16px 35px rgba(0,0,0,.3); }
   .cm-wave { position:absolute; left:14px; right:14px; bottom:16px; display:flex; align-items:flex-end; gap:4px; height:32px; }
   .cm-wave span { flex:1; border-radius:99px; background:linear-gradient(to top,rgba(0,168,132,.35),rgba(83,189,235,.8)); animation:cmPulse 1.4s ease-in-out infinite; }
@@ -118,8 +119,8 @@ const GLOBAL_CSS = `
 
   @media (max-width: 768px) {
     .cm-room-container {
-      height: 100vh !important;
-      height: 100dvh !important;
+      height: auto !important;
+      min-height: 100vh !important;
       overflow-y: auto !important;
       display: flex !important;
       flex-direction: column !important;
@@ -132,11 +133,11 @@ const GLOBAL_CSS = `
     }
     .cm-player-pane {
       width: 100% !important;
-      min-height: 280px !important;
+      min-height: 320px !important;
     }
     .cm-sidebar-pane {
       width: 100% !important;
-      height: 450px !important;
+      height: 500px !important;
       border-left: none !important;
       border-top: 1px solid #222d34 !important;
     }
@@ -703,11 +704,11 @@ function App() {
       background: currentTheme.bg,
       color: '#e9edef',
       width: '100vw',
-      height: '100vh',
+      minHeight: '100vh',
       margin: 0,
       padding: 0,
       boxSizing: 'border-box',
-      overflow: 'hidden',
+      overflowX: 'hidden',
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
     card: {
@@ -1043,7 +1044,7 @@ function App() {
         </div>
       </header>
 
-      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100vw', overflowY: 'auto' }}>
 
         <div className="cm-player-pane" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative', overflow: 'hidden' }}>
 
