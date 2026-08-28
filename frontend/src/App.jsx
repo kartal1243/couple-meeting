@@ -168,15 +168,9 @@ function App() {
   // --- TELEFON ARKAPLAN OYNATMA (Media Session API) ---
   useEffect(() => {
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', () => {
-        handlePlay();
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        handlePause();
-      });
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        handleMediaEnd();
-      });
+      navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
+      navigator.mediaSession.setActionHandler('pause', () => { handlePause(); });
+      navigator.mediaSession.setActionHandler('nexttrack', () => { handleMediaEnd(); });
     }
   }, [mediaSrc, mediaType, playMode, playlist]);
 
