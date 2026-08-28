@@ -14,7 +14,6 @@ const THEMES = {
   rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
 };
 
-// Mobil uyumlu ve esnek global stil güncellemesi
 const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
   @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
@@ -46,7 +45,6 @@ const GLOBAL_CSS = `
   html, body { overflow-x: hidden !important; width: 100% !important; margin: 0; padding: 0; }
   * { box-sizing: border-box; min-width: 0; }
 
-  /* MOBİL UYUMLULUK DÜZENLEMELERİ (Butonların ve alanların üst üste binmesini önler) */
   @media (max-width: 768px) {
     .main-room-layout {
       flex-direction: column !important;
@@ -782,7 +780,7 @@ function App() {
       <div className="main-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
 
         {/* SOL: PLAYER EKRANI */}
-        className="player-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative', minWidth: 0 }}>
+        <div className="player-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative', minWidth: 0 }}>
           {/* ARAMA BAR */}
           <div style={{ padding: '10px 14px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '8px', alignItems: 'center', position: 'relative', flexWrap: 'wrap' }}>
             <input
