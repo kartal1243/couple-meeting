@@ -216,6 +216,12 @@ function App() {
     });
   };
 
+  const handleQuickCreateRoom = () => {
+    const quickId = 'oda-' + Math.floor(1000 + Math.random() * 9000);
+    localStorage.setItem('cm_saved_pass', '');
+    socket.emit('join_room', { roomId: quickId, password: '', maxUsers: '2', userId, userCity, username, avatar: myAvatar });
+  };
+
   const handleCreateRoomSubmit = (e) => {
     e.preventDefault();
     const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
@@ -648,7 +654,7 @@ function App() {
           </header>
 
           <main className="cm-home-main">
-            <Hero authUser={authUser} openAuth={openAuth} setActiveTab={setActiveTab} setInRoom={setInRoom} />
+            <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={handleQuickCreateRoom} />
             <Features />
             <PublicRooms publicRooms={publicRooms} setJoinRoomInput={setJoinRoomInput} setActiveTab={setActiveTab} />
             <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
@@ -721,7 +727,7 @@ function App() {
         authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveRoom}
       />
 
-      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
         <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           <SearchBar
             searchInput={searchInput} setSearchInput={setSearchInput}
@@ -740,7 +746,7 @@ function App() {
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
         </div>
 
-        <div className="cm-sidebar" style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
+        <div className="cm-sidebar" style={{ width: '380px', maxWidth: '100%', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
             <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>

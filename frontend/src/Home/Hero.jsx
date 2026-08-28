@@ -1,4 +1,4 @@
-export default function Hero({ authUser, openAuth, setActiveTab, setInRoom }) {
+export default function Hero({ authUser, openAuth, handleQuickCreateRoom }) {
   return (
     <section className="cm-hero">
       <div>
@@ -14,11 +14,7 @@ export default function Hero({ authUser, openAuth, setActiveTab, setInRoom }) {
         <div className="cm-hero-actions">
           <button
             className="cm-big-btn"
-            onClick={() => {
-              setActiveTab('create');
-              setInRoom(false);
-              document.getElementById('cm-room-box')?.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={handleQuickCreateRoom}
             style={{ background: 'linear-gradient(135deg,#00a884,#008f6f)' }}
           >
             🚀 Hemen Oda Oluştur
