@@ -14,7 +14,6 @@ const THEMES = {
   rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
 };
 
-// Tüm sayfalara enjekte edilen global stil: hover/focus animasyonları, cam efektleri, scrollbar
 const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
   @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
@@ -42,7 +41,6 @@ const GLOBAL_CSS = `
     animation: shimmer 4s linear infinite;
   }
   .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
-  /* MOBİL DÜZELTMELER: Yatay kaydırmayı tamamen engelle */
   html, body { overflow-x: hidden !important; max-width: 100vw !important; }
   * { min-width: 0; }
   @media (max-width: 768px) {
@@ -68,7 +66,15 @@ const GLOBAL_CSS = `
     .cm-reactions { width: 100% !important; display: grid !important; grid-template-columns: repeat(6, 1fr) !important; }
     .cm-reactions button { padding: 8px 2px !important; font-size: 18px !important; }
     .cm-sidebar { width: 100% !important; height: 520px !important; min-height: 420px !important; border-left: none !important; border-top: 1px solid #222d34 !important; }
-    .cm-room-header { height: auto !important; min-height: 60px !important; padding: 10px 12px !important; gap: 8px !important; flex-wrap: wrap !important; }
+    .cm-room-header { 
+      height: auto !important; 
+      min-height: 60px !important; 
+      padding: 10px 12px !important; 
+      gap: 8px !important; 
+      flex-wrap: wrap !important;
+      position: relative !important;
+      z-index: 99999 !important; /* MOBİLDE EN ÜST KATMANA ALINDI */
+    }
     .cm-room-header-actions { width: 100% !important; justify-content: center !important; flex-wrap: wrap !important; }
     .cm-room-header-actions button { flex: 1 1 auto !important; }
     .cm-fallback-grid { grid-template-columns: 1fr !important; }
@@ -101,7 +107,6 @@ function App() {
 
   const [sidebarTab, setSidebarTab] = useState('chat');
 
-  // PWA Kurulum Butonu State'leri
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
@@ -157,7 +162,6 @@ function App() {
   const [youtubeError, setYoutubeError] = useState(null);
   const [fallbackUrl, setFallbackUrl] = useState('');
 
-  // --- OPSİYONEL ÜYELİK / SOSYAL SİSTEM ---
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch (e) { return null; }
   });
@@ -198,9 +202,6 @@ function App() {
     else localStorage.removeItem('cm_auth_token');
   };
 
-  const currentProfileBio = authUser?.bio || '';
-  const currentProfileStatus = authUser?.status || '';
-
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -233,7 +234,6 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
-  // --- ARKA PLAN SES VE KİLİT EKRANI KONTROLÜ (MEDIA SESSION API) ---
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
@@ -262,21 +262,6 @@ function App() {
     const updated = [targetRoomId, ...recentRooms.filter(r => r !== targetRoomId)].slice(0, 5);
     setRecentRooms(updated);
     localStorage.setItem('cm_recent_rooms', JSON.stringify(updated));
-  };
-
-  const handleAvatarSelect = (emoji) => {
-    setMyAvatar(emoji);
-    localStorage.setItem('cm_user_avatar', emoji);
-  };
-
-  const handleUsernameChange = (val) => {
-    setUsername(val);
-    localStorage.setItem('cm_username', val);
-  };
-
-  const handleCityChange = (val) => {
-    setUserCity(val);
-    localStorage.setItem('cm_user_city', val);
   };
 
   const showFloatingEmoji = (reaction) => {
@@ -1083,8 +1068,6 @@ function App() {
               </div>
             </div>
           )}
-
-          {/* Misafir hesabı için global chat modal açıldığında default global sekme */}
         </div>
       </div>
     );
