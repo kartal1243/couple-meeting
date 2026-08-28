@@ -2,8 +2,10 @@ export const getStyles = (currentTheme) => ({
   app: {
     background: currentTheme.bg,
     color: '#e9edef',
-    width: '100vw',
+    width: '100%',
+    minWidth: 0,
     height: '100vh',
+    height: '100dvh',
     margin: 0,
     padding: 0,
     boxSizing: 'border-box',
