@@ -78,6 +78,25 @@ function sendFriendsUpdate(targetUsername) {
 }
 loadSocialData();
 
+// --- BOŞ ODALARI OTOMATİK TEMİZLE ---
+const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 dakikada bir kontrol
+const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000; // 2 saat boş kalan odalar silinir
+
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [id, room] of Object.entries(rooms)) {
+    if (room.users.length === 0 && !room.password && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
+      delete rooms[id];
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`🧹 ${cleaned} boş oda otomatik temizlendi.`);
+    broadcastRooms();
+  }
+}, ROOM_CLEANUP_INTERVAL);
+
 function getPublicRoomsList() {
   const list = [];
   for (const [id, room] of Object.entries(rooms)) {
@@ -256,13 +275,15 @@ io.on('connection', (socket) => {
         name: roomId,
         password: password || '',
         maxUsers: parseInt(maxUsers) || 2,
-        hostUserId: userId, // Odayı ilk kuran kullanıcı varsayılan Admin
+        hostUserId: userId,
         theme: 'default',
         users: [],
         playlist: [],
         categories: ['Genel'],
         playMode: 'sequence',
-        currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() }
+        currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
+        createdAt: Date.now(),
+        lastActivityAt: Date.now()
       };
       room = rooms[roomId];
     } else {
@@ -286,6 +307,7 @@ io.on('connection', (socket) => {
       room.users.push(userInfo);
     }
 
+    room.lastActivityAt = Date.now();
     socket.currentRoom = roomId;
     socket.userId = userId;
     socket.join(roomId);
@@ -414,6 +436,7 @@ io.on('connection', (socket) => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
+      rooms[rId].lastActivityAt = Date.now();
       socket.leave(rId);
       updateRoomUsers(rId);
       socket.currentRoom = null;
@@ -428,6 +451,7 @@ io.on('connection', (socket) => {
       setTimeout(() => {
         if (rooms[rId]) {
           rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socketIdToRemove);
+          rooms[rId].lastActivityAt = Date.now();
           updateRoomUsers(rId);
           broadcastRooms();
         }
