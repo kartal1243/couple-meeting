@@ -14,7 +14,6 @@ const THEMES = {
   rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
 };
 
-// Tüm sayfalara enjekte edilen global stil: hover/focus animasyonları, cam efektleri, scrollbar
 const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
   @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
@@ -22,11 +21,11 @@ const GLOBAL_CSS = `
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #0b141a; }
   ::-webkit-scrollbar-thumb { background: #2a3942; border-radius: 4px; }
-  button { transition: transform .15s ease, filter .2s ease, box-shadow .2s ease !important; }
+  button { transition: transform .15s ease, filter .2s ease, box-shadow .2s ease !important; cursor: pointer; }
   button:hover { filter: brightness(1.12); transform: translateY(-1px); }
   button:active { transform: translateY(0) scale(.98); }
-  input, select { transition: border-color .2s ease, box-shadow .2s ease !important; }
-  input:focus, select:focus { outline: none; border-color: var(--cm-primary, #00a884) !important; box-shadow: 0 0 0 3px rgba(0,168,132,.25); }
+  input, select, textarea { transition: border-color .2s ease, box-shadow .2s ease !important; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--cm-primary, #00a884) !important; box-shadow: 0 0 0 3px rgba(0,168,132,.25); }
   .cm-glass {
     background: rgba(17, 27, 33, 0.72) !important;
     backdrop-filter: blur(14px);
@@ -42,18 +41,18 @@ const GLOBAL_CSS = `
     animation: shimmer 4s linear infinite;
   }
   .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
-  /* MOBİL DÜZELTMELER: Yatay kaydırmayı tamamen engelle */
-  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
-  * { min-width: 0; }
+  html, body { overflow-x: hidden !important; overflow-y: auto !important; max-width: 100vw !important; min-height: 100% !important; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  * { min-width: 0; box-sizing: border-box !important; }
   @media (max-width: 768px) {
     header { padding: 12px 16px !important; flex-direction: column !important; gap: 10px !important; text-align: center; }
-    h1 { font-size: 18px !important; }
+    h1 { font-size: 28px !important; }
     section { margin-top: 24px !important; margin-bottom: 20px !important; padding: 0 14px !important; }
-    h2 { font-size: 30px !important; letter-spacing: -0.5px !important; }
-    p { font-size: 15px !important; padding: 0 6px; }
+    h2 { font-size: 26px !important; letter-spacing: -0.5px !important; }
+    p { font-size: 14px !important; padding: 0 6px; }
     .cm-glass { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
     input, select, button { max-width: 100%; box-sizing: border-box !important; }
-  }`;
+  }
+`;
 
 function App() {
   const [userId] = useState(() => {
@@ -82,7 +81,6 @@ function App() {
 
   const [sidebarTab, setSidebarTab] = useState('chat');
 
-  // PWA Kurulum Butonu State'leri
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
@@ -177,9 +175,6 @@ function App() {
     else localStorage.removeItem('cm_auth_token');
   };
 
-  const currentProfileBio = authUser?.bio || '';
-  const currentProfileStatus = authUser?.status || '';
-
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -212,7 +207,6 @@ function App() {
   const cssVars = { '--cm-primary': currentTheme.primary };
   const leaveRoomRef = useRef(() => { });
 
-  // --- ARKA PLAN SES VE KİLİT EKRANI KONTROLÜ (MEDIA SESSION API) ---
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', () => { handlePlay(); });
@@ -472,6 +466,11 @@ function App() {
     if (authBusy) return;
     setAuthBusy(true);
     socket.emit(authMode === 'register' ? 'auth_register' : 'auth_login', authForm);
+
+    // Güvenlik zaman aşımı: Sunucu yanıt vermezse tıkanıklığı aç
+    setTimeout(() => {
+      setAuthBusy(false);
+    }, 5000);
   };
 
   const handleLogout = () => {
@@ -707,11 +706,11 @@ function App() {
       background: currentTheme.bg,
       color: '#e9edef',
       width: '100vw',
-      height: '100vh',
+      minHeight: '100vh',
       margin: 0,
       padding: 0,
       boxSizing: 'border-box',
-      overflow: 'hidden',
+      overflowX: 'hidden',
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
     card: {
@@ -756,12 +755,12 @@ function App() {
           .cm-home-brand { display:flex; align-items:center; gap:11px; }
           .cm-home-logo { width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#ff4757,#00a884);font-size:22px;box-shadow:0 12px 35px rgba(0,168,132,.26); }
           .cm-nav-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-          .cm-home-main { position:relative; z-index:2; width:min(1200px,92vw); margin:0 auto; padding:78px 0 70px; }
+          .cm-home-main { position:relative; z-index:2; width:min(1200px,92vw); margin:0 auto; padding:48px 0 50px; }
           .cm-hero { display:grid; grid-template-columns:1.15fr .85fr; gap:34px; align-items:center; }
           .cm-badge { display:inline-flex; align-items:center; gap:8px; padding:8px 13px;border-radius:999px;background:rgba(0,168,132,.1);border:1px solid rgba(0,168,132,.22);color:#63f0c0;font-size:12px;font-weight:800; }
-          .cm-hero h1 { margin:16px 0 16px;font-size:clamp(42px,6.2vw,78px);line-height:.98;letter-spacing:-4px;color:#fff;font-weight:950; }
+          .cm-hero h1 { margin:16px 0 16px;font-size:clamp(42px,6.2vw,78px);line-height:.98;letter-spacing:-3px;color:#fff;font-weight:950; }
           .cm-hero h1 span { background:linear-gradient(90deg,#fff,#68ffd2 45%,#8bd8ff);-webkit-background-clip:text;background-clip:text;color:transparent; }
-          .cm-hero p { margin:0; color:#93a1ad; font-size:18px;line-height:1.65;max-width:690px; }
+          .cm-hero p { margin:0; color:#93a1ad; font-size:17px;line-height:1.65;max-width:690px; }
           .cm-hero-actions { display:flex; gap:12px; margin-top:28px; flex-wrap:wrap; }
           .cm-big-btn { border:none;padding:14px 18px;border-radius:14px;font-weight:900;cursor:pointer;color:white;box-shadow:0 12px 30px rgba(0,0,0,.28); }
           .cm-hero-card { min-height:360px; position:relative; border:1px solid rgba(255,255,255,.08); border-radius:28px; background:linear-gradient(145deg,rgba(17,27,33,.85),rgba(10,14,22,.67)); backdrop-filter:blur(20px); box-shadow:0 30px 80px rgba(0,0,0,.36); overflow:hidden; padding:22px; }
@@ -775,10 +774,10 @@ function App() {
           @keyframes cmWave {0%,100%{height:10px;opacity:.5}50%{height:36px;opacity:1}}
           .cm-floating-chip { position:absolute; padding:9px 12px;border-radius:14px;background:rgba(9,13,22,.86);border:1px solid rgba(255,255,255,.08);box-shadow:0 12px 30px rgba(0,0,0,.25);font-size:11px;font-weight:800;color:#fff;animation:cmFloat 8s ease-in-out infinite; }
           .cm-chip-a{left:18px;top:96px}.cm-chip-b{right:18px;top:150px;animation-delay:-2s}.cm-chip-c{right:30px;bottom:34px;animation-delay:-4s}
-          .cm-section { margin-top:72px; }
-          .cm-section-head { display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:18px; }
-          .cm-section-head h3 { margin:0;color:#fff;font-size:25px;letter-spacing:-.8px; }
-          .cm-section-head p { margin:5px 0 0;color:#7d8b97;font-size:13px; }
+          .cm-section { margin-top:56px; }
+          .cm-section-head { text-align: center; margin-bottom: 24px; }
+          .cm-section-head h3 { margin:0 0 6px;color:#fff;font-size:26px;letter-spacing:-.8px; }
+          .cm-section-head p { margin:0;color:#7d8b97;font-size:13px; }
           .cm-feature-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px; }
           .cm-feature { padding:18px;border-radius:20px;background:rgba(17,27,33,.68);border:1px solid rgba(255,255,255,.06);min-height:145px;transition:.25s; }
           .cm-feature:hover { transform:translateY(-4px);border-color:rgba(0,168,132,.25);box-shadow:0 18px 36px rgba(0,0,0,.22); }
@@ -791,9 +790,8 @@ function App() {
           .cm-global-preview { display:flex;flex-direction:column;gap:8px;max-height:230px;overflow:hidden; }
           .cm-preview-msg { display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border-radius:12px;background:#0b141a;border:1px solid rgba(255,255,255,.045); }
           .cm-preview-msg b{font-size:11px;color:#fff}.cm-preview-msg span{font-size:11px;color:#8794a0}
-          .cm-footer { padding:35px 0 50px; text-align:center; color:#64717b;font-size:12px; }
           @media(max-width:900px){ .cm-hero{grid-template-columns:1fr}.cm-feature-grid{grid-template-columns:1fr 1fr}.cm-room-grid{grid-template-columns:1fr 1fr}.cm-social-grid{grid-template-columns:1fr}.cm-hero-card{min-height:330px} }
-          @media(max-width:600px){ .cm-home-nav{padding:12px 14px}.cm-nav-actions{width:100%}.cm-nav-actions button{flex:1}.cm-home-main{width:min(94vw,560px);padding:42px 0 34px}.cm-hero h1{font-size:48px;letter-spacing:-2.5px}.cm-hero p{font-size:15px}.cm-hero-actions{display:grid;grid-template-columns:1fr}.cm-feature-grid,.cm-room-grid{grid-template-columns:1fr}.cm-cover{width:145px;height:145px}.cm-floating-chip{display:none}.cm-section{margin-top:44px}.cm-section-head{display:block}.cm-section-head h3{font-size:22px} }
+          @media(max-width:600px){ .cm-home-nav{padding:12px 14px}.cm-nav-actions{width:100%}.cm-nav-actions button{flex:1}.cm-home-main{width:min(94vw,560px);padding:32px 0 24px}.cm-hero h1{font-size:42px;letter-spacing:-2px}.cm-hero p{font-size:14px}.cm-hero-actions{display:grid;grid-template-columns:1fr}.cm-feature-grid,.cm-room-grid{grid-template-columns:1fr}.cm-cover{width:145px;height:145px}.cm-floating-chip{display:none}.cm-section{margin-top:36px}.cm-section-head h3{font-size:22px} }
         `}</style>
         <div className="cm-home">
           <div className="cm-orb one"/><div className="cm-orb two"/><div className="cm-orb three"/>
@@ -823,7 +821,7 @@ function App() {
                 <h1>Birlikte izleyin.<br/><span>Birlikte hissedin.</span></h1>
                 <p>Sevgilinle, arkadaşınla veya yeni insanlarla aynı videoyu aynı anda izle, müzik dinle ve anlık sohbet et. Hesap açmak zorunda değilsin; ama hesabın olursa profilin, arkadaşların ve sosyal özelliklerin yanında kalır.</p>
                 <div className="cm-hero-actions">
-                  <button className="cm-big-btn" onClick={() => { setActiveTab('create'); setInRoom(false); document.getElementById('cm-room-box')?.scrollIntoView({behavior:'smooth'}); }} style={{background:'linear-gradient(135deg,#00a884,#008f6f)'}}>🚀 Hemen Oda Oluştur</button>
+                  <button className="cm-big-btn" onClick={() => { setActiveTab('create'); setInRoom(false); }} style={{background:'linear-gradient(135deg,#00a884,#008f6f)'}}>🚀 Hemen Oda Oluştur</button>
                   <button className="cm-big-btn" onClick={() => openAuth(authUser ? 'login' : 'register')} style={{background:'#202c33',border:'1px solid #34424c'}}>👤 Hesapla Daha Fazlasını Yap</button>
                 </div>
                 <div style={{display:'flex',gap:18,flexWrap:'wrap',marginTop:22,color:'#778590',fontSize:11,fontWeight:800}}>
@@ -833,8 +831,8 @@ function App() {
 
               <div className="cm-hero-card">
                 <div className="cm-floating-chip cm-chip-a">💬 “Başlattım, gelsene ❤️”</div>
-                <div className="cm-floating-chip cm-chip-b">🟢 2 kişi odada</div>
-                <div className="cm-floating-chip cm-chip-c">❤️ birlikte 12:48</div>
+                <div className="cm-floating-chip cm-chip-b">🟢 {roomUsersList.length || 1} kişi canlı</div>
+                <div className="cm-floating-chip cm-chip-c">❤️ birlikte anı yakala</div>
                 <div className="cm-now-playing">
                   <div className="cm-mini-top"><span>NOW PLAYING</span><span style={{color:'#53e6bc'}}>● LIVE</span></div>
                   <div>
@@ -847,8 +845,21 @@ function App() {
               </div>
             </section>
 
-            <section className="cm-section" id="cm-room-box">
-              <div className="cm-section-head"><div><h3>İnsanların sevdiği tarafı</h3><p>Oda aç, arkadaşını bul, konuş, müzik ekle. Hepsi tek yerde.</p></div></div>
+            <section className="cm-section">
+              <div className="cm-section-head">
+                <h3>🔥 Aktif Odalar</h3>
+                <p>Bir odaya katılmak için tek dokunuş yeterli.</p>
+              </div>
+              {publicRooms.length ? (
+                <div className="cm-room-grid">{publicRooms.slice(0,6).map((r)=><div className="cm-room" key={r.id}><div className="cm-room-row"><div className="cm-room-name">{r.name}</div><div className="cm-room-meta">{r.userCount}/{r.maxUsers} 👥</div></div><div className="cm-room-meta" style={{marginTop:6}}>{r.hasPassword?'🔒 Şifreli oda':'🌍 Açık oda'}</div><button onClick={()=>{setJoinRoomInput(r.id);setActiveTab('join');}}>🚪 Katıl</button></div>)}</div>
+              ) : <div className="cm-social-card" style={{textAlign: 'center'}}><div style={{color:'#fff',fontWeight:800}}>Henüz herkese açık oda görünmüyor.</div><div style={{color:'#7f8c98',fontSize:12,marginTop:5}}>İlk odayı sen oluştur ve burayı hareketlendirelim. 🚀</div></div>}
+            </section>
+
+            <section className="cm-section">
+              <div className="cm-section-head">
+                <h3>Neden Couple Meeting?</h3>
+                <p>Oda aç, arkadaşını bul, konuş, müzik ekle. Hepsi tek yerde.</p>
+              </div>
               <div className="cm-feature-grid">
                 <div className="cm-feature"><div className="ico">🎬</div><b>Senkron İzleme</b><span>Aynı videoda aynı saniye. Oynat, durdur ve oda ile eşleştir.</span></div>
                 <div className="cm-feature"><div className="ico">🎵</div><b>Ortak Müzik</b><span>Arat, çalma listene ekle ve birlikte dinle.</span></div>
@@ -858,22 +869,15 @@ function App() {
             </section>
 
             <section className="cm-section">
-              <div className="cm-section-head"><div><h3>🔥 Şu an açık odalar</h3><p>Bir odaya katılmak için tek dokunuş yeterli.</p></div></div>
-              {publicRooms.length ? (
-                <div className="cm-room-grid">{publicRooms.slice(0,6).map((r)=><div className="cm-room" key={r.id}><div className="cm-room-row"><div className="cm-room-name">{r.name}</div><div className="cm-room-meta">{r.userCount}/{r.maxUsers} 👥</div></div><div className="cm-room-meta" style={{marginTop:6}}>{r.hasPassword?'🔒 Şifreli oda':'🌍 Açık oda'}</div><button onClick={()=>{setJoinRoomInput(r.id);setActiveTab('join');document.getElementById('cm-room-box')?.scrollIntoView({behavior:'smooth'});}}>🚪 Katıl</button></div>)}</div>
-              ) : <div className="cm-social-card"><div style={{color:'#fff',fontWeight:800}}>Henüz herkese açık oda görünmüyor.</div><div style={{color:'#7f8c98',fontSize:12,marginTop:5}}>İlk odayı sen oluştur ve burayı hareketlendirelim. 🚀</div></div>}
-            </section>
-
-            <section className="cm-section">
               <div className="cm-social-card">
                 <div className="cm-social-grid">
-                  <div><div style={{color:'#53e6bc',fontSize:11,fontWeight:900}}>🌐 GLOBAL TOPLULUK</div><div style={{fontSize:28,color:'#fff',fontWeight:950,letterSpacing:-1,marginTop:7}}>Sadece odada değil, dünyada da bağlan.</div><div style={{color:'#7f8c98',fontSize:13,lineHeight:1.6,marginTop:8}}>Global sohbette konuş, profilini doldur, arkadaşlık isteği gönder. Misafir olarak okuyabilir ve konuşabilirsin; arkadaşlık ve profil özellikleri hesapla açılır.</div><button className="cm-big-btn" onClick={()=>setShowSocialModal(true)} style={{marginTop:18,background:'linear-gradient(135deg,#3742fa,#5352ed)'}}>🌍 Sosyal Alanı Aç</button></div>
+                  <div><div style={{color:'#53e6bc',fontSize:11,fontWeight:900}}>🌐 GLOBAL TOPLULUK</div><div style={{fontSize:26,color:'#fff',fontWeight:950,letterSpacing:-1,marginTop:7}}>Sadece odada değil, dünyada da bağlan.</div><div style={{color:'#7f8c98',fontSize:13,lineHeight:1.6,marginTop:8}}>Global sohbette konuş, profilini doldur, arkadaşlık isteği gönder. Misafir olarak okuyabilir ve konuşabilirsin; arkadaşlık ve profil özellikleri hesapla açılır.</div><button className="cm-big-btn" onClick={()=>setShowSocialModal(true)} style={{marginTop:18,background:'linear-gradient(135deg,#3742fa,#5352ed)'}}>🌍 Sosyal Alanı Aç</button></div>
                   <div className="cm-global-preview">{globalMessages.slice(-5).reverse().map((m,i)=><div className="cm-preview-msg" key={m.id||i}><div style={{fontSize:19}}>{m.avatar||'🐱'}</div><div><b>{m.username||'Misafir'}</b><div style={{color:'#8d9aa5',fontSize:11,marginTop:2}}>{m.text}</div></div></div>)}{globalMessages.length===0&&<div style={{color:'#75838e',fontSize:12,padding:20,textAlign:'center'}}>Global sohbet burada görünecek. İlk mesajı sen yaz. 👋</div>}</div>
                 </div>
               </div>
             </section>
 
-            <section className="cm-section" id="cm-room-box">
+            <section className="cm-section">
               <div style={{maxWidth:650,margin:'0 auto'}}>
                 <div className="cm-social-card">
                   {errorMessage && <div style={{background:'#ea0038',color:'#fff',padding:'11px 13px',borderRadius:12,fontWeight:800,fontSize:12,marginBottom:14}}>{errorMessage}</div>}
@@ -886,8 +890,16 @@ function App() {
                 </div>
               </div>
             </section>
-            <div className="cm-footer">Couple Meeting • Uzaklığı biraz daha küçük yapan internet. ❤️</div>
           </main>
+
+          <footer style={{ borderTop: '1px solid #222d34', padding: '24px 16px', textAlign: 'center', background: '#05070c', color: '#8696a0', fontSize: '13px', position: 'relative', zIndex: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 'bold' }}>
+              <span>Tarafından Sevgiyle Geliştirildi</span> ❤️ <span style={{ color: '#00a884' }}>Ömer Yaman</span>
+            </div>
+            <div style={{ fontSize: '11px', marginTop: '6px', opacity: 0.7 }}>
+              © {new Date().getFullYear()} Couple Meeting. Tüm hakları saklıdır.
+            </div>
+          </footer>
 
           {showAuthModal && (
             <div style={{position:'fixed',inset:0,zIndex:20000,background:'rgba(0,0,0,.78)',backdropFilter:'blur(16px)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}>
@@ -897,7 +909,7 @@ function App() {
                     <div style={{color:'#53e6bc',fontSize:11,fontWeight:900}}>{authMode==='register'?'HESAP OLUŞTUR':'TEKRAR HOŞ GELDİN'}</div>
                     <h3 style={{margin:'6px 0 0',color:'#fff',fontSize:24}}>{authMode==='register'?'Profilini yanında taşı':'Hesabına giriş yap'}</h3>
                   </div>
-                  <button type="button" onClick={()=>setShowAuthModal(false)} style={{background:'#202c33',border:'none',color:'#fff',width:34,height:34,borderRadius:10}}>✕</button>
+                  <button type="button" onClick={()=>{ setShowAuthModal(false); setAuthBusy(false); }} style={{background:'#202c33',border:'none',color:'#fff',width:34,height:34,borderRadius:10}}>✕</button>
                 </div>
                 <form onSubmit={submitAuth} style={{display:'flex',flexDirection:'column',gap:10,marginTop:18}}>
                   {authMode==='register' && <input placeholder="Kullanıcı adı" value={authForm.username} onChange={e=>setAuthForm({...authForm,username:e.target.value})} style={styles.input}/>} 
@@ -1019,8 +1031,6 @@ function App() {
               </div>
             </div>
           )}
-
-          {/* Misafir hesabı için global chat modal açıldığında default global sekme */}
         </div>
       </div>
     );
@@ -1028,7 +1038,9 @@ function App() {
 
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `\n        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n      `}</style>
+      <style>{GLOBAL_CSS + `
+        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
+      `}</style>
 
       {/* KLASÖR POP-UP */}
       {showFolderModal && pendingMediaItem && (
