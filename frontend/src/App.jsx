@@ -14,19 +14,36 @@ const THEMES = {
   rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
 };
 
-// Tüm sayfalara enjekte edilen global stil: hover/focus animasyonları, cam efektleri, scrollbar
+// Tüm sayfalara enjekte edilen global stil ve kusursuz boyutlandırma / responsive kuralları
 const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }
   @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
   @keyframes pulseDot { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,150,.5); } 50% { box-shadow: 0 0 0 6px rgba(0,200,150,0); } }
+  
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #0b141a; }
   ::-webkit-scrollbar-thumb { background: #2a3942; border-radius: 4px; }
-  button { transition: transform .15s ease, filter .2s ease, box-shadow .2s ease !important; }
+
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    box-sizing: border-box !important;
+    min-width: 0;
+  }
+
+  button { transition: transform .15s ease, filter .2s ease, box-shadow .2s ease !important; cursor: pointer; }
   button:hover { filter: brightness(1.12); transform: translateY(-1px); }
   button:active { transform: translateY(0) scale(.98); }
   input, select { transition: border-color .2s ease, box-shadow .2s ease !important; }
   input:focus, select:focus { outline: none; border-color: var(--cm-primary, #00a884) !important; box-shadow: 0 0 0 3px rgba(0,168,132,.25); }
+
   .cm-glass {
     background: rgba(17, 27, 33, 0.72) !important;
     backdrop-filter: blur(14px);
@@ -42,10 +59,12 @@ const GLOBAL_CSS = `
     animation: shimmer 4s linear infinite;
   }
   .cm-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; display: inline-block; animation: pulseDot 1.6s infinite; }
+  
   @keyframes cmFloat { 0%,100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(0,-18px,0) rotate(2deg); } }
   @keyframes cmPulse { 0%,100% { transform: scale(1); opacity:.65; } 50% { transform: scale(1.08); opacity:.95; } }
   @keyframes cmOrb { 0% { transform: translate3d(-8%, 2%, 0) scale(1); } 50% { transform: translate3d(7%, -6%, 0) scale(1.08); } 100% { transform: translate3d(-8%, 2%, 0) scale(1); } }
   @keyframes cmReveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  
   .cm-landing { position:relative; overflow:hidden; background:#060810; min-height:100vh; }
   .cm-landing::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 20% 10%, rgba(0,168,132,.15), transparent 26%), radial-gradient(circle at 85% 15%, rgba(111,76,255,.16), transparent 24%), radial-gradient(circle at 50% 85%, rgba(0,168,132,.08), transparent 28%); pointer-events:none; }
   .cm-grid { position:absolute; inset:0; opacity:.18; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 90%); pointer-events:none; }
@@ -88,20 +107,79 @@ const GLOBAL_CSS = `
   .cm-feature-icon { width:44px; height:44px; border-radius:13px; display:grid; place-items:center; font-size:20px; background:rgba(0,168,132,.1); margin-bottom:14px; }
   .cm-feature h3 { margin:0 0 8px; color:#fff; font-size:16px; }
   .cm-feature p { margin:0; color:#84909d; font-size:13px; line-height:1.65; }
-  @media (max-width: 900px) { .cm-hero{grid-template-columns:1fr; padding-top:35px}.cm-demo-wrap{min-height:390px}.cm-feature-grid{grid-template-columns:1fr 1fr}.cm-float.a{right:8px}.cm-float.b{left:8px} }
-  @media (max-width: 620px) { .cm-landing-nav{padding:14px 16px}.cm-brand-mark{width:40px;height:40px}.cm-hero{padding:30px 16px 20px}.cm-hero h2{font-size:44px;letter-spacing:-1.8px}.cm-hero-sub{font-size:15px}.cm-hero-actions{display:grid;grid-template-columns:1fr}.cm-hero-actions button{width:100%}.cm-proof-row{gap:10px 14px}.cm-demo-wrap{min-height:350px}.cm-demo-card{transform:none;border-radius:22px;padding:10px}.cm-demo-player{height:190px}.cm-float{display:none}.cm-section{padding:25px 16px 55px}.cm-feature-grid{grid-template-columns:1fr}.cm-section-title{font-size:27px} }
-  /* MOBİL DÜZELTMELER: Yatay kaydırmayı tamamen engelle */
-  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
-  * { min-width: 0; }
+
+  /* KESİN MOBİL BOYUTLANDIRMA VE DÜZEN REFAKTÖRÜ (Oda İçi & Landing) */
+  @media (max-width: 900px) { 
+    .cm-hero { grid-template-columns:1fr; padding-top:35px; }
+    .cm-demo-wrap { min-height:390px; }
+    .cm-feature-grid { grid-template-columns:1fr 1fr; }
+    .cm-float.a { right:8px; }
+    .cm-float.b { left:8px; } 
+  }
+
   @media (max-width: 768px) {
-    header { padding: 12px 16px !important; flex-direction: column !important; gap: 10px !important; text-align: center; }
-    h1 { font-size: 18px !important; }
-    section { margin-top: 24px !important; margin-bottom: 20px !important; padding: 0 14px !important; }
-    h2 { font-size: 30px !important; letter-spacing: -0.5px !important; }
-    p { font-size: 15px !important; padding: 0 6px; }
-    .cm-glass { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
-    input, select, button { max-width: 100%; box-sizing: border-box !important; }
-  }`;
+    /* Oda içi ekran düzenini alt alta kaydırılabilir esnek yapıya çevir */
+    .cm-room-container {
+      height: 100vh !important;
+      height: 100dvh !important;
+      overflow-y: auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .cm-room-layout {
+      flex-direction: column !important;
+      height: auto !important;
+      flex: 1 !important;
+      overflow-y: visible !important;
+    }
+    .cm-player-pane {
+      width: 100% !important;
+      min-height: 300px !important;
+      max-height: 45vh !important;
+    }
+    .cm-sidebar-pane {
+      width: 100% !important;
+      height: 460px !important;
+      border-left: none !important;
+      border-top: 1px solid #222d34 !important;
+    }
+    .cm-header-bar {
+      padding: 10px 14px !important;
+      flex-wrap: wrap !important;
+      height: auto !important;
+      gap: 8px !important;
+    }
+    .cm-search-bar {
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+      padding: 10px 12px !important;
+    }
+    .cm-search-bar input {
+      width: 100% !important;
+    }
+    .cm-search-bar button {
+      flex: 1 !important;
+    }
+  }
+
+  @media (max-width: 620px) { 
+    .cm-landing-nav { padding:14px 16px; }
+    .cm-brand-mark { width:40px; height:40px; }
+    .cm-hero { padding:30px 16px 20px; }
+    .cm-hero h2 { font-size:38px; letter-spacing:-1.8px; }
+    .cm-hero-sub { font-size:15px; }
+    .cm-hero-actions { display:grid; grid-template-columns:1fr; }
+    .cm-hero-actions button { width:100%; }
+    .cm-proof-row { gap:10px 14px; }
+    .cm-demo-wrap { min-height:350px; }
+    .cm-demo-card { transform:none; border-radius:22px; padding:10px; }
+    .cm-demo-player { height:190px; }
+    .cm-float { display:none; }
+    .cm-section { padding:25px 16px 55px; }
+    .cm-feature-grid { grid-template-columns:1fr; }
+    .cm-section-title { font-size:27px; } 
+  }
+`;
 
 function App() {
   const [userId] = useState(() => {
@@ -821,20 +899,20 @@ function App() {
   }
 
   return (
-    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `\n        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n      `}</style>
+    <div className="cm-room-container" style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
+      <style>{GLOBAL_CSS + `\n        @keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }\n      `}</style>
 
       {/* KLASÖR POP-UP */}
       {showFolderModal && pendingMediaItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ ...styles.card, width: '400px', textAlign: 'left' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ ...styles.card, width: '100%', maxWidth: '380px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 12px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>📁 Hangi Klasöre Eklensin?</h3>
-            <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#8696a0', marginBottom: '16px', wordBreak: 'break-word' }}>
               <strong>{pendingMediaItem.title}</strong> öğesini eklemek istediğiniz klasörü seçin:
             </p>
 
             <div style={{ marginBottom: '20px' }}>
-              <select value={modalTargetCategory} onChange={(e) => setModalTargetCategory(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', fontWeight: 'bold', color: currentTheme.primary, cursor: 'pointer' }}>
+              <select value={modalTargetCategory} onChange={(e) => setModalTargetCategory(e.target.value)} style={{ ...styles.input, width: '100%', fontWeight: 'bold', color: currentTheme.primary, cursor: 'pointer' }}>
                 {categories.map(cat => <option key={cat} value={cat} style={{ background: '#111b21', color: '#fff' }}>📁 {cat}</option>)}
               </select>
             </div>
@@ -849,20 +927,20 @@ function App() {
 
       {/* SAĞ ÜST ODA AYARLARI MODALI */}
       {showSettingsModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ ...styles.card, width: '460px', textAlign: 'left' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ ...styles.card, width: '100%', maxWidth: '440px', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 16px 0', color: currentTheme.primary, fontSize: '18px', fontWeight: '800' }}>⚙️ Oda Ayarları & Kişiler</h3>
 
             {hostUserId === userId ? (
               <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA İSMİ DEĞİŞTİR</label>
-                  <input type="text" value={editRoomNameInput || roomName} onChange={(e) => setEditRoomNameInput(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' }} />
+                  <input type="text" value={editRoomNameInput || roomName} onChange={(e) => setEditRoomNameInput(e.target.value)} style={{ ...styles.input, width: '100%' }} />
                 </div>
 
                 <div>
                   <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>ODA TEMASI SEÇ</label>
-                  <select value={roomTheme} onChange={(e) => setRoomTheme(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                  <select value={roomTheme} onChange={(e) => setRoomTheme(e.target.value)} style={{ ...styles.input, width: '100%', cursor: 'pointer' }}>
                     <option value="default" style={{ background: '#111b21' }}>Koyu Yeşil (Varsayılan)</option>
                     <option value="purple" style={{ background: '#111b21' }}>Gece Moru</option>
                     <option value="blue" style={{ background: '#111b21' }}>Okyanus Mavisi</option>
@@ -880,15 +958,15 @@ function App() {
 
             <div>
               <label style={{ fontSize: '11px', color: '#8696a0', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>ODADAKİ KİŞİLER ({roomUsersList.length})</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '160px', overflowY: 'auto' }}>
                 {roomUsersList.map(u => (
                   <div key={u.userId} style={{ background: '#0b141a', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold' }}>
-                      {u.avatar} {u.username} {u.userId === hostUserId && '👑 (Admin)'}
+                    <span style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold', wordBreak: 'break-word' }}>
+                      {u.avatar} {u.username} {u.userId === hostUserId && '👑'}
                     </span>
                     {hostUserId === userId && u.userId !== userId && (
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => handleTransferAdmin(u.userId)} style={{ background: '#ffa502', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>👑 Admin Yap</button>
+                        <button onClick={() => handleTransferAdmin(u.userId)} style={{ background: '#ffa502', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>👑 Admin</button>
                         <button onClick={() => handleKickUser(u.userId)} style={{ background: '#ff4757', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>🚫 At</button>
                       </div>
                     )}
@@ -903,74 +981,75 @@ function App() {
       )}
 
       {/* HEADER BAR */}
-      <header style={{ height: '60px', padding: '0 28px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleLeaveRoom}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>❤️⚡</div>
-          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '18px', fontWeight: '900' }}>{roomName}</h2>
+      <header className="cm-header-bar" style={{ height: '60px', padding: '0 24px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, width: '100vw' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', overflow: 'hidden' }} onClick={handleLeaveRoom}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: currentTheme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>❤️⚡</div>
+          <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '16px', fontWeight: '900', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{roomName}</h2>
 
-          <span style={{ fontSize: '11px', background: currentTheme.cardBg, color: currentTheme.primary, padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} /> Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+          <span style={{ fontSize: '10px', background: currentTheme.cardBg, color: currentTheme.primary, padding: '3px 8px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} /> {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {showInstallBtn && (
-            <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
-              📲 Uygulamayı İndir
+            <button onClick={handleInstallApp} style={{ background: '#25d366', color: '#000', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>
+              📲 İndir
             </button>
           )}
-          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-            ⚙️ Oda Ayarları
+          <button onClick={() => setShowSettingsModal(true)} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+            ⚙️ Ayarlar
           </button>
-          <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-            Ana Sayfa 🚪
+          <button onClick={handleLeaveRoom} style={{ background: '#202c33', color: '#e9edef', border: '1px solid #222d34', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+            Çıkış 🚪
           </button>
         </div>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+      {/* ANA ODA DÜZENİ (MOBİL UYUMLU ESNEK YAPI) */}
+      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100vw', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
 
         {/* SOL: PLAYER EKRANI */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
+        <div className="cm-player-pane" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative', overflow: 'hidden' }}>
 
           {/* ARAMA BAR */}
-          <div style={{ padding: '12px 20px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
+          <div className="cm-search-bar" style={{ padding: '10px 16px', background: currentTheme.cardBg, borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }}>
             <input
               type="text"
-              placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
+              placeholder="🔍 Şarkı/Dizi Adı veya Link Yazın..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               style={{ ...styles.input, flex: 1 }}
             />
 
-            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
-            <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
+            <button onClick={handleDirectPlay} style={{ ...styles.buttonPrimary, background: currentTheme.primary, padding: '8px 12px', fontSize: '12px' }}>▶ Çal</button>
+            <button onClick={() => handleOpenAddModal(null)} style={{ ...styles.buttonPrimary, background: '#008f6f', padding: '8px 12px', fontSize: '12px' }}>+ Ekle</button>
 
             {(searchResults.length > 0 || isSearching) && (
-              <div style={{ position: 'absolute', top: '62px', left: '20px', right: '20px', ...styles.card, padding: '14px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
+              <div style={{ position: 'absolute', top: '56px', left: '12px', right: '12px', ...styles.card, padding: '12px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                {isSearching && <div style={{ color: currentTheme.primary, fontSize: '12px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
                 {searchResults.map((song) => (
-                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#111b21', padding: '8px 12px', borderRadius: '10px', border: '1px solid #222d34' }}>
-                    <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
-                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
-                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}>▶ Çal</button>
-                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Klasöre Ekle</button>
+                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#111b21', padding: '6px 10px', borderRadius: '8px', border: '1px solid #222d34' }}>
+                    <img src={song.thumbnail} alt={song.title} style={{ width: '50px', height: '30px', borderRadius: '4px', objectFit: 'cover' }} />
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '12px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{song.title}</div>
+                    <button onClick={() => handleSelectSearchResult(song, true)} style={{ ...styles.buttonPrimary, padding: '4px 10px', fontSize: '11px' }}>▶</button>
+                    <button onClick={() => handleSelectSearchResult(song, false)} style={{ ...styles.buttonPrimary, padding: '4px 10px', fontSize: '11px', background: '#008f6f' }}>+</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a' }}>
+          <div style={{ flex: 1, position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a', minHeight: '220px' }}>
             {mediaType === 'none' && (
-              <div style={{ textAlign: 'center', color: '#8696a0' }}>
-                <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
+              <div style={{ textAlign: 'center', color: '#8696a0', padding: '20px' }}>
+                <div style={{ fontSize: '42px', marginBottom: '8px' }}>🎵</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
               </div>
             )}
 
             {mediaType === 'youtube' && (
-              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 1 } }} style={{ width: '100%', height: '100%' }} onReady={(e) => { ytPlayerRef.current = e.target; }} onEnd={handleMediaEnd} />
+              <YouTube videoId={mediaSrc} opts={{ height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 1 } }} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} onReady={(e) => { ytPlayerRef.current = e.target; }} onEnd={handleMediaEnd} />
             )}
 
             {mediaType === 'custom_video' && (
@@ -978,18 +1057,18 @@ function App() {
             )}
 
             {reactions.map((r) => (
-              <div key={r.id} style={{ position: 'absolute', bottom: '30px', left: `${r.left}%`, fontSize: '42px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
+              <div key={r.id} style={{ position: 'absolute', bottom: '20px', left: `${r.left}%`, fontSize: '36px', pointerEvents: 'none', animation: 'floatUp 2s ease-out forwards', zIndex: 99 }}>
                 {r.emoji}
               </div>
             ))}
           </div>
 
-          <div style={{ padding: '14px 24px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '14px', alignItems: 'center' }}>
-            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1 }}>▶ Ortak Oynat</button>
-            <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502' }}>⏸ Ortak Durdur</button>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {['❤️', '🔥', '😂', '😮', '👏', '😍'].map((emoji) => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '20px', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer' }}>
+          <div style={{ padding: '10px 16px', background: currentTheme.cardBg, borderTop: '1px solid #222d34', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={handlePlay} style={{ ...styles.buttonPrimary, flex: 1, padding: '8px 10px', fontSize: '12px' }}>▶ Oynat</button>
+            <button onClick={handlePause} style={{ ...styles.buttonPrimary, flex: 1, background: '#ffa502', padding: '8px 10px', fontSize: '12px' }}>⏸ Durdur</button>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {['❤️', '🔥', '😂', '👏'].map((emoji) => (
+                <button key={emoji} onClick={() => sendReaction(emoji)} style={{ background: '#202c33', border: '1px solid #222d34', fontSize: '16px', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}>
                   {emoji}
                 </button>
               ))}
@@ -998,10 +1077,10 @@ function App() {
         </div>
 
         {/* SAĞ: SOHBET */}
-        <div style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
+        <div className="cm-sidebar-pane" style={{ width: '380px', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a', flexShrink: 0 }}>
+            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>💬 Sohbet</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '10px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
@@ -1010,37 +1089,12 @@ function App() {
                 {messages.map((msg, idx) => {
                   const isMe = msg.senderId === mySocketId || msg.sender === username;
                   return (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        flexDirection: isMe ? 'row-reverse' : 'row',
-                        alignItems: 'flex-end',
-                        gap: '6px',
-                        maxWidth: '85%',
-                        alignSelf: isMe ? 'flex-end' : 'flex-start'
-                      }}
-                    >
-                      <span style={{ fontSize: '14px', paddingBottom: '1px' }}>{msg.avatar || '🐱'}</span>
-                      <div
-                        style={{
-                          background: isMe ? '#005c4b' : '#202c33',
-                          color: '#e9edef',
-                          padding: '5px 9px',
-                          borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                          minWidth: '60px'
-                        }}
-                      >
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '1px' }}>
-                          {msg.sender}
-                        </div>
-                        <div style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>
-                          {msg.text}
-                        </div>
-                        <div style={{ fontSize: '8px', color: '#8696a0', textAlign: 'right', marginTop: '2px' }}>
-                          {msg.time}
-                        </div>
+                    <div key={idx} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '6px', maxWidth: '85%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
+                      <span style={{ fontSize: '13px' }}>{msg.avatar || '🐱'}</span>
+                      <div style={{ background: isMe ? '#005c4b' : '#202c33', color: '#e9edef', padding: '6px 10px', borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', minWidth: '50px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: isMe ? '#53bdeb' : '#25d366', marginBottom: '1px' }}>{msg.sender}</div>
+                        <div style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>{msg.text}</div>
+                        <div style={{ fontSize: '8px', color: '#8696a0', textAlign: 'right', marginTop: '2px' }}>{msg.time}</div>
                       </div>
                     </div>
                   );
@@ -1048,46 +1102,44 @@ function App() {
                 <div ref={chatBottomRef} />
               </div>
 
-              <form onSubmit={handleSendMessage} style={{ padding: '8px 10px', borderTop: '1px solid #222d34', display: 'flex', gap: '6px', background: currentTheme.cardBg }}>
+              <form onSubmit={handleSendMessage} style={{ padding: '8px 10px', borderTop: '1px solid #222d34', display: 'flex', gap: '6px', background: currentTheme.cardBg, flexShrink: 0 }}>
                 <input type="text" placeholder="Bir mesaj yazın..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ ...styles.input, flex: 1, borderRadius: '16px', background: '#202c33', border: 'none', padding: '8px 12px', fontSize: '12px' }} />
-                <button type="submit" style={{ ...styles.buttonPrimary, borderRadius: '50%', width: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>➤</button>
+                <button type="submit" style={{ ...styles.buttonPrimary, borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>➤</button>
               </form>
             </div>
           ) : (
-            <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b141a' }}>
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+            <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', background: '#0b141a' }}>
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', flexShrink: 0 }}>
                 {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '5px 10px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
-                  >
+                  <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ background: selectedCategory === cat ? currentTheme.primary : '#111b21', color: selectedCategory === cat ? '#fff' : '#8696a0', border: '1px solid #222d34', padding: '4px 10px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                     📁 {cat}
                   </button>
                 ))}
               </div>
 
-              <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '6px' }}>
+              <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                 <input type="text" placeholder="+ Yeni Klasör..." value={newCategoryInput} onChange={(e) => setNewCategoryInput(e.target.value)} style={{ ...styles.input, flex: 1, padding: '6px 10px', fontSize: '11px' }} />
                 <button type="submit" style={{ ...styles.buttonPrimary, padding: '6px 10px', fontSize: '11px' }}>Aç</button>
               </form>
 
-              <div style={{ display: 'flex', gap: '4px', background: '#111b21', padding: '3px', borderRadius: '10px', border: '1px solid #222d34' }}>
-                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'sequence' ? currentTheme.primary : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>▶ Sırayla</button>
-                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'shuffle' ? currentTheme.primary : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔀 Rastgele</button>
-                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '5px', borderRadius: '6px', border: 'none', background: playMode === 'alphabetical' ? currentTheme.primary : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔤 A-Z</button>
+              <div style={{ display: 'flex', gap: '4px', background: '#111b21', padding: '3px', borderRadius: '10px', border: '1px solid #222d34', flexShrink: 0 }}>
+                <button onClick={() => handleModeChange('sequence')} style={{ flex: 1, padding: '4px', borderRadius: '6px', border: 'none', background: playMode === 'sequence' ? currentTheme.primary : 'transparent', color: playMode === 'sequence' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>▶ Sıra</button>
+                <button onClick={() => handleModeChange('shuffle')} style={{ flex: 1, padding: '4px', borderRadius: '6px', border: 'none', background: playMode === 'shuffle' ? currentTheme.primary : 'transparent', color: playMode === 'shuffle' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔀 Karıştır</button>
+                <button onClick={() => handleModeChange('alphabetical')} style={{ flex: 1, padding: '4px', borderRadius: '6px', border: 'none', background: playMode === 'alphabetical' ? currentTheme.primary : 'transparent', color: playMode === 'alphabetical' ? '#fff' : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '10px' }}>🔤 A-Z</button>
               </div>
 
-              {filteredPlaylist.length === 0 ? (
-                <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş.</div>
-              ) : (
-                filteredPlaylist.map((item) => (
-                  <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.title}</div>
-                    <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}>🗑️</button>
-                  </div>
-                ))
-              )}
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {filteredPlaylist.length === 0 ? (
+                  <div style={{ color: '#8696a0', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>Bu klasör henüz boş.</div>
+                ) : (
+                  filteredPlaylist.map((item) => (
+                    <div key={item.id} onClick={() => handleSelectPlaylistItem(item)} style={{ background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21', border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>{item.title}</div>
+                      <button onClick={(e) => handleRemovePlaylistItem(item.id, e)} style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer', fontSize: '12px' }}>🗑️</button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>
