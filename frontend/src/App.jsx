@@ -15,6 +15,7 @@ import CreateJoin from './Home/CreateJoin';
 
 import Header from './Room/Header';
 import SearchBar from './Room/SearchBar';
+import MusicPlayer from './Room/MusicPlayer';
 import Player from './Room/Player';
 import Controls from './Room/Controls';
 import Chat from './Room/Chat';
@@ -130,6 +131,10 @@ function App() {
   const [joinModalPass, setJoinModalPass] = useState('');
 
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
+
+  const [currentMusicSong, setCurrentMusicSong] = useState(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [volume] = useState(0.7);
 
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
@@ -380,6 +385,12 @@ function App() {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
     } else { handleOpenAddModal(song); }
+  };
+
+  const handleSelectMusicSong = (song) => {
+    setCurrentMusicSong(song);
+    setMusicPlaying(true);
+    sendAction('CHANGE_MEDIA', { type: 'music', src: song.videoId, title: song.title });
   };
 
   const handleSelectPlaylistItem = (item) => {
@@ -934,10 +945,14 @@ function App() {
       <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
         <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           <SearchBar
-            searchInput={searchInput} setSearchInput={setSearchInput}
-            searchResults={searchResults} isSearching={isSearching}
-            currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
-            handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
+            currentTheme={currentTheme} API_BASE={API_BASE}
+            onSelectSong={handleSelectMusicSong}
+          />
+          <MusicPlayer
+            currentSong={currentMusicSong} isPlaying={musicPlaying}
+            volume={volume} currentTheme={currentTheme} API_BASE={API_BASE}
+            onEnded={() => setMusicPlaying(false)}
+            onError={(err) => { setYoutubeError(err); }}
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError}

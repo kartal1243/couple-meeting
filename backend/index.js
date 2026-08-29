@@ -134,113 +134,36 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- SPOTIFY SEARCH ---
-let spotifyToken = null;
-let spotifyTokenExpiry = 0;
+// --- MUSIC STREAMING (musicstream-sdk) ---
+const { MusicKit } = require('musicstream-sdk');
+const mk = new MusicKit({ logLevel: 'warn' });
 
-async function getSpotifyToken() {
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
-  if (spotifyToken && Date.now() < spotifyTokenExpiry) return spotifyToken;
-
-  try {
-    const res = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-      },
-      body: 'grant_type=client_credentials'
-    });
-    if (res.ok) {
-      const data = await res.json();
-      spotifyToken = data.access_token;
-      spotifyTokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
-      return spotifyToken;
-    }
-  } catch (e) { logger.error('Spotify token hatası', { error: e.message }); }
-  return null;
-}
-
-app.get('/api/spotify/search', async (req, res) => {
+app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
-
-  const token = await getSpotifyToken();
-  if (!token) return res.json({ results: [], error: 'Spotify API tanımlı değil. SPOTIFY_CLIENT_ID ve SPOTIFY_CLIENT_SECRET ekleyin.' });
-
   try {
-    const params = new URLSearchParams({ q, type: 'track', market: 'TR', limit: '10', offset: '0' });
-    const res2 = await fetch(`https://api.spotify.com/v1/search?${params}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res2.ok) return res.json({ results: [], error: `Spotify API hatası: ${res2.status}` });
-
-    const data = await res2.json();
-    const tracks = (data.tracks?.items || []).map(t => ({
-      id: t.id,
-      title: t.name,
-      artist: t.artists.map(a => a.name).join(', '),
-      album: t.album?.name || '',
-      duration: Math.floor(t.duration_ms / 1000),
-      thumbnail: t.album?.images?.[0]?.url || '',
-      preview_url: t.preview_url || '',
-      spotifyUrl: t.external_urls?.spotify || '',
-      uri: t.uri
-    }));
-    res.json({ results: tracks });
+    const songs = await mk.search(q, { filter: 'songs', limit: 10 });
+    res.json({ results: songs.map(s => ({
+      videoId: s.videoId, title: s.title, artist: s.artist,
+      album: s.album || '', duration: s.duration || 0,
+      thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`
+    }))});
   } catch (e) {
-    logger.error('Spotify arama hatası', { error: e.message });
-    res.json({ results: [], error: 'Arama hatası.' });
+    logger.error('Müzik arama hatası', { error: e.message });
+    res.json({ results: [], error: e.message });
   }
 });
-const { execFile } = require('child_process');
-const audioCache = new Map();
 
-function extractAudioUrl(videoId) {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve(null), 20000);
-    execFile('python3', ['-m', 'yt_dlp', '-f', 'bestaudio', '--js-runtimes', 'node', '--remote-components', 'ejs:github', '--get-url', `https://www.youtube.com/watch?v=${videoId}`],
-      { timeout: 18000, maxBuffer: 1024 * 1024 },
-      (err, stdout, stderr) => {
-        clearTimeout(timeout);
-        if (err) {
-          logger.warn(`yt-dlp exec error: ${err.message}`);
-          return resolve(null);
-        }
-        const url = (stdout || '').trim().split('\n')[0];
-        if (url && url.startsWith('http')) return resolve(url);
-        logger.warn(`yt-dlp no URL: ${(stderr || '').substring(0, 200)}`);
-        resolve(null);
-      }
-    );
-  });
-}
-
-app.get('/api/audio-url/:videoId', async (req, res) => {
+app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
-  if (!videoId || videoId.length !== 11) return res.status(400).json({ error: 'Geçersiz video ID' });
-
-  if (audioCache.has(videoId)) {
-    const cached = audioCache.get(videoId);
-    if (Date.now() - cached.time < 30 * 60 * 1000) {
-      return res.json({ url: cached.url, cached: true });
-    }
-    audioCache.delete(videoId);
+  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+  try {
+    const stream = await mk.getStream(videoId);
+    res.json({ url: stream.url, codec: stream.codec, bitrate: stream.bitrate });
+  } catch (e) {
+    logger.error('Stream hatası', { error: e.message });
+    res.status(502).json({ error: 'Ses akışı alınamadı.' });
   }
-
-  logger.info(`🎵 Audio extraction: ${videoId}`);
-
-  const audioUrl = await extractAudioUrl(videoId);
-  if (audioUrl) {
-    audioCache.set(videoId, { url: audioUrl, time: Date.now() });
-    logger.info(`✅ Audio URL bulundu: ${videoId}`);
-    return res.json({ url: audioUrl });
-  }
-
-  logger.warn(`❌ Audio extraction başarısız: ${videoId}`);
-  return res.status(502).json({ error: 'Ses çıkarılamadı.' });
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
