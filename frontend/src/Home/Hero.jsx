@@ -1,6 +1,20 @@
 export default function Hero({ authUser, openAuth, handleQuickCreateRoom }) {
   return (
     <section className="cm-hero">
+      {/* Pulse Hearts Logo */}
+      <div className="cm-pulse-hearts">
+        <div className="cm-pulse-hearts-glow" />
+        <div className="cm-pulse-hearts-pair">
+          <div className="cm-pulse-heart cm-pulse-heart-1">
+            <span>♥</span>
+          </div>
+          <div className="cm-pulse-heart cm-pulse-heart-2">
+            <span>♥</span>
+          </div>
+        </div>
+        <div className="cm-pulse-line" />
+      </div>
+
       {/* Büyük başlık */}
       <h1 className="cm-hero-title">
         BİRLİKTE<br />DİNLE

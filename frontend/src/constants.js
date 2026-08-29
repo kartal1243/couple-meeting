@@ -99,6 +99,29 @@ export const HOME_CSS = `
   .cm-home-logo { width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#2563eb);font-size:18px;box-shadow:0 8px 24px rgba(124,58,237,.4);position:relative;z-index:2; }
   .cm-home-logo-ring { position:absolute; inset:-3px; border-radius:50%; border:2px solid transparent; background:conic-gradient(#7c3aed,#2563eb,#00a884,#7c3aed) border-box; -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; animation:cmLogoRing 3s linear infinite; }
   @keyframes cmLogoRing { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+  /* Pulse Hearts Logo (Hero) */
+  .cm-pulse-hearts { position:relative; display:flex; align-items:center; justify-content:center; margin-bottom:30px; }
+  .cm-pulse-hearts-glow { position:absolute; width:140px; height:140px; background:radial-gradient(circle,rgba(236,72,153,.35),rgba(139,92,246,.2),transparent 70%); border-radius:50%; animation:cmPulseGlow 2.5s ease-in-out infinite; }
+  @keyframes cmPulseGlow { 0%,100%{transform:scale(1);opacity:.6} 50%{transform:scale(1.2);opacity:1} }
+  .cm-pulse-hearts-pair { position:relative; display:flex; gap:-12px; }
+  .cm-pulse-heart { width:60px; height:60px; border-radius:16px; display:grid; place-items:center; font-size:26px; color:#fff; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+  .cm-pulse-heart-1 { background:linear-gradient(135deg,#ec4899,#f43f5e); transform:rotate(45deg); animation:cmPulseHeart 1.2s ease-in-out infinite; }
+  .cm-pulse-heart-2 { background:linear-gradient(135deg,#8b5cf6,#d946ef); transform:rotate(45deg); animation:cmPulseHeart 1.2s ease-in-out infinite 0.3s; border:2px solid rgba(255,255,255,.2); margin-left:-12px; }
+  @keyframes cmPulseHeart { 0%,100%{transform:rotate(45deg) scale(1)} 50%{transform:rotate(45deg) scale(1.12)} }
+  .cm-pulse-heart span { transform:rotate(-45deg); }
+  .cm-pulse-line { position:absolute; bottom:-6px; width:80px; height:2px; background:linear-gradient(90deg,#ec4899,#8b5cf6); border-radius:99px; opacity:.5; }
+
+  /* Sound Wave Logo (Footer) */
+  .cm-sound-wave { display:flex; align-items:center; gap:14px; }
+  .cm-sound-wave-bars { display:flex; align-items:center; gap:3px; height:32px; }
+  .cm-sound-wave-bar { width:3px; border-radius:99px; background:linear-gradient(to top,#ec4899,#8b5cf6); transform-origin:bottom; }
+  .cm-sound-wave-avatar { width:40px; height:40px; border-radius:50%; padding:2px; }
+  .cm-sound-wave-avatar-1 { background:linear-gradient(135deg,#ec4899,#f97316); }
+  .cm-sound-wave-avatar-2 { background:linear-gradient(135deg,#7c3aed,#6366f1); }
+  .cm-sound-wave-avatar-inner { width:100%; height:100%; border-radius:50%; background:#0f172a; display:grid; place-items:center; font-size:16px; }
+  @keyframes cmWaveBar { 0%,100%{transform:scaleY(0.5)} 50%{transform:scaleY(1.3)} }
+
   .cm-nav-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
   .cm-home-main { position:relative; z-index:2; width:min(1200px,92vw); margin:0 auto; padding:40px 0 70px; }
 
@@ -211,8 +234,10 @@ export const HOME_CSS = `
   .cm-preview-empty-icon { font-size:36px;margin-bottom:10px; }
 
   /* === FOOTER === */
-  .cm-footer { padding:35px 0 30px; text-align:center; color:#475569; font-size:12px; border-top:1px solid rgba(255,255,255,.05); margin-top:60px; }
-  .cm-footer-socials { display:flex; gap:12px; justify-content:center; margin-bottom:14px; }
+  .cm-footer { padding:40px 0 30px; text-align:center; border-top:1px solid rgba(255,255,255,.05); margin-top:60px; }
+  .cm-footer-text { margin-top:14px; font-size:16px; letter-spacing:-0.3px; }
+  .cm-footer-slogan { color:#64748b; font-size:12px; margin-top:6px; }
+  .cm-footer-socials { display:flex; gap:12px; justify-content:center; margin-top:18px; }
   .cm-footer-socials a { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#94a3b8; font-size:16px; text-decoration:none; transition:all .2s; }
   .cm-footer-socials a:hover { background:rgba(124,58,237,.2); border-color:rgba(124,58,237,.4); color:#a78bfa; transform:translateY(-2px); }
 

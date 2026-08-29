@@ -824,13 +824,34 @@ function App() {
             <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
             <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
             <div className="cm-footer">
+              <div className="cm-sound-wave">
+                <div className="cm-sound-wave-avatar cm-sound-wave-avatar-1">
+                  <div className="cm-sound-wave-avatar-inner">👩</div>
+                </div>
+                <div className="cm-sound-wave-bars">
+                  {[14,28,40,20,34,26,38,18,32,22,36,16,30].map((h, i) => (
+                    <div
+                      key={i}
+                      className="cm-sound-wave-bar"
+                      style={{ height: `${h}px`, animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s` }}
+                    />
+                  ))}
+                </div>
+                <div className="cm-sound-wave-avatar cm-sound-wave-avatar-2">
+                  <div className="cm-sound-wave-avatar-inner">👨</div>
+                </div>
+              </div>
+              <div className="cm-footer-text">
+                <span style={{ fontWeight: 900, color: '#fff' }}>couple</span>
+                <span style={{ fontWeight: 300, color: '#a78bfa' }}>meeting</span>
+              </div>
+              <div className="cm-footer-slogan">Uzaklığı biraz daha küçük yapan internet. ❤️</div>
               <div className="cm-footer-socials">
                 <a href="#" title="Instagram">📷</a>
                 <a href="#" title="Twitter/X">🐦</a>
                 <a href="#" title="YouTube">▶️</a>
                 <a href="#" title="Discord">💬</a>
               </div>
-              Couple Meeting • Uzaklığı biraz daha küçük yapan internet. ❤️
             </div>
           </main>
 
