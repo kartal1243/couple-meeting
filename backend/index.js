@@ -15,7 +15,14 @@ const app = express();
 // --- SECURITY ---
 app.use(helmet({ contentSecurityPolicy: false }));
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+const ALLOWED_ORIGINS = [
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean),
+  'https://couple-meeting-flax.vercel.app',
+  'https://www.couplemeeting.com.tr',
+  'https://couplemeeting.com.tr',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
 const isProd = process.env.NODE_ENV === 'production';
 
 app.use(cors({
