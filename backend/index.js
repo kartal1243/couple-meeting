@@ -134,43 +134,38 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC STREAMING (musicstream-sdk) ---
-let mk = null;
-try {
-  const { MusicKit } = require('musicstream-sdk');
-  mk = new MusicKit({ logLevel: 'warn' });
-  logger.info('✅ musicstream-sdk yüklendi');
-} catch (e) {
-  logger.warn('⚠️ musicstream-sdk yüklenemedi (Node.js 22 gerektirebilir)', { error: e.message });
-}
+// --- MUSIC STREAMING (JioSaavn API) ---
 
 app.get('/api/music/search', async (req, res) => {
-  if (!mk) return res.json({ results: [], error: 'musicstream-sdk kullanilamiyor' });
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
   try {
-    const songs = await mk.search(q, { filter: 'songs', limit: 10 });
-    res.json({ results: songs.map(s => ({
-      videoId: s.videoId, title: s.title, artist: s.artist,
-      album: s.album || '', duration: s.duration || 0,
-      thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`
-    }))});
+    const r = await fetch(`https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    const songs = (data.songs?.data || []).slice(0, 10).map(s => ({
+      id: s.id, title: s.title, artist: s.description, album: '',
+      duration: s.duration, thumbnail: s.image?.replace('50x50', '500x500') || '',
+      preview_url: s.url || ''
+    }));
+    res.json({ results: songs });
   } catch (e) {
-    logger.error('Müzik arama hatası', { error: e.message });
     res.json({ results: [], error: e.message });
   }
 });
 
-app.get('/api/music/stream/:videoId', async (req, res) => {
-  if (!mk) return res.status(503).json({ error: 'musicstream-sdk kullanilamiyor' });
-  const { videoId } = req.params;
-  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+app.get('/api/music/stream/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: 'id gerekli' });
   try {
-    const stream = await mk.getStream(videoId);
-    res.json({ url: stream.url, codec: stream.codec, bitrate: stream.bitrate });
+    const r = await fetch(`https://www.jiosaavn.com/api.php?__call=song.getDetails&cc=in&_marker=0&_format=json&pids=${id}`);
+    const data = await r.json();
+    const song = data[id] || Object.values(data)[0];
+    if (song?.media_preview_url) {
+      return res.json({ url: song.media_preview_url });
+    }
+    res.status(404).json({ error: 'Ses bulunamadı' });
   } catch (e) {
-    logger.error('Stream hatası', { error: e.message });
-    res.status(502).json({ error: 'Ses akışı alınamadı.' });
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -427,26 +422,23 @@ io.on('connection', (socket) => {
     try {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
-      let rawList = [];
-      if (mk) {
+      let results = [];
+      try {
+        const r = await fetch(`https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=${encodeURIComponent(q)}`);
+        const data = await r.json();
+        results = (data.songs?.data || []).slice(0, 8).map(s => ({
+          id: s.id, title: s.title, artist: s.description,
+          duration: s.duration, thumbnail: (s.image || '').replace('50x50', '500x500'),
+          type: 'music', src: s.id
+        }));
+      } catch {}
+      if (results.length === 0) {
         try {
-          const songs = await mk.search(q, { filter: 'songs', limit: 8 });
-          rawList = songs.map(s => ({ videoId: s.videoId, title: s.title, artist: s.artist, duration: s.duration }));
-        } catch (e) { logger.warn('musicstream-sdk arama hatası', { error: e.message }); }
-      }
-      if (!rawList || rawList.length === 0) {
-        const encoded = encodeURIComponent(q);
-        const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
-        try {
-          const res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
-          if (res.ok) { const data = await res.json(); rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []); }
+          const encoded = encodeURIComponent(q);
+          const res = await fetch(`https://verome-api-hq8s6wtb2v78.kartal1243.deno.net/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
+          if (res.ok) { const data = await res.json(); const list = Array.isArray(data) ? data : (data.results || data.songs || data.content || []); results = list.slice(0, 8).map(v => { const vid = v.videoId || v.id || v.src; return { id: vid, title: v.title || v.name, thumbnail: `https://img.youtube.com/vi/${vid}/hqdefault.jpg`, type: 'youtube', src: vid }; }).filter(v => v.src && v.src.length === 11); }
         } catch {}
       }
-      if (!rawList || rawList.length === 0) { const r = await ytSearch(q); rawList = r.videos || []; }
-      const results = rawList.slice(0, 6).map(v => {
-        const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
-        return { id: videoId, title: v.title || v.name || 'YouTube Videosu', timestamp: v.duration ? `${Math.floor(v.duration / 60)}:${String(v.duration % 60).padStart(2, '0')}` : (v.duration || v.timestamp || 'Müzik'), thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, type: 'youtube', src: videoId };
-      }).filter(v => v.src && v.src.length === 11);
       socket.emit('search_results', results);
     } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
   });

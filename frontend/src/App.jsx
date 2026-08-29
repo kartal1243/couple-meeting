@@ -72,6 +72,7 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
+  const [mediaMeta, setMediaMeta] = useState(null);
 
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
@@ -377,8 +378,12 @@ function App() {
   const handleSelectSearchResult = (song, playImmediately = true) => {
     if (!song) return;
     if (playImmediately) {
-      setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
-      sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
+      setYoutubeError(null);
+      const type = song.type || 'youtube';
+      setMediaType(type);
+      setMediaSrc(song.src);
+      setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
+      sendAction('CHANGE_MEDIA', { type, src: song.src, title: song.title });
     } else { handleOpenAddModal(song); }
   };
 
@@ -940,7 +945,7 @@ function App() {
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
           />
           <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError}
+            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
             customVideoRef={customVideoRef} ytPlayerRef={ytPlayerRef}
             reactions={reactions} fallbackUrl={fallbackUrl} setFallbackUrl={setFallbackUrl}
             useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}

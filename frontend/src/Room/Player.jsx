@@ -1,5 +1,6 @@
 import YouTube from 'react-youtube';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { BACKEND_URL } from '../constants';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -9,11 +10,13 @@ function extractVideoId(src) {
 }
 
 export default function Player({
-  mediaType, mediaSrc, youtubeError, customVideoRef, ytPlayerRef,
+  mediaType, mediaSrc, youtubeError, customVideoRef, ytPlayerRef, mediaMeta,
   reactions, fallbackUrl, setFallbackUrl, useFallbackSource,
   openYouTubeExternally, setYoutubeError, setMediaType, handleMediaEnd, handleYouTubeError
 }) {
   const videoId = extractVideoId(mediaSrc);
+  const audioRef = useRef(null);
+  const [musicLoading, setMusicLoading] = useState(false);
 
   const ytOpts = {
     height: '100%', width: '100%',
@@ -26,11 +29,41 @@ export default function Player({
 
   const handleYTReady = useCallback((e) => { ytPlayerRef.current = e.target; }, []);
 
+  useEffect(() => {
+    if (mediaType === 'music' && mediaSrc) {
+      setMusicLoading(true);
+      fetch(`${BACKEND_URL}/api/music/stream/${mediaSrc}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.url && audioRef.current) {
+            audioRef.current.src = data.url;
+            audioRef.current.play().catch(() => {});
+            if ('mediaSession' in navigator && mediaMeta) {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: mediaMeta.title || 'Müzik',
+                artist: mediaMeta.artist || '',
+                artwork: mediaMeta.thumbnail ? [{ src: mediaMeta.thumbnail, sizes: '300x300', type: 'image/jpeg' }] : []
+              });
+            }
+          }
+          setMusicLoading(false);
+        })
+        .catch(() => setMusicLoading(false));
+    }
+  }, [mediaType, mediaSrc]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.onended = () => handleMediaEnd?.();
+    }
+  }, []);
+
   return (
     <div className="cm-video-wrap" style={{
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
+      <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
 
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
@@ -51,6 +84,23 @@ export default function Player({
             onError={handleYouTubeError}
             onEnd={handleMediaEnd}
           />
+        </div>
+      )}
+
+      {mediaType === 'music' && (
+        <div style={{ textAlign: 'center', color: '#fff', padding: '20px' }}>
+          {mediaMeta?.thumbnail && (
+            <img src={mediaMeta.thumbnail} alt="" style={{ width: '240px', height: '240px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 10px 40px rgba(0,0,0,.5)', marginBottom: '16px' }} />
+          )}
+          <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Müzik'}</div>
+          <div style={{ fontSize: '13px', color: '#8696a0' }}>{mediaMeta?.artist || ''}</div>
+          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginTop: '10px' }}>⏳ Yükleniyor...</div>}
+          <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <button onClick={() => { if (audioRef.current) audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause(); }}
+              style={{ background: '#00a884', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>
+              ▶ / ⏸
+            </button>
+          </div>
         </div>
       )}
 
