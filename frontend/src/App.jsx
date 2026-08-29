@@ -6,7 +6,6 @@ import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
 
-
 import Hero from './Home/Hero';
 import Features from './Home/Features';
 import PublicRooms from './Home/PublicRooms';
@@ -180,7 +179,7 @@ function App() {
     } catch {}
   };
 
-  // --- YENİ: Oda mesajlarını localStorage'a kaydet ---
+  // Oda mesajlarını localStorage'a kaydet
   const saveRoomMessages = useCallback((rid, msgs) => {
     try { localStorage.setItem(`cm_room_msgs_${rid}`, JSON.stringify(msgs.slice(-200))); } catch {}
   }, []);
@@ -297,6 +296,7 @@ function App() {
     socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity, username, avatar: myAvatar, roomType: 'video' });
   };
 
+  // Düzeltilen kısım: Tanımsız setAudioMode ve stopAudio kaldırıldı
   const handleLeaveRoom = () => {
     socket.emit('leave_room');
     setInRoom(false);
@@ -304,8 +304,6 @@ function App() {
     setMediaSrc('');
     setMessages([]);
     setReplyTo(null);
-    setAudioMode(false);
-    stopAudio();
     localStorage.removeItem('cm_saved_room');
     localStorage.removeItem('cm_saved_pass');
     window.history.replaceState({}, '', window.location.pathname);
@@ -410,7 +408,6 @@ function App() {
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
-
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -432,7 +429,6 @@ function App() {
     sendAction('PAUSE', {});
   };
 
-  // --- YENİ: Mesaj gönderme + yanıtlama ---
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -501,12 +497,10 @@ function App() {
     return filtered;
   }, [playlist, selectedCategory, playMode]);
 
-  // --- Effects ---
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // --- YENİ: Service Worker kaydı (arka plan çalma için) ---
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
@@ -531,7 +525,6 @@ function App() {
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
   useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
 
-  // --- YENİ: Wake Lock (ekran uyumasın, arka planda devam) ---
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
@@ -598,7 +591,6 @@ function App() {
       if (Array.isArray(data.categories)) { setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
       if (data.playMode) setPlayMode(data.playMode);
 
-      // --- YENİ: Mesaj geçmişi hem sunucudan hem local'den ---
       const serverMsgs = Array.isArray(data.messages) ? data.messages : [];
       const localMsgs = loadRoomMessages(data.roomId);
       const mergedMsgs = serverMsgs.length > 0 ? serverMsgs : localMsgs;
@@ -673,7 +665,6 @@ function App() {
           saveRoomMessages(currentRoomIdRef.current, updated);
           return updated;
         });
-        // --- YENİ: Bildirim sesi (her zaman) + tarayıcı bildirimi (sayfa gizliyse) ---
         if (payload.senderId !== mySocketIdRef.current) {
           playMessageSound();
           if (document.hidden && Notification.permission === 'granted') {
@@ -719,12 +710,10 @@ function App() {
       socket.emit('social_sync', { token: authToken });
     });
 
-    // --- YENİ: Arkadaş online durumu ---
     socket.on('friend_online_status', (data) => {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
     });
 
-    // --- VIP ---
     socket.on('vip_activated', (data) => {
       setAuthUser((prev) => {
         const updated = { ...prev, isVip: data.isVip, vipExpiry: data.vipExpiry };
@@ -733,12 +722,10 @@ function App() {
       });
     });
 
-    // --- YENİ: Bildirim izni ---
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
-    // --- YENİ: Sayfa görünürlüğü değiştiğinde socket'i canlı tut ---
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && socketRef.current) {
         socketRef.current.connect();
@@ -758,7 +745,6 @@ function App() {
     };
   }, []);
 
-  // --- Render ---
   if (!inRoom) {
     return (
       <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
