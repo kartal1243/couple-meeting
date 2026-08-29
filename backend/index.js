@@ -134,80 +134,28 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- AUDIO EXTRACTION (YouTube -> MP3) ---
+// --- AUDIO STREAMING (yt-dlp) ---
+const { execFile } = require('child_process');
 const audioCache = new Map();
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timer);
-    return res;
-  } catch (e) { clearTimeout(timer); throw e; }
-}
-
-async function extractAudioFromCobalt(videoId) {
-  const cobaltInstances = [
-    'https://api.cobalt.tools',
-    'https://cobalt-api.kwiatekmiki.com',
-    'https://api-dl.cococococ.com'
-  ];
-  for (const instance of cobaltInstances) {
-    try {
-      const res = await fetchWithTimeout(`${instance}/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          url: `https://www.youtube.com/watch?v=${videoId}`,
-          downloadMode: 'audio',
-          audioFormat: 'mp3',
-          audioBitrate: '128'
-        })
-      }, 8000);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) return data.url;
-        if (data.status === 'tunnel' && data.url) return data.url;
-        if (data.status === 'redirect' && data.url) return data.url;
+function extractAudioUrl(videoId) {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(null), 20000);
+    execFile('python3', ['-m', 'yt_dlp', '-f', 'bestaudio', '--js-runtimes', 'node', '--remote-components', 'ejs:github', '--get-url', `https://www.youtube.com/watch?v=${videoId}`],
+      { timeout: 18000, maxBuffer: 1024 * 1024 },
+      (err, stdout, stderr) => {
+        clearTimeout(timeout);
+        if (err) {
+          logger.warn(`yt-dlp exec error: ${err.message}`);
+          return resolve(null);
+        }
+        const url = (stdout || '').trim().split('\n')[0];
+        if (url && url.startsWith('http')) return resolve(url);
+        logger.warn(`yt-dlp no URL: ${(stderr || '').substring(0, 200)}`);
+        resolve(null);
       }
-    } catch (e) {}
-  }
-  return null;
-}
-
-async function extractAudioFromInvidious(videoId) {
-  const instances = [
-    'https://inv.nadeko.net', 'https://invidious.nerdvpn.de',
-    'https://vid.puffyan.us', 'https://yewtu.be',
-    'https://invidious.lunar.icu', 'https://inv.tux.pizza'
-  ];
-  for (const inst of instances) {
-    try {
-      const res = await fetchWithTimeout(`${inst}/latest_version?id=${videoId}&itag=140`, { redirect: 'follow' }, 5000);
-      if (res.ok && res.url) return res.url;
-    } catch (e) {}
-  }
-  return null;
-}
-
-async function extractAudioFromPiped(videoId) {
-  const instances = [
-    'https://pipedapi.kavin.rocks',
-    'https://piped-api.lunar.icu',
-    'https://watchapi.whatever.social'
-  ];
-  for (const inst of instances) {
-    try {
-      const res = await fetchWithTimeout(`${inst}/streams/${videoId}`, {}, 5000);
-      if (res.ok) {
-        const data = await res.json();
-        const audioStream = data.audioStreams?.find(s => s.mimeType?.includes('audio'));
-        if (audioStream?.url) return audioStream.url;
-      }
-    } catch (e) {}
-  }
-  return null;
+    );
+  });
 }
 
 app.get('/api/audio-url/:videoId', async (req, res) => {
@@ -222,12 +170,9 @@ app.get('/api/audio-url/:videoId', async (req, res) => {
     audioCache.delete(videoId);
   }
 
-  logger.info(`🎵 Audio extraction başlatıldı: ${videoId}`);
+  logger.info(`🎵 Audio extraction: ${videoId}`);
 
-  let audioUrl = await extractAudioFromCobalt(videoId);
-  if (!audioUrl) audioUrl = await extractAudioFromPiped(videoId);
-  if (!audioUrl) audioUrl = await extractAudioFromInvidious(videoId);
-
+  const audioUrl = await extractAudioUrl(videoId);
   if (audioUrl) {
     audioCache.set(videoId, { url: audioUrl, time: Date.now() });
     logger.info(`✅ Audio URL bulundu: ${videoId}`);
@@ -235,7 +180,7 @@ app.get('/api/audio-url/:videoId', async (req, res) => {
   }
 
   logger.warn(`❌ Audio extraction başarısız: ${videoId}`);
-  return res.status(502).json({ error: 'Ses çıkarılamadı, tüm servisler başarısız.' });
+  return res.status(502).json({ error: 'Ses çıkarılamadı.' });
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';

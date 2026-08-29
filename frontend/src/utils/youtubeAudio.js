@@ -5,57 +5,16 @@ let currentVideoId = null;
 
 const API_BASE = 'https://couple-meeting.onrender.com';
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timer);
-    return res;
-  } catch (e) { clearTimeout(timer); throw e; }
-}
-
 async function extractAudioUrl(videoId) {
   if (AUDIO_CACHE[videoId]) return AUDIO_CACHE[videoId];
 
-  // 1) Backend API (cobalt v10 proxy)
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/api/audio-url/${videoId}`, {}, 10000);
+    const res = await fetch(`${API_BASE}/api/audio-url/${videoId}`);
     if (res.ok) {
       const data = await res.json();
       if (data.url) { AUDIO_CACHE[videoId] = data.url; return data.url; }
     }
   } catch (e) {}
-
-  // 2) Piped API (çalışan instance'lar)
-  const pipedInstances = [
-    'https://pipedapi.kavin.rocks',
-    'https://piped-api.lunar.icu',
-    'https://watchapi.whatever.social'
-  ];
-  for (const inst of pipedInstances) {
-    try {
-      const res = await fetchWithTimeout(`${inst}/streams/${videoId}`, {}, 5000);
-      if (res.ok) {
-        const data = await res.json();
-        const audioStream = data.audioStreams?.find(s => s.mimeType?.includes('audio'));
-        if (audioStream?.url) { AUDIO_CACHE[videoId] = audioStream.url; return audioStream.url; }
-      }
-    } catch (e) {}
-  }
-
-  // 3) Invidious instance'ları
-  const invidiousInstances = [
-    'https://inv.nadeko.net', 'https://invidious.nerdvpn.de',
-    'https://vid.puffyan.us', 'https://yewtu.be',
-    'https://invidious.lunar.icu', 'https://inv.tux.pizza'
-  ];
-  for (const inst of invidiousInstances) {
-    try {
-      const res = await fetchWithTimeout(`${inst}/latest_version?id=${videoId}&itag=140`, { redirect: 'follow' }, 5000);
-      if (res.ok && res.url) { AUDIO_CACHE[videoId] = res.url; return res.url; }
-    } catch (e) {}
-  }
 
   return null;
 }
@@ -73,7 +32,6 @@ function createAudioElement() {
 
   const audio = new Audio();
   audio.preload = 'auto';
-  audio.crossOrigin = 'anonymous';
 
   audio.onplay = () => audioCallbacks.onPlay?.();
   audio.onpause = () => audioCallbacks.onPause?.();
@@ -88,7 +46,6 @@ function createAudioElement() {
       if (details.seekTime != null) audio.currentTime = details.seekTime;
     });
     navigator.mediaSession.setActionHandler('nexttrack', () => audioCallbacks.onEnd?.());
-    navigator.mediaSession.setActionHandler('previoustrack', null);
   }
 
   currentAudio = audio;
