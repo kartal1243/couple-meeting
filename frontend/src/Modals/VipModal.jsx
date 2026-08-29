@@ -12,20 +12,22 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
     if (!authUser) return;
     setProcessing(true);
     try {
-      await new Promise(r => setTimeout(r, 2000));
-      const paymentId = 'pay_' + Date.now();
-      const res = await fetch(`${BACKEND_URL}/api/vip/activate`, {
+      const res = await fetch(`${BACKEND_URL}/api/vip/create-checkout`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: localStorage.getItem('cm_auth_token'), plan: selectedPlan, paymentId })
+        body: JSON.stringify({ token: localStorage.getItem('cm_auth_token'), plan: selectedPlan })
       });
       const data = await res.json();
       if (data.ok) {
-        setSuccess(true);
-        setAuthUser({ ...authUser, isVip: true, vipExpiry: data.vipExpiry });
-        localStorage.setItem('cm_auth_user', JSON.stringify({ ...authUser, isVip: true, vipExpiry: data.vipExpiry }));
-        setTimeout(() => setSuccess(false), 3000);
+        if (data.testMode) {
+          setSuccess(true);
+          setAuthUser({ ...authUser, isVip: true, vipExpiry: data.vipExpiry });
+          localStorage.setItem('cm_auth_user', JSON.stringify({ ...authUser, isVip: true, vipExpiry: data.vipExpiry }));
+          setTimeout(() => setSuccess(false), 3000);
+        } else if (data.url) {
+          window.location.href = data.url;
+        }
       }
-    } catch (e) { console.error('VIP activation error:', e); }
+    } catch (e) { console.error('VIP checkout error:', e); }
     setProcessing(false);
   };
 
