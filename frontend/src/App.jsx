@@ -5,6 +5,7 @@ import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
+import { playYouTubeAudio, pauseAudio, resumeAudio, seekAudio, getCurrentTime, stopAudio, isAudioPlaying } from './utils/youtubeAudio';
 
 import Hero from './Home/Hero';
 import Features from './Home/Features';
@@ -71,6 +72,7 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
+  const [audioMode, setAudioMode] = useState(false); // true = HTML5 Audio, false = YouTube iframe
 
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
@@ -262,6 +264,8 @@ function App() {
     setMediaSrc('');
     setMessages([]);
     setReplyTo(null);
+    setAudioMode(false);
+    stopAudio();
     localStorage.removeItem('cm_saved_room');
     localStorage.removeItem('cm_saved_pass');
     window.history.replaceState({}, '', window.location.pathname);
@@ -305,10 +309,9 @@ function App() {
     if (searchInput.includes('http://') || searchInput.includes('https://')) media = processUrl(searchInput);
     else if (searchResults.length > 0) media = { type: 'youtube', src: searchResults[0].src };
     else return;
-    setYoutubeError(null);
-    setMediaType(media.type);
-    setMediaSrc(media.src);
+    setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
+    if (media.type === 'youtube') startAudioPlayback(media.src, searchResults[0]?.title);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -338,13 +341,15 @@ function App() {
     if (!song) return;
     if (playImmediately) {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
-      sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src });
+      sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
+      startAudioPlayback(song.src, song.title);
     } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
-    sendAction('CHANGE_MEDIA', { type: item.type, src: item.src });
+    sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
+    if (item.type === 'youtube') startAudioPlayback(item.src, item.title);
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -353,6 +358,11 @@ function App() {
   };
 
   const handlePlay = () => {
+    if (audioMode) {
+      resumeAudio();
+      sendAction('PLAY', { time: getCurrentTime() });
+      return;
+    }
     let time = 0;
     if (mediaType === 'youtube' && ytPlayerRef.current) {
       time = ytPlayerRef.current.getCurrentTime(); ytPlayerRef.current.playVideo();
@@ -363,6 +373,11 @@ function App() {
   };
 
   const handlePause = () => {
+    if (audioMode) {
+      pauseAudio();
+      sendAction('PAUSE', {});
+      return;
+    }
     if (mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
     if (mediaType === 'custom_video') customVideoRef.current?.pause();
     sendAction('PAUSE', {});
@@ -429,6 +444,18 @@ function App() {
   const openYouTubeExternally = () => {
     if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
   };
+
+  // --- YENİ: Medya değiştiğinde audio modunu başlat ---
+  const startAudioPlayback = useCallback(async (src, title) => {
+    if (!src || mediaType !== 'youtube') return;
+    stopAudio();
+    setAudioMode(true);
+    await playYouTubeAudio(src, title || 'Couple Meeting', {
+      onEnd: () => handleMediaEnd(),
+      onTimeUpdate: (data) => { /* zaman senkronu gerekirse */ },
+      onError: () => setAudioMode(false) // hata olursa iframe'e dön
+    });
+  }, [mediaType, handleMediaEnd]);
 
   const filteredPlaylist = useMemo(() => {
     if (!Array.isArray(playlist)) return [];
@@ -592,6 +619,10 @@ function App() {
         if (payload.mediaType === 'custom_video') customVideoRef.current?.pause();
       } else if (type === 'CHANGE_MEDIA') {
         setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
+        // YouTube ise audio modunu başlat (arka plan için)
+        if (payload.type === 'youtube') {
+          startAudioPlayback(payload.src, payload.title);
+        }
       } else if (type === 'CHAT_MESSAGE') {
         setMessages((prev) => {
           const updated = [...prev, payload];
@@ -806,6 +837,7 @@ function App() {
             useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
             setYoutubeError={setYoutubeError} setMediaType={setMediaType}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
+            audioMode={audioMode} playlist={playlist}
           />
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
         </div>

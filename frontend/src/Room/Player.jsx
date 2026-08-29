@@ -3,8 +3,11 @@ import YouTube from 'react-youtube';
 export default function Player({
   mediaType, mediaSrc, youtubeError, customVideoRef, ytPlayerRef,
   reactions, fallbackUrl, setFallbackUrl, useFallbackSource,
-  openYouTubeExternally, setYoutubeError, setMediaType, handleMediaEnd, handleYouTubeError
+  openYouTubeExternally, setYoutubeError, setMediaType, handleMediaEnd, handleYouTubeError,
+  audioMode, playlist
 }) {
+  const currentTitle = playlist?.find(i => i.src === mediaSrc)?.title || 'Şarkı Çalıyor';
+
   return (
     <div
       className="cm-video-wrap"
@@ -22,7 +25,52 @@ export default function Player({
         </div>
       )}
 
-      {mediaType === 'youtube' && !youtubeError && (
+      {/* YENİ: Audio Modu - Arka plan çalma görseli */}
+      {mediaType === 'youtube' && audioMode && !youtubeError && (
+        <div style={{
+          width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(180deg, #0a1628, #050c14)',
+          padding: 24
+        }}>
+          <div style={{
+            width: 200, height: 200, borderRadius: 28, overflow: 'hidden',
+            boxShadow: '0 30px 80px rgba(0,168,132,.25)', marginBottom: 24,
+            animation: 'pulse 3s ease-in-out infinite', position: 'relative'
+          }}>
+            <img
+              src={`https://img.youtube.com/vi/${mediaSrc}/hqdefault.jpg`}
+              alt={currentTitle}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <div style={{
+                width: 60, height: 60, borderRadius: '50%', background: 'rgba(0,168,132,.8)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28
+              }}>
+                🎵
+              </div>
+            </div>
+          </div>
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 900, textAlign: 'center', maxWidth: 400 }}>
+            {currentTitle}
+          </div>
+          <div style={{ color: '#53e6bc', fontSize: 12, fontWeight: 800, marginTop: 8 }}>
+            🎧 ARKA PLANDA ÇALIYOR
+          </div>
+          <div style={{ color: '#63727d', fontSize: 11, marginTop: 12, textAlign: 'center', maxWidth: 350 }}>
+            Bu mod arka planda çalmaya izin verir. Şarkı kilit ekranında da kontrol edilebilir.
+          </div>
+          <style>{`
+            @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+          `}</style>
+        </div>
+      )}
+
+      {/* YouTube iframe (audio mode değilse) */}
+      {mediaType === 'youtube' && !audioMode && !youtubeError && (
         <div style={{
           width: '100%', height: '100%', position: 'relative',
           display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000'
@@ -98,9 +146,6 @@ export default function Player({
             >
               Kaynağı Kullan
             </button>
-          </div>
-          <div style={{ color: '#6f7d89', fontSize: '11px', marginTop: '9px' }}>
-            MP4/WebM bağlantıları tam senkron kontrolleri destekler. Harici iframe kaynaklarında oynat/durdur senkronu kaynağın API'sine bağlıdır.
           </div>
         </div>
       )}
