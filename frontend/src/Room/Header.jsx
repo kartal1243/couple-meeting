@@ -16,33 +16,41 @@ export default function Header({
         onClick={handleLeaveRoom}
       >
         <div style={{
-          width: '32px', height: '32px', borderRadius: '8px', background: currentTheme.primary,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px'
+          display: 'flex', alignItems: 'center', gap: '3px', height: '28px',
+          background: 'linear-gradient(135deg, rgba(236,72,153,.15), rgba(139,92,246,.15))',
+          padding: '0 10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,.06)'
         }}>
-          ❤️⚡
+          {[10,18,24,14,20,12,22,16].map((h, i) => (
+            <div key={i} style={{
+              width: '2.5px', height: `${h}px`, borderRadius: '99px',
+              background: 'linear-gradient(to top, #ec4899, #8b5cf6)',
+              transformOrigin: 'bottom',
+              animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s`
+            }} />
+          ))}
         </div>
-        <h2 style={{ margin: 0, color: currentTheme.primary, fontSize: '18px', fontWeight: '900' }}>
+        <h2 style={{ margin: 0, color: '#fff', fontSize: '16px', fontWeight: '900', letterSpacing: '-0.3px' }}>
           {roomName}
         </h2>
         <span style={{
-          fontSize: '11px', background: currentTheme.cardBg, color: currentTheme.primary,
-          padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold',
-          border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex',
-          alignItems: 'center', gap: '6px'
+          fontSize: '10px', background: 'rgba(255,255,255,.06)', color: '#94a3b8',
+          padding: '3px 10px', borderRadius: '20px', fontWeight: '800',
+          display: 'inline-flex', alignItems: 'center', gap: '5px',
+          border: '1px solid rgba(255,255,255,.06)'
         }}>
           <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} />
-          Kişi: {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+          {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
         </span>
       </div>
 
-      <div className="cm-room-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <div className="cm-room-header-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         {showInstallBtn && (
           <button
             onClick={handleInstallApp}
             style={{
-              background: '#25d366', color: '#000', border: 'none',
-              padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
-              fontWeight: '900', fontSize: '12px'
+              background: 'rgba(34,197,94,.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,.2)',
+              padding: '7px 12px', borderRadius: '10px', cursor: 'pointer',
+              fontWeight: '800', fontSize: '11px'
             }}
           >
             📲 İndir
@@ -51,18 +59,18 @@ export default function Header({
         <button
           onClick={() => setShowSettingsModal(true)}
           style={{
-            background: '#202c33', color: '#e9edef', border: '1px solid #222d34',
-            padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
-            fontWeight: 'bold', fontSize: '12px'
+            background: 'rgba(255,255,255,.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,.08)',
+            padding: '7px 12px', borderRadius: '10px', cursor: 'pointer',
+            fontWeight: '800', fontSize: '11px'
           }}
         >
-          ⚙️ Ayarlar
+          ⚙️
         </button>
         {authUser && (
           <span style={{
-            background: '#0d201d', color: '#53e6bc', border: '1px solid #1c4a41',
-            padding: '8px 10px', borderRadius: '10px', fontWeight: '800', fontSize: '11px',
-            maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+            background: 'rgba(0,168,132,.1)', color: '#00a884', border: '1px solid rgba(0,168,132,.2)',
+            padding: '7px 10px', borderRadius: '10px', fontWeight: '800', fontSize: '11px',
+            maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
           }}>
             {authUser.avatar || myAvatar} {authUser.username}
           </span>
@@ -70,12 +78,12 @@ export default function Header({
         <button
           onClick={handleLeaveRoom}
           style={{
-            background: '#202c33', color: '#e9edef', border: '1px solid #222d34',
-            padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
-            fontWeight: 'bold', fontSize: '12px'
+            background: 'rgba(239,68,68,.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,.2)',
+            padding: '7px 12px', borderRadius: '10px', cursor: 'pointer',
+            fontWeight: '800', fontSize: '11px'
           }}
         >
-          Ana Sayfa 🚪
+          Çıkış
         </button>
       </div>
     </header>

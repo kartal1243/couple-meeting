@@ -7,6 +7,7 @@ export default function SearchBar({
 }) {
   const styles = getStyles(currentTheme);
   const [showResults, setShowResults] = useState(false);
+  const [addedId, setAddedId] = useState(null);
   const searchRef = useRef(null);
 
   useEffect(() => {
@@ -34,8 +35,10 @@ export default function SearchBar({
 
   const handleSelectResult = (song, playNow) => {
     handleSelectSearchResult(song, playNow);
-    setShowResults(false);
-    setSearchInput('');
+    if (!playNow) {
+      setAddedId(song.id);
+      setTimeout(() => setAddedId(null), 1200);
+    }
   };
 
   return (
@@ -92,12 +95,14 @@ export default function SearchBar({
               className="cm-search-result-row"
               style={{
                 display: 'flex', alignItems: 'center', gap: '14px',
-                background: '#111b21', padding: '8px 12px', borderRadius: '10px',
-                border: '1px solid #222d34', cursor: 'pointer', transition: 'all 0.15s'
+                background: addedId === song.id ? 'rgba(0,168,132,.15)' : '#111b21',
+                padding: '8px 12px', borderRadius: '10px',
+                border: addedId === song.id ? '1px solid rgba(0,168,132,.3)' : '1px solid #222d34',
+                cursor: 'pointer', transition: 'all 0.2s'
               }}
               onClick={() => handleSelectResult(song, true)}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}
+              onMouseEnter={(e) => { if (addedId !== song.id) e.currentTarget.style.background = '#1a2634'; }}
+              onMouseLeave={(e) => { if (addedId !== song.id) e.currentTarget.style.background = '#111b21'; }}
             >
               <img
                 src={song.thumbnail}
@@ -111,18 +116,26 @@ export default function SearchBar({
                 <div style={{ fontSize: '11px', color: '#7f8c98', marginTop: 2 }}>{song.timestamp}</div>
               </div>
               <div className="cm-result-actions" style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => handleSelectResult(song, true)}
-                  style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}
-                >
-                  ▶ Çal
-                </button>
-                <button
-                  onClick={() => handleSelectResult(song, false)}
-                  style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}
-                >
-                  + Ekle
-                </button>
+                {addedId === song.id ? (
+                  <span style={{ color: '#00a884', fontSize: '12px', fontWeight: 800, padding: '6px 12px' }}>
+                    ✓ Eklendi
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleSelectResult(song, true)}
+                      style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      ▶ Çal
+                    </button>
+                    <button
+                      onClick={() => handleSelectResult(song, false)}
+                      style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}
+                    >
+                      + Ekle
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))}
