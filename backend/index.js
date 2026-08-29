@@ -134,6 +134,110 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
+// --- AUDIO EXTRACTION (YouTube -> MP3) ---
+const audioCache = new Map();
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (e) { clearTimeout(timer); throw e; }
+}
+
+async function extractAudioFromCobalt(videoId) {
+  const cobaltInstances = [
+    'https://api.cobalt.tools',
+    'https://cobalt-api.kwiatekmiki.com',
+    'https://api-dl.cococococ.com'
+  ];
+  for (const instance of cobaltInstances) {
+    try {
+      const res = await fetchWithTimeout(`${instance}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          url: `https://www.youtube.com/watch?v=${videoId}`,
+          downloadMode: 'audio',
+          audioFormat: 'mp3',
+          audioBitrate: '128'
+        })
+      }, 8000);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) return data.url;
+        if (data.status === 'tunnel' && data.url) return data.url;
+        if (data.status === 'redirect' && data.url) return data.url;
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+async function extractAudioFromInvidious(videoId) {
+  const instances = [
+    'https://inv.nadeko.net', 'https://invidious.nerdvpn.de',
+    'https://vid.puffyan.us', 'https://yewtu.be',
+    'https://invidious.lunar.icu', 'https://inv.tux.pizza'
+  ];
+  for (const inst of instances) {
+    try {
+      const res = await fetchWithTimeout(`${inst}/latest_version?id=${videoId}&itag=140`, { redirect: 'follow' }, 5000);
+      if (res.ok && res.url) return res.url;
+    } catch (e) {}
+  }
+  return null;
+}
+
+async function extractAudioFromPiped(videoId) {
+  const instances = [
+    'https://pipedapi.kavin.rocks',
+    'https://piped-api.lunar.icu',
+    'https://watchapi.whatever.social'
+  ];
+  for (const inst of instances) {
+    try {
+      const res = await fetchWithTimeout(`${inst}/streams/${videoId}`, {}, 5000);
+      if (res.ok) {
+        const data = await res.json();
+        const audioStream = data.audioStreams?.find(s => s.mimeType?.includes('audio'));
+        if (audioStream?.url) return audioStream.url;
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+app.get('/api/audio-url/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId || videoId.length !== 11) return res.status(400).json({ error: 'Geçersiz video ID' });
+
+  if (audioCache.has(videoId)) {
+    const cached = audioCache.get(videoId);
+    if (Date.now() - cached.time < 30 * 60 * 1000) {
+      return res.json({ url: cached.url, cached: true });
+    }
+    audioCache.delete(videoId);
+  }
+
+  logger.info(`🎵 Audio extraction başlatıldı: ${videoId}`);
+
+  let audioUrl = await extractAudioFromCobalt(videoId);
+  if (!audioUrl) audioUrl = await extractAudioFromPiped(videoId);
+  if (!audioUrl) audioUrl = await extractAudioFromInvidious(videoId);
+
+  if (audioUrl) {
+    audioCache.set(videoId, { url: audioUrl, time: Date.now() });
+    logger.info(`✅ Audio URL bulundu: ${videoId}`);
+    return res.json({ url: audioUrl });
+  }
+
+  logger.warn(`❌ Audio extraction başarısız: ${videoId}`);
+  return res.status(502).json({ error: 'Ses çıkarılamadı, tüm servisler başarısız.' });
+});
+
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 if (!ADMIN_SECRET) logger.warn('⚠️ ADMIN_SECRET tanımlı değil. Admin VIP özellikleri pasif olacak.');
 
@@ -242,8 +346,7 @@ function updateRoomUsers(roomId) {
     io.to(roomId).emit('room_user_count_update', {
       userCount: rooms[roomId].users.length, maxUsers: rooms[roomId].maxUsers,
       users: rooms[roomId].users, hostUserId: rooms[roomId].hostUserId,
-      roomName: rooms[roomId].name, theme: rooms[roomId].theme || 'default',
-      audioMode: !!rooms[roomId].audioMode
+      roomName: rooms[roomId].name, theme: rooms[roomId].theme || 'default'
     });
   }
 }
@@ -405,7 +508,7 @@ io.on('connection', (socket) => {
   });
 
   // ODA
-  socket.on('join_room', ({ roomId, password, maxUsers, audioMode, userId, userCity, username, avatar, isVip }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip }) => {
     const cleanRoomId = sanitize(roomId, 50);
     let room = rooms[cleanRoomId];
     if (!room) {
@@ -415,8 +518,7 @@ io.on('connection', (socket) => {
         hostUserId: userId, theme: 'default', users: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
-        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip,
-        audioMode: !!audioMode
+        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
       };
       room = rooms[cleanRoomId];
     } else {
@@ -437,7 +539,7 @@ io.on('connection', (socket) => {
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
-      isVip: !!room.isVip, audioMode: !!room.audioMode,
+      isVip: !!room.isVip,
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();

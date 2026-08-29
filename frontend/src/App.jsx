@@ -72,7 +72,6 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
-  const [audioMode, setAudioMode] = useState(false); // true = HTML5 Audio, false = YouTube iframe
 
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
@@ -126,7 +125,6 @@ function App() {
   const [quickRoomName, setQuickRoomName] = useState('');
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
-  const [quickAudioMode, setQuickAudioMode] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
   const [joinModalPass, setJoinModalPass] = useState('');
@@ -136,7 +134,6 @@ function App() {
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
   const socketRef = useRef(null);
-  const audioModeRef = useRef(false);
   const startAudioPlaybackRef = useRef(null);
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
@@ -257,12 +254,11 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, audioMode: quickAudioMode, userId, userCity, username, avatar: myAvatar });
+    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar });
     setShowQuickCreate(false);
     setQuickRoomName('');
     setQuickRoomPass('');
     setQuickMaxUsers('2');
-    setQuickAudioMode(false);
   };
 
   const handleJoinRoomFromModal = (e) => {
@@ -358,7 +354,7 @@ function App() {
     else return;
     setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
-    if (media.type === 'youtube' && audioModeRef.current) startAudioPlayback(media.src, searchResults[0]?.title);
+    if (media.type === 'youtube') startAudioPlayback(media.src, searchResults[0]?.title);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -389,17 +385,14 @@ function App() {
     if (playImmediately) {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
-      // Ses modundaysa audio extraction, video modundaysa iframe ile çal
-      if (audioModeRef.current) {
-        startAudioPlayback(song.src, song.title);
-      }
+      startAudioPlayback(song.src, song.title);
     } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
-    if (item.type === 'youtube' && audioModeRef.current) startAudioPlayback(item.src, item.title);
+    if (item.type === 'youtube') startAudioPlayback(item.src, item.title);
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -408,28 +401,18 @@ function App() {
   };
 
   const handlePlay = () => {
-    if (audioMode) {
-      resumeAudio();
-      sendAction('PLAY', { time: getCurrentTime() });
-      return;
-    }
-    let time = 0;
+    resumeAudio();
     if (mediaType === 'youtube' && ytPlayerRef.current) {
-      time = ytPlayerRef.current.getCurrentTime(); ytPlayerRef.current.playVideo();
-    } else if (mediaType === 'custom_video' && customVideoRef.current) {
-      time = customVideoRef.current.currentTime; customVideoRef.current.play().catch(() => {});
-    } else if (mediaType === 'iframe') return;
-    sendAction('PLAY', { time });
+      try { ytPlayerRef.current.playVideo(); } catch {}
+    }
+    sendAction('PLAY', { time: getCurrentTime() });
   };
 
   const handlePause = () => {
-    if (audioMode) {
-      pauseAudio();
-      sendAction('PAUSE', {});
-      return;
+    pauseAudio();
+    if (mediaType === 'youtube' && ytPlayerRef.current) {
+      try { ytPlayerRef.current.pauseVideo(); } catch {}
     }
-    if (mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
-    if (mediaType === 'custom_video') customVideoRef.current?.pause();
     sendAction('PAUSE', {});
   };
 
@@ -495,27 +478,17 @@ function App() {
     if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
   };
 
-  // --- YENİ: Medya değiştiğinde audio modunu başlat ---
+  // --- Medya değiştiğinde ses extraction başlat ---
   const startAudioPlayback = useCallback(async (src, title) => {
     if (!src) return;
     if (getCurrentVideoId() === src && isAudioPlaying()) return;
     stopAudio();
-    // Oda ses modundaysa audio extraction kullan, değilse iframe modunda kal
-    const isAudioRoom = audioModeRef.current;
-    if (!isAudioRoom) {
-      // Video modu - sadece YouTube iframe ile çal, audio extraction yapma
-      setAudioMode(false);
-      return;
-    }
-    setAudioMode(true);
-    const audio = await playYouTubeAudio(src, title || 'Couple Meeting', {
+    // Her zaman ses çıkarmayı dene (arka plan çalma için)
+    await playYouTubeAudio(src, title || 'Couple Meeting', {
       onEnd: () => handleMediaEndRef.current?.(),
       onTimeUpdate: () => {},
-      onError: () => {
-        setAudioMode(false);
-      }
+      onError: () => {}
     });
-    if (!audio) setAudioMode(false);
   }, []);
 
   startAudioPlaybackHolder.current = startAudioPlayback;
@@ -554,7 +527,6 @@ function App() {
     }
   }, [mediaSrc, mediaType, playMode, playlist]);
 
-  useEffect(() => { audioModeRef.current = audioMode; }, [audioMode]);
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
   useEffect(() => { startAudioPlaybackRef.current = startAudioPlayback; }, []);
   useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
@@ -619,7 +591,6 @@ function App() {
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
-      if (typeof data.audioMode === 'boolean') setAudioMode(data.audioMode);
 
       if (Array.isArray(data.playlist)) { setPlaylist(data.playlist); localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist)); }
       if (Array.isArray(data.categories)) { setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
@@ -680,28 +651,20 @@ function App() {
     });
 
     socket.on('room_action', ({ type, payload }) => {
-      const isAudio = audioModeRef.current;
       if (type === 'PLAY') {
-        if (isAudio) {
-          resumeAudio();
-        } else if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
-          ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo();
-        } else if (payload.mediaType === 'custom_video' && customVideoRef.current) {
-          customVideoRef.current.currentTime = payload.time || 0; customVideoRef.current.play();
+        resumeAudio();
+        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+          try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {}
         }
       } else if (type === 'PAUSE') {
-        if (isAudio) {
-          pauseAudio();
-        } else {
-          if (payload.mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
-          if (payload.mediaType === 'custom_video') customVideoRef.current?.pause();
+        pauseAudio();
+        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+          try { ytPlayerRef.current.pauseVideo(); } catch {}
         }
       } else if (type === 'SEEK') {
-        if (isAudio) {
-          seekAudio(payload.time || 0);
-        } else {
-          if (payload.mediaType === 'youtube' && ytPlayerRef.current) ytPlayerRef.current.seekTo(payload.time || 0, true);
-          if (payload.mediaType === 'custom_video' && customVideoRef.current) customVideoRef.current.currentTime = payload.time || 0;
+        seekAudio(payload.time || 0);
+        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+          try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {}
         }
       } else if (type === 'CHANGE_MEDIA') {
         setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
@@ -917,27 +880,6 @@ function App() {
                       <option value="8">8 Kişi 🎉</option>
                     </select>
                   </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Modu</label>
-                    <div style={{ display:'flex', gap:8 }}>
-                      <div
-                        onClick={() => setQuickAudioMode(false)}
-                        style={{ flex:1, padding:'10px 12px', borderRadius:12, border: !quickAudioMode ? '2px solid #7c3aed' : '1px solid #25313a', background: !quickAudioMode ? 'rgba(124,58,237,.1)' : '#0b141a', cursor:'pointer', textAlign:'center', transition:'all .2s' }}
-                      >
-                        <div style={{ fontSize:18 }}>🎬</div>
-                        <div style={{ color:'#e9edef', fontSize:11, fontWeight:800, marginTop:2 }}>Video</div>
-                        <div style={{ color:'#64748b', fontSize:9 }}>YouTube_embed</div>
-                      </div>
-                      <div
-                        onClick={() => setQuickAudioMode(true)}
-                        style={{ flex:1, padding:'10px 12px', borderRadius:12, border: quickAudioMode ? '2px solid #00a884' : '1px solid #25313a', background: quickAudioMode ? 'rgba(0,168,132,.1)' : '#0b141a', cursor:'pointer', textAlign:'center', transition:'all .2s' }}
-                      >
-                        <div style={{ fontSize:18 }}>🎧</div>
-                        <div style={{ color:'#e9edef', fontSize:11, fontWeight:800, marginTop:2 }}>Ses</div>
-                        <div style={{ color:'#64748b', fontSize:9 }}>Arka plan çalar</div>
-                      </div>
-                    </div>
-                  </div>
                   <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
                     🚀 Odayı Başlat
                   </button>
@@ -1035,7 +977,7 @@ function App() {
             useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
             setYoutubeError={setYoutubeError} setMediaType={setMediaType}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-            audioMode={audioMode} playlist={playlist}
+            playlist={playlist}
           />
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
         </div>

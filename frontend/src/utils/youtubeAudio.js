@@ -1,8 +1,9 @@
-// YouTube'dan ses çıkarma ve HTML5 Audio ile çalma
 const AUDIO_CACHE = {};
 let currentAudio = null;
 let audioCallbacks = { onPlay: null, onPause: null, onEnd: null, onTimeUpdate: null, onError: null };
 let currentVideoId = null;
+
+const API_BASE = 'https://couple-meeting.onrender.com';
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
@@ -11,56 +12,51 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timer);
     return res;
-  } catch (e) {
-    clearTimeout(timer);
-    throw e;
-  }
+  } catch (e) { clearTimeout(timer); throw e; }
 }
 
 async function extractAudioUrl(videoId) {
   if (AUDIO_CACHE[videoId]) return AUDIO_CACHE[videoId];
 
-  const services = [
-    async () => {
-      const res = await fetchWithTimeout('https://api.cobalt.tools/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId}`, audioFormat: 'mp3', isAudioOnly: true })
-      });
+  // 1) Backend API (cobalt v10 proxy)
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/api/audio-url/${videoId}`, {}, 10000);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.url) { AUDIO_CACHE[videoId] = data.url; return data.url; }
+    }
+  } catch (e) {}
+
+  // 2) Piped API (çalışan instance'lar)
+  const pipedInstances = [
+    'https://pipedapi.kavin.rocks',
+    'https://piped-api.lunar.icu',
+    'https://watchapi.whatever.social'
+  ];
+  for (const inst of pipedInstances) {
+    try {
+      const res = await fetchWithTimeout(`${inst}/streams/${videoId}`, {}, 5000);
       if (res.ok) {
         const data = await res.json();
-        if (data.url) return data.url;
-      }
-      throw new Error('cobalt failed');
-    },
-    async () => {
-      const instances = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://vid.puffyan.us', 'https://yewtu.be', 'https://invidious.lunar.icu'];
-      for (const inst of instances) {
-        try {
-          const res = await fetchWithTimeout(`${inst}/latest_version?id=${videoId}&itag=140`, { redirect: 'follow' }, 4000);
-          if (res.ok && res.url) return res.url;
-        } catch (e) {}
-      }
-      throw new Error('invidious failed');
-    },
-    async () => {
-      const res = await fetchWithTimeout(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`, {}, 3000);
-      if (res.ok) {
-        return null;
-      }
-      throw new Error('noembed failed');
-    }
-  ];
-
-  for (const service of services) {
-    try {
-      const url = await service();
-      if (url) {
-        AUDIO_CACHE[videoId] = url;
-        return url;
+        const audioStream = data.audioStreams?.find(s => s.mimeType?.includes('audio'));
+        if (audioStream?.url) { AUDIO_CACHE[videoId] = audioStream.url; return audioStream.url; }
       }
     } catch (e) {}
   }
+
+  // 3) Invidious instance'ları
+  const invidiousInstances = [
+    'https://inv.nadeko.net', 'https://invidious.nerdvpn.de',
+    'https://vid.puffyan.us', 'https://yewtu.be',
+    'https://invidious.lunar.icu', 'https://inv.tux.pizza'
+  ];
+  for (const inst of invidiousInstances) {
+    try {
+      const res = await fetchWithTimeout(`${inst}/latest_version?id=${videoId}&itag=140`, { redirect: 'follow' }, 5000);
+      if (res.ok && res.url) { AUDIO_CACHE[videoId] = res.url; return res.url; }
+    } catch (e) {}
+  }
+
   return null;
 }
 
@@ -77,6 +73,7 @@ function createAudioElement() {
 
   const audio = new Audio();
   audio.preload = 'auto';
+  audio.crossOrigin = 'anonymous';
 
   audio.onplay = () => audioCallbacks.onPlay?.();
   audio.onpause = () => audioCallbacks.onPause?.();
@@ -91,6 +88,7 @@ function createAudioElement() {
       if (details.seekTime != null) audio.currentTime = details.seekTime;
     });
     navigator.mediaSession.setActionHandler('nexttrack', () => audioCallbacks.onEnd?.());
+    navigator.mediaSession.setActionHandler('previoustrack', null);
   }
 
   currentAudio = audio;
