@@ -135,10 +135,17 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
 // --- MUSIC STREAMING (musicstream-sdk) ---
-const { MusicKit } = require('musicstream-sdk');
-const mk = new MusicKit({ logLevel: 'warn' });
+let mk = null;
+try {
+  const { MusicKit } = require('musicstream-sdk');
+  mk = new MusicKit({ logLevel: 'warn' });
+  logger.info('✅ musicstream-sdk yüklendi');
+} catch (e) {
+  logger.warn('⚠️ musicstream-sdk yüklenemedi (Node.js 22 gerektirebilir)', { error: e.message });
+}
 
 app.get('/api/music/search', async (req, res) => {
+  if (!mk) return res.json({ results: [], error: 'musicstream-sdk kullanilamiyor' });
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
   try {
@@ -155,6 +162,7 @@ app.get('/api/music/search', async (req, res) => {
 });
 
 app.get('/api/music/stream/:videoId', async (req, res) => {
+  if (!mk) return res.status(503).json({ error: 'musicstream-sdk kullanilamiyor' });
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
   try {
