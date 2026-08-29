@@ -945,12 +945,12 @@ function App() {
       <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
         <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
           <SearchBar
-            currentTheme={currentTheme} API_BASE={API_BASE}
+            currentTheme={currentTheme} API_BASE={BACKEND_URL}
             onSelectSong={handleSelectMusicSong}
           />
           <MusicPlayer
             currentSong={currentMusicSong} isPlaying={musicPlaying}
-            volume={volume} currentTheme={currentTheme} API_BASE={API_BASE}
+            volume={volume} currentTheme={currentTheme} API_BASE={BACKEND_URL}
             onEnded={() => setMusicPlaying(false)}
             onError={(err) => { setYoutubeError(err); }}
           />
