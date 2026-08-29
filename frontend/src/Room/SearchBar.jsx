@@ -1,13 +1,43 @@
 import { getStyles } from '../styles';
+import { useState, useRef, useEffect } from 'react';
 
 export default function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
   currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult
 }) {
   const styles = getStyles(currentTheme);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowResults(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handlePlay = () => {
+    handleDirectPlay();
+    setShowResults(false);
+    setSearchInput('');
+  };
+
+  const handleAddToPlaylist = () => {
+    handleOpenAddModal(null);
+    setShowResults(false);
+    setSearchInput('');
+  };
+
+  const handleSelectResult = (song, playNow) => {
+    handleSelectSearchResult(song, playNow);
+    setShowResults(false);
+    setSearchInput('');
+  };
 
   return (
     <div
+      ref={searchRef}
       className="cm-search-bar"
       style={{
         padding: '12px 20px', background: currentTheme.cardBg,
@@ -19,32 +49,33 @@ export default function SearchBar({
         type="text"
         placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
         value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
+        onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
+        onFocus={() => setShowResults(true)}
         style={{ ...styles.input, flex: 1 }}
       />
 
       <button
         className="cm-action-btn"
-        onClick={handleDirectPlay}
+        onClick={handlePlay}
         style={{ ...styles.buttonPrimary, background: currentTheme.primary }}
       >
         ▶ Oynat
       </button>
       <button
         className="cm-action-btn"
-        onClick={() => handleOpenAddModal(null)}
+        onClick={handleAddToPlaylist}
         style={{ ...styles.buttonPrimary, background: '#008f6f' }}
       >
         ➕ Listeye Ekle
       </button>
 
-      {(searchResults.length > 0 || isSearching) && (
+      {showResults && (searchResults.length > 0 || isSearching) && (
         <div
           className="cm-search-results"
           style={{
             position: 'absolute', top: '62px', left: '20px', right: '20px',
             ...styles.card, padding: '14px', zIndex: 9999,
-            display: 'flex', flexDirection: 'column', gap: '10px'
+            display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: 340, overflowY: 'auto'
           }}
         >
           {isSearching && (
@@ -59,32 +90,35 @@ export default function SearchBar({
               style={{
                 display: 'flex', alignItems: 'center', gap: '14px',
                 background: '#111b21', padding: '8px 12px', borderRadius: '10px',
-                border: '1px solid #222d34'
+                border: '1px solid #222d34', cursor: 'pointer', transition: 'all 0.15s'
               }}
+              onClick={() => handleSelectResult(song, true)}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}
             >
               <img
                 src={song.thumbnail}
                 alt={song.title}
                 style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }}
               />
-              <div style={{
-                flex: 1, overflow: 'hidden', fontSize: '13px', fontWeight: 'bold',
-                color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
-              }}>
-                {song.title}
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  {song.title}
+                </div>
+                <div style={{ fontSize: '11px', color: '#7f8c98', marginTop: 2 }}>{song.timestamp}</div>
               </div>
-              <div className="cm-result-actions" style={{ display: 'flex', gap: '6px' }}>
+              <div className="cm-result-actions" style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                 <button
-                  onClick={() => handleSelectSearchResult(song, true)}
+                  onClick={() => handleSelectResult(song, true)}
                   style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}
                 >
                   ▶ Çal
                 </button>
                 <button
-                  onClick={() => handleSelectSearchResult(song, false)}
+                  onClick={() => handleSelectResult(song, false)}
                   style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}
                 >
-                  + Klasöre Ekle
+                  + Ekle
                 </button>
               </div>
             </div>

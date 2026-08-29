@@ -18,6 +18,43 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now() });
 });
 
+// --- VIP ÖDEME SİSTEMİ ---
+const VIP_PLANS = {
+  monthly: { price: 29.90, duration: 30 * 24 * 60 * 60 * 1000, label: 'Aylık VIP' },
+  yearly: { price: 199.90, duration: 365 * 24 * 60 * 60 * 1000, label: 'Yıllık VIP' }
+};
+
+app.post('/api/vip/activate', express.json(), (req, res) => {
+  const { token, plan, paymentId } = req.body;
+  if (!token || !plan || !VIP_PLANS[plan]) return res.json({ ok: false, message: 'Geçersiz plan.' });
+  const user = getUserByToken(token);
+  if (!user) return res.json({ ok: false, message: 'Giriş yapmalısın.' });
+
+  // Gerçek ödeme burada işlenir (Stripe/Papara vs.)
+  // Şu an simülasyon: paymentId varsa onayla
+  if (!paymentId) return res.json({ ok: false, message: 'Ödeme başarısız.' });
+
+  const now = Date.now();
+  const currentExpiry = user.vipExpiry || 0;
+  const startFrom = currentExpiry > now ? currentExpiry : now;
+  user.isVip = true;
+  user.vipExpiry = startFrom + VIP_PLANS[plan].duration;
+  user.vipPlan = plan;
+  user.vipActivatedAt = now;
+  saveSocialData();
+
+  console.log(`👑 VIP aktifleştirildi: ${user.username} (${VIP_PLANS[plan].label})`);
+  socket_ref = io.sockets.sockets;
+  for (const [sid, s] of io.sockets.sockets) {
+    if (s.socialUsername === user.username) s.emit('vip_activated', { isVip: true, vipExpiry: user.vipExpiry, plan });
+  }
+  res.json({ ok: true, isVip: true, vipExpiry: user.vipExpiry, plan });
+});
+
+app.get('/api/vip/plans', (req, res) => {
+  res.json({ plans: VIP_PLANS });
+});
+
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
@@ -87,10 +124,12 @@ setInterval(() => {
 function publicUser(u) {
   if (!u) return null;
   const isOnline = !!onlineUsers[u.username];
+  const isVip = u.isVip && u.vipExpiry && u.vipExpiry > Date.now();
   return {
     username: u.username, email: u.email, avatar: u.avatar || '🐱',
     bio: u.bio || '', status: u.status || '', createdAt: u.createdAt,
-    isOnline, lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null
+    isOnline, lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null,
+    isVip, vipExpiry: u.vipExpiry || null
   };
 }
 
@@ -145,14 +184,14 @@ function broadcastOnlineStatus(username) {
 
 loadSocialData();
 
-// --- BOŞ ODALARI OTOMATİK TEMİZLE ---
+// --- BOŞ ODALARI OTOMATİK TEMİZLE (VIP odalar silinmez) ---
 const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000;
 const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000;
 setInterval(() => {
   const now = Date.now();
   let cleaned = 0;
   for (const [id, room] of Object.entries(rooms)) {
-    if (room.users.length === 0 && !room.password && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
+    if (room.users.length === 0 && !room.password && !room.isVip && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
       delete rooms[id]; cleaned++;
     }
   }
@@ -162,7 +201,7 @@ setInterval(() => {
 function getPublicRoomsList() {
   const list = [];
   for (const [id, room] of Object.entries(rooms)) {
-    list.push({ id, name: room.name || id, userCount: room.users.length, maxUsers: room.maxUsers, hasPassword: !!room.password });
+    list.push({ id, name: room.name || id, userCount: room.users.length, maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip });
   }
   return list;
 }
@@ -310,7 +349,7 @@ io.on('connection', (socket) => {
   });
 
   // --- ODA ---
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip }) => {
     let room = rooms[roomId];
     if (!room) {
       rooms[roomId] = {
@@ -318,7 +357,8 @@ io.on('connection', (socket) => {
         hostUserId: userId, theme: 'default', users: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
-        messages: [], createdAt: Date.now(), lastActivityAt: Date.now()
+        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(),
+        isVip: !!isVip
       };
       room = rooms[roomId];
     } else {
@@ -346,6 +386,7 @@ io.on('connection', (socket) => {
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
+      isVip: !!room.isVip,
       currentMedia: { ...room.currentMedia, time: calculatedTime }
     });
 

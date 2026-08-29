@@ -15,7 +15,8 @@ export default function SocialModal({
   sendFriendRequest, friendRequests, respondFriendRequest, friends,
   friendOnlineStatuses, unfriendUser,
   profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
-  myAvatar, setMyAvatar, saveProfile, openAuth, handleLogout, setShowSocialModal, styles
+  myAvatar, setMyAvatar, saveProfile, openAuth, handleLogout, setShowSocialModal,
+  showVipModal, setShowVipModal, styles
 }) {
   return (
     <div style={{
@@ -37,7 +38,17 @@ export default function SocialModal({
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>🌍 Topluluk</div>
           </div>
           <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-            {authUser ? (
+            {authUser && !authUser.isVip && (
+              <button type="button" onClick={() => { setShowSocialModal(false); setShowVipModal(true); }}
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none', padding: '8px 10px', borderRadius: 10, fontWeight: 900, cursor: 'pointer', fontSize: 11 }}>
+                ⭐ VIP Ol
+              </button>
+            )}
+            {authUser?.isVip && (
+              <span style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', padding: '6px 10px', borderRadius: 10, fontWeight: 900, fontSize: 11 }}>
+                👑 VIP
+              </span>
+            )}            {authUser ? (
               <button type="button" onClick={handleLogout}
                 style={{ background: '#202c33', color: '#fff', border: '1px solid #2c3b44', padding: '8px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer' }}>
                 Çıkış

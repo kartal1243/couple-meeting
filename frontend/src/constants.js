@@ -12,8 +12,26 @@ export const THEMES = {
   default: { bg: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)', cardBg: '#111b21', primary: '#00a884' },
   purple: { bg: 'linear-gradient(135deg, #130f40 0%, #000000 100%)', cardBg: '#1e1b4b', primary: '#a855f7' },
   blue: { bg: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)', cardBg: '#1e293b', primary: '#38bdf8' },
-  rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' }
+  rose: { bg: 'linear-gradient(135deg, #2a0813 0%, #05070c 100%)', cardBg: '#3f0e1e', primary: '#fb7185' },
+  gold: { bg: 'linear-gradient(135deg, #2a1f08 0%, #0a0a00 100%)', cardBg: '#2a2210', primary: '#f59e0b', vip: true },
+  ocean: { bg: 'linear-gradient(135deg, #001a33 0%, #000d1a 100%)', cardBg: '#0a2540', primary: '#0ea5e9', vip: true },
+  emerald: { bg: 'linear-gradient(135deg, #052e16 0%, #022c0e 100%)', cardBg: '#0c3d1f', primary: '#34d399', vip: true },
+  sunset: { bg: 'linear-gradient(135deg, #3b1a08 0%, #1a0a00 100%)', cardBg: '#3b1a08', primary: '#f97316', vip: true }
 };
+
+export const VIP_PLANS = {
+  monthly: { price: 29.90, duration: '30 gün', label: 'Aylık VIP', icon: '⭐' },
+  yearly: { price: 199.90, duration: '1 yıl', label: 'Yıllık VIP', icon: '👑', savings: '%45' }
+};
+
+export const VIP_FEATURES = [
+  { icon: '🎨', title: 'Özel Temalar', desc: 'Gold, Ocean, Emerald, Sunset temaları' },
+  { icon: '🛡️', title: 'VIP Oda', desc: 'Otomatik silinmeyen kalıcı odalar' },
+  { icon: '👤', title: 'VIP Rozeti', desc: 'Profilinde altın rozet' },
+  { icon: '🎵', title: 'Sınırsız Playlist', desc: 'Sınırsız şarkı kaydetme' },
+  { icon: '🚀', title: 'Öncelikli Destek', desc: 'Hızlı teknik destek' },
+  { icon: '🎯', title: 'Özel Avatarlar', desc: 'VIP\'e özel avatar seçenekleri' }
+];
 
 export const GLOBAL_CSS = `
   @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; } }

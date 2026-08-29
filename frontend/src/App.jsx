@@ -22,6 +22,7 @@ import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
 import FolderModal from './Modals/FolderModal';
 import SettingsModal from './Modals/SettingsModal';
+import VipModal from './Modals/VipModal';
 
 function App() {
   const [userId] = useState(() => {
@@ -117,6 +118,7 @@ function App() {
   const [profileBioInput, setProfileBioInput] = useState('');
   const [profileStatusInput, setProfileStatusInput] = useState('');
   const [showSocialModal, setShowSocialModal] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
 
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
@@ -615,6 +617,15 @@ function App() {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
     });
 
+    // --- VIP ---
+    socket.on('vip_activated', (data) => {
+      setAuthUser((prev) => {
+        const updated = { ...prev, isVip: data.isVip, vipExpiry: data.vipExpiry };
+        localStorage.setItem('cm_auth_user', JSON.stringify(updated));
+        return updated;
+      });
+    });
+
     // --- YENİ: Bildirim izni ---
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -627,7 +638,7 @@ function App() {
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
-      socket.off('friend_request_status'); socket.off('friend_online_status');
+      socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('vip_activated');
     };
   }, []);
 
@@ -696,8 +707,12 @@ function App() {
               profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput}
               myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile}
               openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal}
+              showVipModal={showVipModal} setShowVipModal={setShowVipModal}
               styles={styles}
             />
+          )}
+          {showVipModal && (
+            <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />
           )}
         </div>
       </div>
@@ -724,7 +739,7 @@ function App() {
           setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings}
           roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin}
           handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal}
-          currentTheme={currentTheme} styles={styles}
+          currentTheme={currentTheme} authUser={authUser} styles={styles}
         />
       )}
 
