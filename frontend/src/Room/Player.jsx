@@ -37,7 +37,7 @@ export default function Player({
     ytPlayerRef.current = e.target;
   }, [ytPlayerRef]);
 
-  // Arka planda ekran kapalı çalma için MediaSession bildirimi
+  // Kilit ekranında bildirim gösterme ve arka plan oynatma
   const setupMediaSession = useCallback(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -68,33 +68,16 @@ export default function Player({
     }
   }, [mediaMeta, videoId]);
 
-  // Müzik modunda doğrudan ses akışını bağla
+  // SADECE VE SADECE KENDİ SUNUCUMUZUN IP'SİNDEN SES ÇEKİYORUZ
   useEffect(() => {
     if (mediaType === 'music' && videoId && audioRef.current) {
       setMusicLoading(true);
       setMusicError(false);
+      setIsPlaying(false);
 
-      // Invidious ve Piped üzerinden ekran kapalıyken çalan doğrudan ses akışı URL'leri
-      const streamUrls = [
-        `https://invidious.nerdvpn.de/latest_version?id=${videoId}&itag=140`,
-        `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140`,
-        `https://invidious.protokolla.fi/latest_version?id=${videoId}&itag=140`,
-        `https://yt.drgnz.club/latest_version?id=${videoId}&itag=140`
-      ];
-
-      let urlIndex = 0;
       const audio = audioRef.current;
-
-      const tryNextUrl = () => {
-        if (urlIndex < streamUrls.length) {
-          audio.src = streamUrls[urlIndex];
-          urlIndex++;
-          audio.load();
-        } else {
-          setMusicLoading(false);
-          setMusicError(true);
-        }
-      };
+      audio.src = `${BACKEND_URL}/api/music/play/${videoId}`;
+      audio.load();
 
       audio.oncanplay = () => {
         setMusicLoading(false);
@@ -102,16 +85,16 @@ export default function Player({
           setIsPlaying(true);
           setupMediaSession();
           if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        }).catch(() => {
+        }).catch((err) => {
+          console.warn('Oynatma etkileşim bekliyor:', err);
           setIsPlaying(false);
         });
       };
 
       audio.onerror = () => {
-        tryNextUrl();
+        setMusicLoading(false);
+        setMusicError(true);
       };
-
-      tryNextUrl();
     }
   }, [mediaType, videoId, setupMediaSession]);
 
@@ -133,7 +116,7 @@ export default function Player({
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
-      {/* HTML5 Saf Ses Oynatıcı (Ekran Kapalı Çalmayı Sağlayan Motor) */}
+      {/* HTML5 Saf Ses Oynatıcı - Kendi Sunucumuzdan Canlı Akış */}
       <audio
         ref={audioRef}
         playsInline
@@ -150,7 +133,7 @@ export default function Player({
         </div>
       )}
 
-      {/* VİDEO MODU (Ekran açıkken film/video izlemek için) */}
+      {/* VİDEO MODU */}
       {mediaType === 'youtube' && videoId && !youtubeError && (
         <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
           <YouTube
@@ -164,7 +147,7 @@ export default function Player({
         </div>
       )}
 
-      {/* MÜZİK MODU (Ekran kilitlense bile arkaplanda kesintisiz çalar) */}
+      {/* MÜZİK MODU (Kendi Sunucumuz + Kilit Ekranı Desteği) */}
       {mediaType === 'music' && videoId && (
         <div style={{ textAlign: 'center', color: '#fff', padding: '20px', zIndex: 2 }}>
           <img
@@ -184,8 +167,8 @@ export default function Player({
           <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Şarkı Çalıyor'}</div>
           <div style={{ fontSize: '14px', color: '#8696a0', marginBottom: '16px' }}>{mediaMeta?.artist || 'Couple Meeting Müzik'}</div>
 
-          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ Şarkı yükleniyor...</div>}
-          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginBottom: '12px' }}>❌ Şarkı bağlantısı kurulamadı. Başka bir şarkı deneyin.</div>}
+          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ Şarkı sunucudan yükleniyor...</div>}
+          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginBottom: '12px' }}>❌ Şarkı yüklenemedi. Tekrar deneyin.</div>}
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button
