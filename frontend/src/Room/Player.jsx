@@ -1,5 +1,6 @@
 import YouTube from 'react-youtube';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { BACKEND_URL } from '../constants';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -14,58 +15,117 @@ export default function Player({
   openYouTubeExternally, setYoutubeError, setMediaType, handleMediaEnd, handleYouTubeError
 }) {
   const videoId = extractVideoId(mediaSrc);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isBuffering, setIsBuffering] = useState(false);
+  const audioRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [musicLoading, setMusicLoading] = useState(false);
+  const [musicError, setMusicError] = useState(false);
 
   const ytOpts = {
     height: '100%',
     width: '100%',
     playerVars: {
       autoplay: 1,
-      controls: mediaType === 'youtube' ? 1 : 0,
+      controls: 1,
       playsinline: 1,
       rel: 0,
       modestbranding: 1,
-      origin: window.location.origin,
       enablejsapi: 1
     }
   };
 
   const handleYTReady = useCallback((e) => {
     ytPlayerRef.current = e.target;
-    try {
-      e.target.playVideo();
-      setIsPlaying(true);
-    } catch (err) {}
   }, [ytPlayerRef]);
 
-  const handleStateChange = (e) => {
-    // 1: Playing, 2: Paused, 3: Buffering, 0: Ended
-    if (e.data === 1) {
-      setIsPlaying(true);
-      setIsBuffering(false);
-    } else if (e.data === 2) {
-      setIsPlaying(false);
-      setIsBuffering(false);
-    } else if (e.data === 3) {
-      setIsBuffering(true);
-    } else if (e.data === 0) {
-      setIsPlaying(false);
-      handleMediaEnd?.();
+  // Arka planda ekran kapalı çalma için MediaSession bildirimi
+  const setupMediaSession = useCallback(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: mediaMeta?.title || 'Couple Meeting Şarkı',
+        artist: mediaMeta?.artist || 'Couple Meeting',
+        album: 'Müzik Odası',
+        artwork: [
+          {
+            src: mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            sizes: '512x512',
+            type: 'image/jpeg'
+          }
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        audioRef.current?.play();
+        setIsPlaying(true);
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      });
+      navigator.mediaSession.setActionHandler('stop', () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      });
     }
-  };
+  }, [mediaMeta, videoId]);
+
+  // Müzik modunda doğrudan ses akışını bağla
+  useEffect(() => {
+    if (mediaType === 'music' && videoId && audioRef.current) {
+      setMusicLoading(true);
+      setMusicError(false);
+
+      // Invidious ve Piped üzerinden ekran kapalıyken çalan doğrudan ses akışı URL'leri
+      const streamUrls = [
+        `https://invidious.nerdvpn.de/latest_version?id=${videoId}&itag=140`,
+        `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140`,
+        `https://invidious.protokolla.fi/latest_version?id=${videoId}&itag=140`,
+        `https://yt.drgnz.club/latest_version?id=${videoId}&itag=140`
+      ];
+
+      let urlIndex = 0;
+      const audio = audioRef.current;
+
+      const tryNextUrl = () => {
+        if (urlIndex < streamUrls.length) {
+          audio.src = streamUrls[urlIndex];
+          urlIndex++;
+          audio.load();
+        } else {
+          setMusicLoading(false);
+          setMusicError(true);
+        }
+      };
+
+      audio.oncanplay = () => {
+        setMusicLoading(false);
+        audio.play().then(() => {
+          setIsPlaying(true);
+          setupMediaSession();
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        }).catch(() => {
+          setIsPlaying(false);
+        });
+      };
+
+      audio.onerror = () => {
+        tryNextUrl();
+      };
+
+      tryNextUrl();
+    }
+  }, [mediaType, videoId, setupMediaSession]);
 
   const togglePlayPause = () => {
-    if (!ytPlayerRef.current) return;
-    try {
-      if (isPlaying) {
-        ytPlayerRef.current.pauseVideo();
-        setIsPlaying(false);
-      } else {
-        ytPlayerRef.current.playVideo();
-        setIsPlaying(true);
-      }
-    } catch (e) {}
+    if (!audioRef.current) return;
+    if (audioRef.current.paused) {
+      audioRef.current.play();
+      setIsPlaying(true);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    } else {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    }
   };
 
   return (
@@ -73,6 +133,14 @@ export default function Player({
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
+      {/* HTML5 Saf Ses Oynatıcı (Ekran Kapalı Çalmayı Sağlayan Motor) */}
+      <audio
+        ref={audioRef}
+        playsInline
+        preload="auto"
+        onEnded={() => { setIsPlaying(false); handleMediaEnd?.(); }}
+      />
+
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
           <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
@@ -82,7 +150,7 @@ export default function Player({
         </div>
       )}
 
-      {/* VİDEO MODU */}
+      {/* VİDEO MODU (Ekran açıkken film/video izlemek için) */}
       {mediaType === 'youtube' && videoId && !youtubeError && (
         <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
           <YouTube
@@ -90,28 +158,15 @@ export default function Player({
             opts={ytOpts}
             style={{ width: '100%', height: '100%', maxWidth: '100%' }}
             onReady={handleYTReady}
-            onStateChange={handleStateChange}
             onError={handleYouTubeError}
             onEnd={handleMediaEnd}
           />
         </div>
       )}
 
-      {/* MÜZİK MODU (Şık Albüm Arayüzü + Arka Planda Çalışan Resmi Ses Motoru) */}
+      {/* MÜZİK MODU (Ekran kilitlense bile arkaplanda kesintisiz çalar) */}
       {mediaType === 'music' && videoId && (
         <div style={{ textAlign: 'center', color: '#fff', padding: '20px', zIndex: 2 }}>
-          {/* Arka planda çalan görünmez YouTube Iframe (0px gizli) */}
-          <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0.01, pointerEvents: 'none' }}>
-            <YouTube
-              videoId={videoId}
-              opts={ytOpts}
-              onReady={handleYTReady}
-              onStateChange={handleStateChange}
-              onError={handleYouTubeError}
-              onEnd={handleMediaEnd}
-            />
-          </div>
-
           <img
             src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
             alt=""
@@ -129,7 +184,8 @@ export default function Player({
           <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Şarkı Çalıyor'}</div>
           <div style={{ fontSize: '14px', color: '#8696a0', marginBottom: '16px' }}>{mediaMeta?.artist || 'Couple Meeting Müzik'}</div>
 
-          {isBuffering && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ Yükleniyor...</div>}
+          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ Şarkı yükleniyor...</div>}
+          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginBottom: '12px' }}>❌ Şarkı bağlantısı kurulamadı. Başka bir şarkı deneyin.</div>}
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button
@@ -138,8 +194,8 @@ export default function Player({
                 background: isPlaying ? '#ea4335' : '#00a884',
                 color: '#fff',
                 border: 'none',
-                padding: '12px 30px',
-                borderRadius: '12px',
+                padding: '12px 32px',
+                borderRadius: '14px',
                 fontWeight: '800',
                 cursor: 'pointer',
                 fontSize: '15px',
@@ -172,16 +228,6 @@ export default function Player({
               background: 'linear-gradient(135deg, #ff0033 0%, #cc0000 100%)',
               color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer'
             }}>▶ YouTube'da Aç</button>
-            <button onClick={() => { setYoutubeError(null); setMediaType('none'); setTimeout(() => setMediaType('youtube'), 50); }}
-              style={{ background: '#25313b', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer' }}>🔄 Tekrar Dene</button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', maxWidth: '620px', margin: '0 auto' }}>
-            <input value={fallbackUrl} onChange={(e) => setFallbackUrl(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') useFallbackSource(); }}
-              placeholder="Alternatif MP4 / WebM / iframe bağlantısı..."
-              style={{ background: '#111b21', border: '1px solid #222d34', color: '#e9edef', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
-            />
-            <button onClick={useFallbackSource} style={{ background: '#25d366', color: '#000', border: 'none', padding: '10px 16px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', whiteSpace: 'nowrap' }}>Oynat</button>
           </div>
         </div>
       )}
