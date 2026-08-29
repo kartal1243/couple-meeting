@@ -6,18 +6,17 @@ export default function SocialPreview({ globalMessages, setShowSocialModal }) {
           <div>
             <div className="cm-social-badge">🌐 GLOBAL TOPLULUK</div>
             <div className="cm-social-title">
-              Sadece odada değil,<br />dünyada da bağlan.
+              Dünyada da bağlan.
             </div>
             <div className="cm-social-desc">
-              Global sohbette konuş, profilini doldur, arkadaşlık isteği gönder.
-              Misafir olarak okuyabilir ve konuşabilirsin.
+              Global sohbette konuş, arkadaş ekle.
             </div>
-            <button
-              className="cm-big-btn cm-social-btn"
+            <div
+              className="cm-social-link"
               onClick={() => setShowSocialModal(true)}
             >
-              🌍 Sosyal Alanı Aç
-            </button>
+              Sohbete Gir →
+            </div>
           </div>
           <div className="cm-global-preview">
             {globalMessages.length > 0 ? (
@@ -25,9 +24,8 @@ export default function SocialPreview({ globalMessages, setShowSocialModal }) {
                 <div className="cm-preview-header">
                   <span className="cm-preview-live" />
                   <span>Canlı Sohbet</span>
-                  <span className="cm-preview-count">{globalMessages.length} mesaj</span>
                 </div>
-                {globalMessages.slice(-5).reverse().map((m, i) => (
+                {globalMessages.slice(-4).reverse().map((m, i) => (
                   <div className="cm-preview-msg" key={m.id || i}>
                     <div className="cm-preview-avatar">{m.avatar || '🐱'}</div>
                     <div className="cm-preview-content">
@@ -39,9 +37,8 @@ export default function SocialPreview({ globalMessages, setShowSocialModal }) {
               </>
             ) : (
               <div className="cm-preview-empty">
-                <div className="cm-preview-empty-icon">💬</div>
-                <div>Global sohbet burada görünecek.</div>
-                <div>İlk mesajı sen yaz. 👋</div>
+                <div>💬</div>
+                <div>İlk mesajı sen yaz.</div>
               </div>
             )}
           </div>

@@ -796,9 +796,10 @@ function App() {
 
           <header className="cm-home-nav">
             <div className="cm-home-brand">
-              <div className="cm-home-logo-wrap">
-                <div className="cm-home-logo-ring" />
-                <div className="cm-home-logo">🎵</div>
+              <div className="cm-nav-soundwave">
+                {[10,18,26,14,22,16,24,12,20].map((h, i) => (
+                  <div key={i} className="cm-nav-bar" style={{ height: `${h}px`, animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s` }} />
+                ))}
               </div>
               <div>
                 <div style={{ fontWeight: 950, color: '#fff', fontSize: 17, letterSpacing: '-0.5px' }}>Couple Meeting</div>
@@ -806,13 +807,12 @@ function App() {
               </div>
             </div>
             <div className="cm-nav-actions">
-              <button onClick={() => setShowSocialModal(true)} style={{ background: '#111b21', border: '1px solid #25313a', color: '#fff', padding: '10px 13px', borderRadius: 12, fontWeight: 800, cursor: 'pointer' }}>🌐 Global Chat</button>
               {authUser ? (
-                <button onClick={() => setShowSocialModal(true)} style={{ background: '#00a884', border: 'none', color: '#fff', padding: '10px 13px', borderRadius: 12, fontWeight: 900, cursor: 'pointer' }}>{authUser.avatar || myAvatar} {authUser.username}</button>
+                <button onClick={() => setShowSocialModal(true)} className="cm-nav-btn cm-nav-btn-green">{authUser.avatar || myAvatar} {authUser.username}</button>
               ) : (
                 <>
-                  <button onClick={() => openAuth('login')} style={{ background: '#111b21', border: '1px solid #25313a', color: '#fff', padding: '10px 13px', borderRadius: 12, fontWeight: 800, cursor: 'pointer' }}>Giriş Yap</button>
-                  <button onClick={() => openAuth('register')} style={{ background: '#00a884', border: 'none', color: '#fff', padding: '10px 13px', borderRadius: 12, fontWeight: 900, cursor: 'pointer' }}>Ücretsiz Katıl</button>
+                  <button onClick={() => openAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giriş Yap</button>
+                  <button onClick={() => openAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ücretsiz Katıl</button>
                 </>
               )}
             </div>
@@ -824,23 +824,6 @@ function App() {
             <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
             <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
             <div className="cm-footer">
-              <div className="cm-sound-wave">
-                <div className="cm-sound-wave-avatar cm-sound-wave-avatar-1">
-                  <div className="cm-sound-wave-avatar-inner">👩</div>
-                </div>
-                <div className="cm-sound-wave-bars">
-                  {[14,28,40,20,34,26,38,18,32,22,36,16,30].map((h, i) => (
-                    <div
-                      key={i}
-                      className="cm-sound-wave-bar"
-                      style={{ height: `${h}px`, animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s` }}
-                    />
-                  ))}
-                </div>
-                <div className="cm-sound-wave-avatar cm-sound-wave-avatar-2">
-                  <div className="cm-sound-wave-avatar-inner">👨</div>
-                </div>
-              </div>
               <div className="cm-footer-text">
                 <span style={{ fontWeight: 900, color: '#fff' }}>couple</span>
                 <span style={{ fontWeight: 300, color: '#a78bfa' }}>meeting</span>
