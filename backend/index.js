@@ -172,6 +172,19 @@ app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
 
+  try {
+    const searchRes = await ytSearch(q);
+    const videos = (searchRes.videos || []).slice(0, 10).map(v => ({
+      id: v.videoId,
+      title: v.title,
+      artist: v.author?.name || '',
+      duration: v.timestamp || '',
+      thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
+      src: v.videoId
+    }));
+    if (videos.length > 0) return res.json({ results: videos });
+  } catch (e) { logger.warn('ytSearch arama hatası', { error: e.message }); }
+
   const yt = await getInnertube().catch(() => null);
   if (yt) {
     try {
@@ -188,22 +201,6 @@ app.get('/api/music/search', async (req, res) => {
         .filter(s => s.id && s.title);
       if (songs.length > 0) return res.json({ results: songs.slice(0, 10) });
     } catch (e) { logger.warn('yt.music.search hatası', { error: e.message }); }
-
-    try {
-      const results = await yt.search(q, { type: 'video' });
-      const songs = (results.videos || [])
-        .slice(0, 10)
-        .map(v => ({
-          id: v.id,
-          title: v.title?.text || v.title?.toString() || '',
-          artist: v.author?.name || '',
-          duration: v.duration?.text || '',
-          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
-          src: v.id
-        }))
-        .filter(s => s.id && s.title);
-      if (songs.length > 0) return res.json({ results: songs });
-    } catch (e) { logger.warn('yt.search fallback hatası', { error: e.message }); }
   }
 
   if (mk) {
@@ -233,19 +230,54 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
+  // 1. youtubei.js Ses Akışı
+  try {
+    const yt = await getInnertube();
+    if (yt) {
+      const info = await yt.getBasicInfo(videoId);
+      const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+      if (format && format.decipher(yt.session.player)) {
+        logger.info(`Stream bulundu (youtubei.js): ${videoId}`);
+        return res.json({ url: format.decipher(yt.session.player), title: info.basic_info.title });
+      }
+    }
+  } catch (e) { logger.warn('youtubei.js stream hatası', { videoId, error: e.message }); }
+
+  // 2. Piped & Cobalt API Yedekleri
+  const PIPED_INSTANCES = [
+    'https://pipedapi.kavin.rocks',
+    'https://api.piped.privacydev.net',
+    'https://pipedapi.tokhmi.xyz',
+    'https://piped-api.garudalinux.org'
+  ];
+
+  for (const instance of PIPED_INSTANCES) {
+    try {
+      const r = await fetch(`${instance}/streams/${videoId}`, { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const audio = (data.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (audio?.url) {
+        logger.info(`Stream bulundu (Piped): ${videoId} via ${instance}`);
+        return res.json({ url: audio.url, title: data.title });
+      }
+    } catch (e) {}
+  }
+
+  // 3. Invidious Sunucuları
   const INVIDIOUS_INSTANCES = [
     'https://yt.omada.cafe',
     'https://invidious.schenkel.eti.br',
     'https://invidious.kemonomimi.nl',
     'https://invidious.privacyredirect.com',
-    'https://vid.puffyan.us',
+    'https://vid.puffyan.us'
   ];
 
   for (const instance of INVIDIOUS_INSTANCES) {
     try {
       const r = await fetch(`${instance}/api/v1/videos/${videoId}`, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(4000)
       });
       if (!r.ok) continue;
       const data = await r.json();
@@ -254,17 +286,33 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
         .filter(f => f.type?.startsWith('audio/'))
         .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
       if (audio?.url) {
-        logger.info(`Stream bulundu: ${videoId} via ${instance}`);
+        logger.info(`Stream bulundu (Invidious): ${videoId} via ${instance}`);
         return res.json({ url: audio.url, title: data.title, thumbnail: data.thumbnailUrl });
       }
-    } catch (e) { logger.warn(`Invidious ${instance} başarısız`, { videoId, error: e.message }); }
+    } catch (e) {}
   }
 
+  // 4. Cobalt API
+  try {
+    const r = await fetch('https://api.cobalt.tools/api/json', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId}`, isAudioOnly: true }),
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await r.json();
+    if (data?.url) {
+      logger.info(`Stream bulundu (Cobalt): ${videoId}`);
+      return res.json({ url: data.url });
+    }
+  } catch (e) {}
+
+  // 5. MusicKit Yedek
   if (mk) {
     try {
       const stream = await Promise.race([
         mk.getStream(videoId),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
       ]);
       if (stream?.url) return res.json({ url: stream.url });
     } catch {}
@@ -527,7 +575,16 @@ io.on('connection', (socket) => {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
       let results = [];
-      if (mk) {
+      try {
+        const searchRes = await ytSearch(q);
+        results = (searchRes.videos || []).slice(0, 8).map(v => ({
+          id: v.videoId, title: v.title, artist: v.author?.name || '',
+          duration: v.timestamp || '', thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
+          src: v.videoId
+        }));
+      } catch {}
+
+      if (results.length === 0 && mk) {
         try {
           const songs = await mk.search(q, { filter: 'songs', limit: 8 });
           results = songs.map(s => ({
