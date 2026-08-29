@@ -223,37 +223,31 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
-  const yt = await getInnertube().catch((e) => { logger.warn('innertube init hatası', { error: e.message }); return null; });
-  if (yt) {
+  const INVIDIOUS_INSTANCES = [
+    'https://yt.omada.cafe',
+    'https://invidious.schenkel.eti.br',
+    'https://invidious.kemonomimi.nl',
+    'https://invidious.privacyredirect.com',
+    'https://vid.puffyan.us',
+  ];
+
+  for (const instance of INVIDIOUS_INSTANCES) {
     try {
-      let info;
-      try { info = await yt.getBasicInfo(videoId, 'WEB'); } catch {}
-      if (!info?.streaming_data?.formats?.length && !info?.streaming_data?.adaptive_formats?.length) {
-        try { info = await yt.getBasicInfo(videoId, 'ANDROID'); } catch {}
+      const r = await fetch(`${instance}/api/v1/videos/${videoId}`, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (!data?.adaptiveFormats) continue;
+      const audio = data.adaptiveFormats
+        .filter(f => f.type?.startsWith('audio/'))
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (audio?.url) {
+        logger.info(`Stream bulundu: ${videoId} via ${instance}`);
+        return res.json({ url: audio.url, title: data.title, thumbnail: data.thumbnailUrl });
       }
-      if (!info?.streaming_data?.formats?.length && !info?.streaming_data?.adaptive_formats?.length) {
-        try { info = await yt.getBasicInfo(videoId, 'TV_EMBEDDED'); } catch {}
-      }
-      const formats = info?.streaming_data?.formats || [];
-      const adaptiveFormats = info?.streaming_data?.adaptive_formats || [];
-      const audioFormats = adaptiveFormats.filter(f => f.mime_type?.startsWith('audio/'));
-      const allAudio = [...formats.filter(f => f.mime_type?.startsWith('audio/')), ...audioFormats];
-      allAudio.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-      logger.info(`Stream arama: ${videoId} - ${allAudio.length} audio format bulundu`);
-      const best = allAudio[0];
-      if (best) {
-        let url = best.url;
-        if (!url && best.decipher) {
-          url = best.decipher(yt.session.player);
-        }
-        if (url) {
-          return res.json({ url, title: info.basic_info?.title, thumbnail: info.basic_info?.thumbnail?.[0]?.url });
-        }
-        logger.warn('Stream URL alınamadı - decipher/URL yok', { videoId });
-      } else {
-        logger.warn('Audio format bulunamadı', { videoId, totalFormats: formats.length, adaptiveCount: adaptiveFormats.length });
-      }
-    } catch (e) { logger.warn('youtubei.js stream hatası', { videoId, error: e.message }); }
+    } catch (e) { logger.warn(`Invidious ${instance} başarısız`, { videoId, error: e.message }); }
   }
 
   if (mk) {
