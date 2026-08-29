@@ -358,7 +358,7 @@ function App() {
     else return;
     setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
-    if (media.type === 'youtube') startAudioPlayback(media.src, searchResults[0]?.title);
+    if (media.type === 'youtube' && audioModeRef.current) startAudioPlayback(media.src, searchResults[0]?.title);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -389,14 +389,17 @@ function App() {
     if (playImmediately) {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
-      startAudioPlayback(song.src, song.title);
+      // Ses modundaysa audio extraction, video modundaysa iframe ile çal
+      if (audioModeRef.current) {
+        startAudioPlayback(song.src, song.title);
+      }
     } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
-    if (item.type === 'youtube') startAudioPlayback(item.src, item.title);
+    if (item.type === 'youtube' && audioModeRef.current) startAudioPlayback(item.src, item.title);
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -497,6 +500,13 @@ function App() {
     if (!src) return;
     if (getCurrentVideoId() === src && isAudioPlaying()) return;
     stopAudio();
+    // Oda ses modundaysa audio extraction kullan, değilse iframe modunda kal
+    const isAudioRoom = audioModeRef.current;
+    if (!isAudioRoom) {
+      // Video modu - sadece YouTube iframe ile çal, audio extraction yapma
+      setAudioMode(false);
+      return;
+    }
     setAudioMode(true);
     const audio = await playYouTubeAudio(src, title || 'Couple Meeting', {
       onEnd: () => handleMediaEndRef.current?.(),
