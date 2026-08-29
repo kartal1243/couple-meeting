@@ -134,18 +134,18 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC STREAMING (JioSaavn API) ---
+// --- MUSIC STREAMING (Deezer API) ---
 
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
   try {
-    const r = await fetch(`https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=${encodeURIComponent(q)}`);
+    const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=10`);
     const data = await r.json();
-    const songs = (data.songs?.data || []).slice(0, 10).map(s => ({
-      id: s.id, title: s.title, artist: s.description, album: '',
-      duration: s.duration, thumbnail: s.image?.replace('50x50', '500x500') || '',
-      preview_url: s.url || ''
+    const songs = (data.data || []).map(t => ({
+      id: t.id, title: t.title, artist: t.artist?.name || '', album: t.album?.title || '',
+      duration: t.duration, thumbnail: t.album?.cover_medium || '',
+      preview_url: t.preview || '', type: 'music'
     }));
     res.json({ results: songs });
   } catch (e) {
@@ -157,11 +157,10 @@ app.get('/api/music/stream/:id', async (req, res) => {
   const { id } = req.params;
   if (!id) return res.status(400).json({ error: 'id gerekli' });
   try {
-    const r = await fetch(`https://www.jiosaavn.com/api.php?__call=song.getDetails&cc=in&_marker=0&_format=json&pids=${id}`);
+    const r = await fetch(`https://api.deezer.com/track/${id}`);
     const data = await r.json();
-    const song = data[id] || Object.values(data)[0];
-    if (song?.media_preview_url) {
-      return res.json({ url: song.media_preview_url });
+    if (data.preview) {
+      return res.json({ url: data.preview });
     }
     res.status(404).json({ error: 'Ses bulunamadı' });
   } catch (e) {
@@ -424,12 +423,12 @@ io.on('connection', (socket) => {
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
       let results = [];
       try {
-        const r = await fetch(`https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=${encodeURIComponent(q)}`);
+        const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=8`);
         const data = await r.json();
-        results = (data.songs?.data || []).slice(0, 8).map(s => ({
-          id: s.id, title: s.title, artist: s.description,
-          duration: s.duration, thumbnail: (s.image || '').replace('50x50', '500x500'),
-          type: 'music', src: s.id
+        results = (data.data || []).map(t => ({
+          id: t.id, title: t.title, artist: t.artist?.name || '',
+          duration: t.duration, thumbnail: t.album?.cover_medium || '',
+          type: 'music', src: String(t.id)
         }));
       } catch {}
       if (results.length === 0) {
