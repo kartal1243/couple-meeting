@@ -152,13 +152,31 @@ export const HOME_CSS = `
   .cm-section-head { display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:18px; }
   .cm-section-head h3 { margin:0;color:#fff;font-size:25px;letter-spacing:-.8px; }
   .cm-section-head p { margin:5px 0 0;color:#7d8b97;font-size:13px; }
-  .cm-feature-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px; }
-  .cm-feature { padding:18px;border-radius:20px;background:rgba(17,27,33,.68);border:1px solid rgba(255,255,255,.06);min-height:145px;transition:.25s; }
-  .cm-feature:hover { transform:translateY(-4px);border-color:rgba(124,58,237,.25);box-shadow:0 18px 36px rgba(0,0,0,.22); }
-  .cm-feature .ico { font-size:26px; }.cm-feature b{display:block;color:#fff;margin-top:12px}.cm-feature span{display:block;color:#7f8b96;font-size:12px;line-height:1.5;margin-top:6px}
-  .cm-room-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px; }
-  .cm-room { padding:16px;border-radius:18px;background:rgba(17,27,33,.7);border:1px solid rgba(255,255,255,.06); }
-  .cm-room-row{display:flex;justify-content:space-between;gap:10px;align-items:center}.cm-room-name{color:#fff;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-room-meta{color:#7e8a95;font-size:11px}.cm-room button{margin-top:12px;width:100%;padding:10px;border:1px solid rgba(124,58,237,.22);background:rgba(124,58,237,.08);color:#a78bfa;border-radius:12px;font-weight:800;cursor:pointer}
+
+  /* Özellikler */
+  .cm-feature-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:14px; }
+  .cm-feature { padding:22px 18px;border-radius:20px;background:rgba(17,27,33,.6);border:1px solid rgba(255,255,255,.06);min-height:160px;transition:.3s;cursor:default; }
+  .cm-feature:hover { transform:translateY(-6px);border-color:rgba(124,58,237,.3);box-shadow:0 20px 40px rgba(0,0,0,.3); }
+  .cm-feature-icon { width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:24px;margin-bottom:14px; }
+  .cm-feature b{display:block;color:#fff;margin-top:4px;font-size:14px}
+  .cm-feature span{display:block;color:#7f8b96;font-size:12px;line-height:1.6;margin-top:8px}
+
+  /* Açık odalar */
+  .cm-room-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
+  .cm-room { padding:20px;border-radius:20px;background:linear-gradient(145deg,rgba(30,40,55,.8),rgba(15,23,35,.9));border:1px solid rgba(255,255,255,.06);cursor:pointer;transition:.3s;position:relative;overflow:hidden; }
+  .cm-room::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#7c3aed,#2563eb,#00a884); opacity:0; transition:.3s; }
+  .cm-room:hover { transform:translateY(-4px);border-color:rgba(124,58,237,.3);box-shadow:0 16px 40px rgba(0,0,0,.3); }
+  .cm-room:hover::before { opacity:1; }
+  .cm-room-top { display:flex;justify-content:space-between;align-items:center;margin-bottom:12px; }
+  .cm-room-icon { font-size:24px; }
+  .cm-room-count { color:#94a3b8;font-size:11px;font-weight:800;background:rgba(255,255,255,.06);padding:4px 10px;border-radius:20px; }
+  .cm-room-name { color:#fff;font-weight:900;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .cm-room-meta { color:#64748b;font-size:11px;margin-top:4px; }
+  .cm-room-users { display:flex;gap:4px;margin-top:10px; }
+  .cm-room-user-dot { width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:8px;color:#fff;font-weight:800; }
+  .cm-room-join { margin-top:14px;text-align:center;padding:10px;border-radius:12px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);color:#a78bfa;font-size:13px;font-weight:800;transition:.2s; }
+  .cm-room:hover .cm-room-join { background:rgba(124,58,237,.2);border-color:rgba(124,58,237,.4); }
+
   .cm-social-card { padding:20px;border-radius:24px;background:linear-gradient(145deg,rgba(17,27,33,.82),rgba(10,14,22,.72));border:1px solid rgba(255,255,255,.07); }
   .cm-social-grid { display:grid;grid-template-columns:1.1fr .9fr;gap:14px; }
   .cm-global-preview { display:flex;flex-direction:column;gap:8px;max-height:230px;overflow:hidden; }
