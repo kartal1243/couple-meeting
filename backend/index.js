@@ -129,11 +129,11 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- YTIFY SES MOTORU (SUNUCU KENDİ IP'Sİ İLE AKITIR) ---
+// --- YOUTUBE MUSIC (YTMUSICAPI MOTORU) ---
 let Innertube, UniversalCache;
 try {
   ({ Innertube, UniversalCache } = require('youtubei.js'));
-  logger.info('✅ youtubei.js motoru hazır');
+  logger.info('✅ YouTube Music motoru yüklendi');
 } catch (e) { logger.warn('⚠️ youtubei.js bulunamadı', { error: e.message }); }
 
 let innertube = null;
@@ -153,10 +153,34 @@ async function getInnertube() {
   return innertube;
 }
 
-app.get('/api/music/search', async (req, res) => {
-  const q = (req.query.q || '').trim();
-  if (!q) return res.json({ results: [] });
+// Ortak YouTube Music Arama Fonksiyonu
+async function searchYouTubeMusic(query) {
+  const q = String(query || '').trim();
+  if (!q || q.length < 2) return [];
 
+  // 1. Öncelik: Doğrudan YouTube Music API (Şarkılar, Sanatçılar, Net Kapaklar)
+  try {
+    const yt = await getInnertube();
+    if (yt && yt.music) {
+      const musicSearch = await yt.music.search(q, { type: 'song' });
+      const songs = (musicSearch.songs?.contents || musicSearch.contents || [])
+        .map(s => {
+          const id = s.id || s.videoId;
+          const title = s.title?.text || s.title?.toString() || s.name || '';
+          const artist = s.artists?.[0]?.name || s.artist?.name || s.author?.name || '';
+          const duration = s.duration?.text || s.duration?.toString() || '';
+          const thumb = s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+          return { id, title, artist, duration, thumbnail: thumb, src: id };
+        })
+        .filter(s => s.id && s.title);
+
+      if (songs.length > 0) return songs.slice(0, 10);
+    }
+  } catch (err) {
+    logger.warn('YTMusic arama uyarısı:', err.message);
+  }
+
+  // 2. Öncelik: Standart YouTube Arama Yedeklemesi
   try {
     const searchRes = await ytSearch(q);
     const videos = (searchRes.videos || []).slice(0, 10).map(v => ({
@@ -167,13 +191,22 @@ app.get('/api/music/search', async (req, res) => {
       thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
       src: v.videoId
     }));
-    if (videos.length > 0) return res.json({ results: videos });
-  } catch (e) { logger.warn('ytSearch arama hatası', { error: e.message }); }
+    if (videos.length > 0) return videos;
+  } catch (e) {
+    logger.warn('ytSearch yedek arama hatası:', e.message);
+  }
 
-  res.json({ results: [] });
+  return [];
+}
+
+// REST Arama Rotası
+app.get('/api/music/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  const results = await searchYouTubeMusic(q);
+  res.json({ results });
 });
 
-// DOĞRUDAN SUNUCU IP'Sİ ÜZERİNDEN CANLI SES AKIŞI
+// CANLI SES AKIŞI (PIPE)
 app.get('/api/music/play/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).send('videoId gerekli');
@@ -292,6 +325,17 @@ function updateRoomUsers(roomId) {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
   socket.emit('global_chat_history', db.getGlobalMessages(100));
+
+  // YOUTUBE MUSIC ANLIK ARAMA DİNLİYİCİSİ
+  socket.on('search_music', async ({ query }) => {
+    try {
+      const results = await searchYouTubeMusic(query);
+      socket.emit('search_results', results);
+    } catch (err) {
+      logger.error('Arama hatası:', err.message);
+      socket.emit('search_results', []);
+    }
+  });
 
   socket.on('auth_register', ({ username, email, password, bio, avatar }) => {
     const cleanUsername = sanitize(username, 20).toLowerCase();
@@ -437,5 +481,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
-  logger.info(`🚀 Sunucu ${PORT} portunda YTIFY motoru ile aktif!`);
+  logger.info(`🚀 Sunucu ${PORT} portunda YouTube Music arama motoru ile aktif!`);
 });
