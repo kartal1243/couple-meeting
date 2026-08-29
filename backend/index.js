@@ -134,56 +134,20 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC STREAMING (musicstream-sdk + Deezer fallback) ---
-let mk = null;
-try {
-  const { MusicKit } = require('musicstream-sdk');
-  mk = new MusicKit({ logLevel: 'warn' });
-  logger.info('✅ musicstream-sdk yüklendi');
-} catch (e) {
-  logger.warn('⚠️ musicstream-sdk yüklenemedi', { error: e.message });
-}
+// --- MUSIC STREAMING (Deezer search + YouTube playback) ---
 
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
-  if (mk) {
-    try {
-      const songs = await mk.search(q, { filter: 'songs', limit: 10 });
-      return res.json({ results: songs.map(s => ({
-        id: s.videoId, title: s.title, artist: s.artist,
-        duration: s.duration || 0,
-        thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
-        type: 'music', src: s.videoId
-      }))});
-    } catch (e) { logger.warn('musicstream-sdk arama hatası', { error: e.message }); }
-  }
   try {
     const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=10`);
     const data = await r.json();
     res.json({ results: (data.data || []).map(t => ({
       id: t.id, title: t.title, artist: t.artist?.name || '', album: t.album?.title || '',
       duration: t.duration, thumbnail: t.album?.cover_medium || '',
-      preview_url: t.preview || '', type: 'music_preview', src: String(t.id)
+      preview_url: t.preview || '', youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim()
     }))});
   } catch (e) { res.json({ results: [], error: e.message }); }
-});
-
-app.get('/api/music/stream/:id', async (req, res) => {
-  const { id } = req.params;
-  if (!id) return res.status(400).json({ error: 'id gerekli' });
-  if (mk) {
-    try {
-      const stream = await mk.getStream(id);
-      return res.json({ url: stream.url });
-    } catch (e) { logger.warn('musicstream-sdk stream hatası', { error: e.message }); }
-  }
-  try {
-    const r = await fetch(`https://api.deezer.com/track/${id}`);
-    const data = await r.json();
-    if (data.preview) return res.json({ url: data.preview });
-    res.status(404).json({ error: 'Ses bulunamadı' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';

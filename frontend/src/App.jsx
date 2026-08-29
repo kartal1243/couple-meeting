@@ -379,11 +379,10 @@ function App() {
     if (!song) return;
     if (playImmediately) {
       setYoutubeError(null);
-      const type = song.type || 'youtube';
-      setMediaType(type);
+      setMediaType('youtube');
       setMediaSrc(song.src);
       setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-      sendAction('CHANGE_MEDIA', { type, src: song.src, title: song.title });
+      sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
     } else { handleOpenAddModal(song); }
   };
 
