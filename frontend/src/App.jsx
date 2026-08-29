@@ -60,6 +60,7 @@ function App() {
   const [roomName, setRoomName] = useState('');
   const [hostUserId, setHostUserId] = useState('');
   const [roomTheme, setRoomTheme] = useState('default');
+  const [roomType, setRoomType] = useState('video');
   const [roomUsersList, setRoomUsersList] = useState([]);
 
   const [roomPassword, setRoomPassword] = useState('');
@@ -126,6 +127,7 @@ function App() {
   const [quickRoomName, setQuickRoomName] = useState('');
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
+  const [quickRoomType, setQuickRoomType] = useState('video');
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
   const [joinModalPass, setJoinModalPass] = useState('');
@@ -254,7 +256,7 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar });
+    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType });
     setShowQuickCreate(false);
     setQuickRoomName('');
     setQuickRoomPass('');
@@ -265,7 +267,7 @@ function App() {
     e.preventDefault();
     if (!joinRoomTarget) return;
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
-    socket.emit('join_room', { roomId: joinRoomTarget.id, password: joinModalPass.trim(), userId, userCity, username, avatar: myAvatar });
+    socket.emit('join_room', { roomId: joinRoomTarget.id, password: joinModalPass.trim(), userId, userCity, username, avatar: myAvatar, roomType: 'video' });
     setShowJoinModal(false);
     setJoinRoomTarget(null);
     setJoinModalPass('');
@@ -275,14 +277,14 @@ function App() {
     e.preventDefault();
     const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', roomPassword.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId, userCity, username, avatar: myAvatar });
+    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType });
   };
 
   const handleJoinRoomSubmit = (e) => {
     e.preventDefault();
     if (!joinRoomInput.trim()) return;
     localStorage.setItem('cm_saved_pass', joinPassInput.trim());
-    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity, username, avatar: myAvatar });
+    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity, username, avatar: myAvatar, roomType: 'video' });
   };
 
   const handleLeaveRoom = () => {
@@ -379,10 +381,19 @@ function App() {
     if (!song) return;
     if (playImmediately) {
       setYoutubeError(null);
-      setMediaType('youtube');
-      setMediaSrc(song.src);
-      setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-      sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
+      if (roomType === 'music' && song.src) {
+        setMediaType('music');
+        setMediaSrc(song.src);
+        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
+        sendAction('CHANGE_MEDIA', { type: 'music', src: song.src, title: song.title });
+      } else if (song.src) {
+        setMediaType('youtube');
+        setMediaSrc(song.src);
+        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
+        sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
+      } else if (song.youtubeQuery) {
+        setSearchInput(song.youtubeQuery);
+      }
     } else { handleOpenAddModal(song); }
   };
 
@@ -543,7 +554,7 @@ function App() {
     const targetRoom = urlParams.get('room') || localStorage.getItem('cm_saved_room');
     if (targetRoom && socket) {
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId, userCity, username, avatar: myAvatar });
+      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId, userCity, username, avatar: myAvatar, roomType: 'video' });
     }
   }, [userId]);
 
@@ -567,6 +578,7 @@ function App() {
       setInRoom(true); setErrorMessage('');
       setRoomId(data.roomId); setRoomName(data.roomName || data.roomId);
       setHostUserId(data.hostUserId); setRoomTheme(data.theme || 'default');
+      setRoomType(data.roomType || 'video');
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
@@ -853,6 +865,19 @@ function App() {
                       <option value="8">8 Kişi 🎉</option>
                     </select>
                   </div>
+                  <div>
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Tipi</label>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button type="button" onClick={() => setQuickRoomType('video')}
+                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        🎬 Video
+                      </button>
+                      <button type="button" onClick={() => setQuickRoomType('music')}
+                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        🎵 Müzik
+                      </button>
+                    </div>
+                  </div>
                   <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
                     🚀 Odayı Başlat
                   </button>
@@ -944,7 +969,7 @@ function App() {
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
           />
           <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
+            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta} roomType={roomType}
             customVideoRef={customVideoRef} ytPlayerRef={ytPlayerRef}
             reactions={reactions} fallbackUrl={fallbackUrl} setFallbackUrl={setFallbackUrl}
             useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}

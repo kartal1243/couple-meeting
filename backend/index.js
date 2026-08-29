@@ -134,20 +134,72 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC STREAMING (Deezer search + YouTube playback) ---
+// --- MUSIC STREAMING (musicstream-sdk + Piped proxy) ---
+let mk = null;
+try {
+  const { MusicKit } = require('musicstream-sdk');
+  mk = new MusicKit({ logLevel: 'warn' });
+  logger.info('✅ musicstream-sdk yüklendi');
+} catch (e) { logger.warn('⚠️ musicstream-sdk yüklenemedi', { error: e.message }); }
+
+const PIPED_INSTANCES = [
+  'https://api.piped.private.coffee',
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.adminforge.de',
+];
+
+async function getPipedStream(videoId) {
+  for (const base of PIPED_INSTANCES) {
+    try {
+      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const audio = (data.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (audio?.url) return { url: audio.url, title: data.title, thumbnail: data.thumbnailUrl };
+      const vid = (data.videoStreams || []).find(v => !v.videoOnly && v.url);
+      if (vid?.url) return { url: vid.url, title: data.title, thumbnail: data.thumbnailUrl };
+    } catch {}
+  }
+  return null;
+}
 
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
+  if (mk) {
+    try {
+      const songs = await mk.search(q, { filter: 'songs', limit: 10 });
+      return res.json({ results: songs.map(s => ({
+        id: s.videoId, title: s.title, artist: s.artist || '',
+        duration: s.duration || 0,
+        thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
+        src: s.videoId
+      }))});
+    } catch (e) { logger.warn('musicstream-sdk arama hatası', { error: e.message }); }
+  }
   try {
     const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=10`);
     const data = await r.json();
     res.json({ results: (data.data || []).map(t => ({
       id: t.id, title: t.title, artist: t.artist?.name || '', album: t.album?.title || '',
       duration: t.duration, thumbnail: t.album?.cover_medium || '',
-      preview_url: t.preview || '', youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim()
+      youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim(), src: ''
     }))});
   } catch (e) { res.json({ results: [], error: e.message }); }
+});
+
+app.get('/api/music/stream/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+  if (mk) {
+    try {
+      const stream = await mk.getStream(videoId);
+      if (stream?.url) return res.json({ url: stream.url });
+    } catch {}
+  }
+  const piped = await getPipedStream(videoId);
+  if (piped) return res.json(piped);
+  res.status(502).json({ error: 'Stream bulunamadı' });
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -408,10 +460,10 @@ io.on('connection', (socket) => {
         try {
           const songs = await mk.search(q, { filter: 'songs', limit: 8 });
           results = songs.map(s => ({
-            id: s.videoId, title: s.title, artist: s.artist,
+            id: s.videoId, title: s.title, artist: s.artist || '',
             duration: s.duration || 0,
             thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
-            type: 'music', src: s.videoId
+            src: s.videoId
           }));
         } catch {}
       }
@@ -422,7 +474,7 @@ io.on('connection', (socket) => {
           results = (data.data || []).map(t => ({
             id: t.id, title: t.title, artist: t.artist?.name || '',
             duration: t.duration, thumbnail: t.album?.cover_medium || '',
-            type: 'music_preview', src: String(t.id)
+            youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim(), src: ''
           }));
         } catch {}
       }
@@ -431,14 +483,16 @@ io.on('connection', (socket) => {
   });
 
   // ODA
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip, roomType }) => {
     const cleanRoomId = sanitize(roomId, 50);
+    const cleanRoomType = roomType === 'music' ? 'music' : 'video';
     let room = rooms[cleanRoomId];
     if (!room) {
       rooms[cleanRoomId] = {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
         maxUsers: Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8),
         hostUserId: userId, theme: 'default', users: [],
+        roomType: cleanRoomType,
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
         messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
@@ -459,6 +513,7 @@ io.on('connection', (socket) => {
     if (room.currentMedia.isPlaying) calcTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
     socket.emit('room_joined', {
       roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
+      roomType: room.roomType || 'video',
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
