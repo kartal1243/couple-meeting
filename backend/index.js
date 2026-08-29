@@ -134,12 +134,12 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET;
-if (!ADMIN_SECRET) { logger.error('ADMIN_SECRET tanımlı değil!'); process.exit(1); }
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+if (!ADMIN_SECRET) logger.warn('⚠️ ADMIN_SECRET tanımlı değil. Admin VIP özellikleri pasif olacak.');
 
 app.post('/api/vip/admin-grant', (req, res) => {
   const { secret, username, plan } = req.body;
-  if (secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz erişim.' });
+  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz erişim.' });
   if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Geçersiz parametre.' });
   const user = db.getUser(username);
   if (!user) return res.json({ ok: false, message: 'Kullanıcı bulunamadı.' });

@@ -1,7 +1,11 @@
+import { useState } from 'react';
+
 export default function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, authUser, myAvatar, handleLeaveRoom
 }) {
+  const [showUsers, setShowUsers] = useState(false);
+
   return (
     <header
       className="cm-room-header"
@@ -11,36 +15,75 @@ export default function Header({
         alignItems: 'center', flexShrink: 0, width: '100vw', boxSizing: 'border-box'
       }}
     >
-      <div
-        style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
-        onClick={handleLeaveRoom}
-      >
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '3px', height: '28px',
-          background: 'linear-gradient(135deg, rgba(236,72,153,.15), rgba(139,92,246,.15))',
-          padding: '0 10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,.06)'
-        }}>
-          {[10,18,24,14,20,12,22,16].map((h, i) => (
-            <div key={i} style={{
-              width: '2.5px', height: `${h}px`, borderRadius: '99px',
-              background: 'linear-gradient(to top, #ec4899, #8b5cf6)',
-              transformOrigin: 'bottom',
-              animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s`
-            }} />
-          ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Logo + Oda Adı - sadece bunlara tıklayınca çık */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          onClick={handleLeaveRoom}
+        >
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '3px', height: '28px',
+            background: 'linear-gradient(135deg, rgba(236,72,153,.15), rgba(139,92,246,.15))',
+            padding: '0 10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,.06)'
+          }}>
+            {[10,18,24,14,20,12,22,16].map((h, i) => (
+              <div key={i} style={{
+                width: '2.5px', height: `${h}px`, borderRadius: '99px',
+                background: 'linear-gradient(to top, #ec4899, #8b5cf6)',
+                transformOrigin: 'bottom',
+                animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s`
+              }} />
+            ))}
+          </div>
+          <h2 style={{ margin: 0, color: '#fff', fontSize: '16px', fontWeight: '900', letterSpacing: '-0.3px' }}>
+            {roomName}
+          </h2>
         </div>
-        <h2 style={{ margin: 0, color: '#fff', fontSize: '16px', fontWeight: '900', letterSpacing: '-0.3px' }}>
-          {roomName}
-        </h2>
-        <span style={{
-          fontSize: '10px', background: 'rgba(255,255,255,.06)', color: '#94a3b8',
-          padding: '3px 10px', borderRadius: '20px', fontWeight: '800',
-          display: 'inline-flex', alignItems: 'center', gap: '5px',
-          border: '1px solid rgba(255,255,255,.06)'
-        }}>
+
+        {/* Kişi Sayısı - tıklayınca listeyi aç/kapat */}
+        <div
+          style={{
+            position: 'relative', fontSize: '10px', background: 'rgba(255,255,255,.06)',
+            color: '#94a3b8', padding: '3px 10px', borderRadius: '20px', fontWeight: '800',
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            border: '1px solid rgba(255,255,255,.06)', cursor: 'pointer', userSelect: 'none'
+          }}
+          onClick={(e) => { e.stopPropagation(); setShowUsers(!showUsers); }}
+        >
           <span className="cm-live-dot" style={{ opacity: isConnected ? 1 : 0.35 }} />
-          {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
-        </span>
+          👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+
+          {/* Kullanıcı listesi dropdown */}
+          {showUsers && currentRoomInfo.users && (
+            <div
+              style={{
+                position: 'absolute', top: '28px', left: 0, minWidth: '200px',
+                background: '#1a2332', border: '1px solid #2a3942', borderRadius: '12px',
+                padding: '8px', zIndex: 9999, boxShadow: '0 10px 30px rgba(0,0,0,.5)',
+                maxHeight: '250px', overflowY: 'auto'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, padding: '4px 8px', marginBottom: '4px' }}>
+                ODA KİŞİLERİ ({currentRoomInfo.users.length})
+              </div>
+              {currentRoomInfo.users.map((u, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '6px 8px', borderRadius: '8px', fontSize: '12px'
+                }}>
+                  <span style={{ fontSize: '16px' }}>{u.avatar || '🐱'}</span>
+                  <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{u.username || 'İzleyici'}</span>
+                  {u.userId === currentRoomInfo.hostUserId && (
+                    <span style={{ fontSize: '9px', background: 'rgba(234,179,8,.15)', color: '#eab308', padding: '1px 6px', borderRadius: '6px', fontWeight: 800 }}>
+                      YÖNETİCİ
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="cm-room-header-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
