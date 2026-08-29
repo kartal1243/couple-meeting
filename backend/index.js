@@ -134,7 +134,67 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- AUDIO STREAMING (yt-dlp) ---
+// --- SPOTIFY SEARCH ---
+let spotifyToken = null;
+let spotifyTokenExpiry = 0;
+
+async function getSpotifyToken() {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  if (spotifyToken && Date.now() < spotifyTokenExpiry) return spotifyToken;
+
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+      },
+      body: 'grant_type=client_credentials'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      spotifyToken = data.access_token;
+      spotifyTokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+      return spotifyToken;
+    }
+  } catch (e) { logger.error('Spotify token hatası', { error: e.message }); }
+  return null;
+}
+
+app.get('/api/spotify/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json({ results: [] });
+
+  const token = await getSpotifyToken();
+  if (!token) return res.json({ results: [], error: 'Spotify API tanımlı değil. SPOTIFY_CLIENT_ID ve SPOTIFY_CLIENT_SECRET ekleyin.' });
+
+  try {
+    const params = new URLSearchParams({ q, type: 'track', market: 'TR', limit: '10', offset: '0' });
+    const res2 = await fetch(`https://api.spotify.com/v1/search?${params}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res2.ok) return res.json({ results: [], error: `Spotify API hatası: ${res2.status}` });
+
+    const data = await res2.json();
+    const tracks = (data.tracks?.items || []).map(t => ({
+      id: t.id,
+      title: t.name,
+      artist: t.artists.map(a => a.name).join(', '),
+      album: t.album?.name || '',
+      duration: Math.floor(t.duration_ms / 1000),
+      thumbnail: t.album?.images?.[0]?.url || '',
+      preview_url: t.preview_url || '',
+      spotifyUrl: t.external_urls?.spotify || '',
+      uri: t.uri
+    }));
+    res.json({ results: tracks });
+  } catch (e) {
+    logger.error('Spotify arama hatası', { error: e.message });
+    res.json({ results: [], error: 'Arama hatası.' });
+  }
+});
 const { execFile } = require('child_process');
 const audioCache = new Map();
 

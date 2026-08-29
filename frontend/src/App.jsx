@@ -972,6 +972,7 @@ function App() {
             currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
             onSpotifyUrl={(url) => { setSpotifyUrl(url); setPlayerMode('spotify'); }}
+            playerMode={playerMode}
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError}
