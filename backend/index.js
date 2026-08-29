@@ -427,17 +427,25 @@ io.on('connection', (socket) => {
     try {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
-      const encoded = encodeURIComponent(q);
-      const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
       let rawList = [];
-      try {
-        const res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
-        if (res.ok) { const data = await res.json(); rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []); }
-      } catch {}
+      if (mk) {
+        try {
+          const songs = await mk.search(q, { filter: 'songs', limit: 8 });
+          rawList = songs.map(s => ({ videoId: s.videoId, title: s.title, artist: s.artist, duration: s.duration }));
+        } catch (e) { logger.warn('musicstream-sdk arama hatası', { error: e.message }); }
+      }
+      if (!rawList || rawList.length === 0) {
+        const encoded = encodeURIComponent(q);
+        const baseUrl = 'https://verome-api-hq8s6wtb2v78.kartal1243.deno.net';
+        try {
+          const res = await fetch(`${baseUrl}/api/yt_search?q=${encoded}`, { signal: AbortSignal.timeout(1800) });
+          if (res.ok) { const data = await res.json(); rawList = Array.isArray(data) ? data : (data.results || data.songs || data.content || []); }
+        } catch {}
+      }
       if (!rawList || rawList.length === 0) { const r = await ytSearch(q); rawList = r.videos || []; }
       const results = rawList.slice(0, 6).map(v => {
         const videoId = v.videoId || v.id || (typeof v.src === 'string' ? v.src : null);
-        return { id: videoId, title: v.title || v.name || 'YouTube Videosu', timestamp: v.duration || v.timestamp || 'Müzik', thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, type: 'youtube', src: videoId };
+        return { id: videoId, title: v.title || v.name || 'YouTube Videosu', timestamp: v.duration ? `${Math.floor(v.duration / 60)}:${String(v.duration % 60).padStart(2, '0')}` : (v.duration || v.timestamp || 'Müzik'), thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, type: 'youtube', src: videoId };
       }).filter(v => v.src && v.src.length === 11);
       socket.emit('search_results', results);
     } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
