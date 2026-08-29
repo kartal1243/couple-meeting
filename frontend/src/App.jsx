@@ -126,6 +126,7 @@ function App() {
   const [quickRoomName, setQuickRoomName] = useState('');
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
+  const [quickAudioMode, setQuickAudioMode] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
   const [joinModalPass, setJoinModalPass] = useState('');
@@ -256,11 +257,12 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar });
+    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, audioMode: quickAudioMode, userId, userCity, username, avatar: myAvatar });
     setShowQuickCreate(false);
     setQuickRoomName('');
     setQuickRoomPass('');
     setQuickMaxUsers('2');
+    setQuickAudioMode(false);
   };
 
   const handleJoinRoomFromModal = (e) => {
@@ -607,6 +609,7 @@ function App() {
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+      if (typeof data.audioMode === 'boolean') setAudioMode(data.audioMode);
 
       if (Array.isArray(data.playlist)) { setPlaylist(data.playlist); localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist)); }
       if (Array.isArray(data.categories)) { setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
@@ -903,6 +906,27 @@ function App() {
                       <option value="4">4 Kişi 👥</option>
                       <option value="8">8 Kişi 🎉</option>
                     </select>
+                  </div>
+                  <div>
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Modu</label>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <div
+                        onClick={() => setQuickAudioMode(false)}
+                        style={{ flex:1, padding:'10px 12px', borderRadius:12, border: !quickAudioMode ? '2px solid #7c3aed' : '1px solid #25313a', background: !quickAudioMode ? 'rgba(124,58,237,.1)' : '#0b141a', cursor:'pointer', textAlign:'center', transition:'all .2s' }}
+                      >
+                        <div style={{ fontSize:18 }}>🎬</div>
+                        <div style={{ color:'#e9edef', fontSize:11, fontWeight:800, marginTop:2 }}>Video</div>
+                        <div style={{ color:'#64748b', fontSize:9 }}>YouTube_embed</div>
+                      </div>
+                      <div
+                        onClick={() => setQuickAudioMode(true)}
+                        style={{ flex:1, padding:'10px 12px', borderRadius:12, border: quickAudioMode ? '2px solid #00a884' : '1px solid #25313a', background: quickAudioMode ? 'rgba(0,168,132,.1)' : '#0b141a', cursor:'pointer', textAlign:'center', transition:'all .2s' }}
+                      >
+                        <div style={{ fontSize:18 }}>🎧</div>
+                        <div style={{ color:'#e9edef', fontSize:11, fontWeight:800, marginTop:2 }}>Ses</div>
+                        <div style={{ color:'#64748b', fontSize:9 }}>Arka plan çalar</div>
+                      </div>
+                    </div>
                   </div>
                   <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
                     🚀 Odayı Başlat

@@ -242,7 +242,8 @@ function updateRoomUsers(roomId) {
     io.to(roomId).emit('room_user_count_update', {
       userCount: rooms[roomId].users.length, maxUsers: rooms[roomId].maxUsers,
       users: rooms[roomId].users, hostUserId: rooms[roomId].hostUserId,
-      roomName: rooms[roomId].name, theme: rooms[roomId].theme || 'default'
+      roomName: rooms[roomId].name, theme: rooms[roomId].theme || 'default',
+      audioMode: !!rooms[roomId].audioMode
     });
   }
 }
@@ -404,7 +405,7 @@ io.on('connection', (socket) => {
   });
 
   // ODA
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, audioMode, userId, userCity, username, avatar, isVip }) => {
     const cleanRoomId = sanitize(roomId, 50);
     let room = rooms[cleanRoomId];
     if (!room) {
@@ -414,7 +415,8 @@ io.on('connection', (socket) => {
         hostUserId: userId, theme: 'default', users: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
-        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
+        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip,
+        audioMode: !!audioMode
       };
       room = rooms[cleanRoomId];
     } else {
@@ -435,7 +437,8 @@ io.on('connection', (socket) => {
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
-      isVip: !!room.isVip, currentMedia: { ...room.currentMedia, time: calcTime }
+      isVip: !!room.isVip, audioMode: !!room.audioMode,
+      currentMedia: { ...room.currentMedia, time: calcTime }
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();
   });

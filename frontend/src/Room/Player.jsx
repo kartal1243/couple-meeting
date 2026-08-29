@@ -1,4 +1,5 @@
 import YouTube from 'react-youtube';
+import { useEffect } from 'react';
 
 export default function Player({
   mediaType, mediaSrc, youtubeError, customVideoRef, ytPlayerRef,
@@ -7,6 +8,31 @@ export default function Player({
   audioMode, playlist
 }) {
   const currentTitle = playlist?.find(i => i.src === mediaSrc)?.title || 'Şarkı Çalıyor';
+
+  // MediaSession API - kilit ekranında müzik kontrolü
+  useEffect(() => {
+    if (!audioMode || !mediaSrc || mediaType !== 'youtube') return;
+    if (!('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTitle,
+      artist: 'Couple Meeting',
+      album: 'Oda Müziği',
+      artwork: [{ src: `https://img.youtube.com/vi/${mediaSrc}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => { ytPlayerRef.current?.playVideo(); });
+    navigator.mediaSession.setActionHandler('pause', () => { ytPlayerRef.current?.pauseVideo(); });
+    navigator.mediaSession.setActionHandler('previoustrack', null);
+    navigator.mediaSession.setActionHandler('nexttrack', null);
+
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+      } catch {}
+    };
+  }, [audioMode, mediaSrc, mediaType, currentTitle]);
 
   return (
     <div
@@ -25,51 +51,75 @@ export default function Player({
         </div>
       )}
 
-      {/* YENİ: Audio Modu - Arka plan çalma görseli */}
+      {/* Audio Modu - Arka plan çalma görseli + gizli iframe */}
       {mediaType === 'youtube' && audioMode && !youtubeError && (
-        <div style={{
-          width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(180deg, #0a1628, #050c14)',
-          padding: 24
-        }}>
-          <div style={{
-            width: 200, height: 200, borderRadius: 28, overflow: 'hidden',
-            boxShadow: '0 30px 80px rgba(0,168,132,.25)', marginBottom: 24,
-            animation: 'pulse 3s ease-in-out infinite', position: 'relative'
-          }}>
-            <img
-              src={`https://img.youtube.com/vi/${mediaSrc}/hqdefault.jpg`}
-              alt={currentTitle}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        <>
+          {/* GİZLİ YouTube iframe - sadece ses için */}
+          <div style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }}>
+            <YouTube
+              videoId={mediaSrc}
+              opts={{
+                height: '1', width: '1',
+                playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, playsinline: 1, rel: 0 }
+              }}
+              onReady={(e) => { ytPlayerRef.current = e.target; }}
+              onError={handleYouTubeError}
+              onEnd={handleMediaEnd}
             />
+          </div>
+          {/* Audio visualizer UI */}
+          <div style={{
+            width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+            justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(180deg, #0a1628, #050c14)',
+            padding: 24
+          }}>
             <div style={{
-              position: 'absolute', inset: 0, background: 'rgba(0,0,0,.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
+              width: 180, height: 180, borderRadius: 24, overflow: 'hidden',
+              boxShadow: '0 30px 80px rgba(0,168,132,.25)', marginBottom: 20,
+              animation: 'cmPulseGlow 3s ease-in-out infinite', position: 'relative'
             }}>
+              <img
+                src={`https://img.youtube.com/vi/${mediaSrc}/hqdefault.jpg`}
+                alt={currentTitle}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
               <div style={{
-                width: 60, height: 60, borderRadius: '50%', background: 'rgba(0,168,132,.8)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28
+                position: 'absolute', inset: 0, background: 'rgba(0,0,0,.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                🎵
+                <div style={{
+                  width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,168,132,.8)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26
+                }}>🎵</div>
               </div>
             </div>
+            <div style={{ color: '#fff', fontSize: 16, fontWeight: 900, textAlign: 'center', maxWidth: 400 }}>
+              {currentTitle}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, height: 40 }}>
+              {[12,20,28,16,24,14,22,18,26,10,20,16].map((h, i) => (
+                <div key={i} style={{
+                  width: 3, height: h, borderRadius: 99,
+                  background: 'linear-gradient(to top, #00a884, #53e6bc)',
+                  animation: `cmWaveBar 0.7s ease-in-out infinite ${i * 0.06}s`,
+                  transformOrigin: 'bottom'
+                }} />
+              ))}
+            </div>
+            <div style={{ color: '#53e6bc', fontSize: 11, fontWeight: 800, marginTop: 8 }}>
+              🎧 SES MODU - ARKA PLANDA ÇALIYOR
+            </div>
+            <div style={{ color: '#4a5568', fontSize: 10, marginTop: 6, textAlign: 'center' }}>
+              Ekran kapalıyken bile müzik çalıyor. Kilit ekranından kontrol edebilirsin.
+            </div>
+            <style>{`
+              @keyframes cmPulseGlow { 0%,100%{transform:scale(1);box-shadow:0 30px 80px rgba(0,168,132,.25)} 50%{transform:scale(1.03);box-shadow:0 30px 80px rgba(0,168,132,.4)} }
+            `}</style>
           </div>
-          <div style={{ color: '#fff', fontSize: 18, fontWeight: 900, textAlign: 'center', maxWidth: 400 }}>
-            {currentTitle}
-          </div>
-          <div style={{ color: '#53e6bc', fontSize: 12, fontWeight: 800, marginTop: 8 }}>
-            🎧 ARKA PLANDA ÇALIYOR
-          </div>
-          <div style={{ color: '#63727d', fontSize: 11, marginTop: 12, textAlign: 'center', maxWidth: 350 }}>
-            Bu mod arka planda çalmaya izin verir. Şarkı kilit ekranında da kontrol edilebilir.
-          </div>
-          <style>{`
-            @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
-          `}</style>
-        </div>
+        </>
       )}
 
-      {/* YouTube iframe (audio mode değilse) */}
+      {/* YouTube iframe (audio mode değilse - video modu) */}
       {mediaType === 'youtube' && !audioMode && !youtubeError && (
         <div style={{
           width: '100%', height: '100%', position: 'relative',
