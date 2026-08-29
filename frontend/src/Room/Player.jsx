@@ -29,11 +29,16 @@ export default function Player({
 
   const handleYTReady = useCallback((e) => { ytPlayerRef.current = e.target; }, []);
 
+  const [musicError, setMusicError] = useState(false);
+
   useEffect(() => {
     if (mediaType === 'music' && mediaSrc) {
       setMusicLoading(true);
-      fetch(`${BACKEND_URL}/api/music/stream/${mediaSrc}`)
-        .then(r => r.json())
+      setMusicError(false);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      fetch(`${BACKEND_URL}/api/music/stream/${mediaSrc}`, { signal: controller.signal })
+        .then(r => { clearTimeout(timer); if (!r.ok) throw new Error('fail'); return r.json(); })
         .then(data => {
           if (data.url && audioRef.current) {
             audioRef.current.src = data.url;
@@ -45,10 +50,13 @@ export default function Player({
                 artwork: mediaMeta.thumbnail ? [{ src: mediaMeta.thumbnail, sizes: '300x300', type: 'image/jpeg' }] : []
               });
             }
+          } else {
+            setMusicError(true);
           }
           setMusicLoading(false);
         })
-        .catch(() => setMusicLoading(false));
+        .catch(() => { clearTimeout(timer); setMusicLoading(false); setMusicError(true); });
+      return () => { clearTimeout(timer); controller.abort(); };
     }
   }, [mediaType, mediaSrc]);
 
@@ -63,7 +71,7 @@ export default function Player({
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
-      <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
+      <audio ref={audioRef} preload="auto" />
 
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
@@ -95,6 +103,7 @@ export default function Player({
           <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Müzik'}</div>
           <div style={{ fontSize: '13px', color: '#8696a0' }}>{mediaMeta?.artist || ''}</div>
           {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginTop: '10px' }}>⏳ Yükleniyor...</div>}
+          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginTop: '10px' }}>❌ Şarkı yüklenemedi. Tekrar deneyin.</div>}
           <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
             <button onClick={() => { if (audioRef.current) audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause(); }}
               style={{ background: '#00a884', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>

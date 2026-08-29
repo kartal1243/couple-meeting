@@ -134,7 +134,7 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC STREAMING (musicstream-sdk + Piped proxy) ---
+// --- MUSIC STREAMING ---
 let mk = null;
 try {
   const { MusicKit } = require('musicstream-sdk');
@@ -142,26 +142,11 @@ try {
   logger.info('✅ musicstream-sdk yüklendi');
 } catch (e) { logger.warn('⚠️ musicstream-sdk yüklenemedi', { error: e.message }); }
 
-const PIPED_INSTANCES = [
-  'https://api.piped.private.coffee',
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.adminforge.de',
-];
-
-async function getPipedStream(videoId) {
-  for (const base of PIPED_INSTANCES) {
-    try {
-      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) continue;
-      const data = await r.json();
-      const audio = (data.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-      if (audio?.url) return { url: audio.url, title: data.title, thumbnail: data.thumbnailUrl };
-      const vid = (data.videoStreams || []).find(v => !v.videoOnly && v.url);
-      if (vid?.url) return { url: vid.url, title: data.title, thumbnail: data.thumbnailUrl };
-    } catch {}
-  }
-  return null;
-}
+let ytdl = null;
+try {
+  ytdl = require('@distube/ytdl-core');
+  logger.info('✅ ytdl-core yüklendi');
+} catch (e) { logger.warn('⚠️ ytdl-core yüklenemedi', { error: e.message }); }
 
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
@@ -191,14 +176,25 @@ app.get('/api/music/search', async (req, res) => {
 app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+
+  if (ytdl) {
+    try {
+      const info = await ytdl.getInfo(videoId);
+      const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
+      if (format?.url) return res.json({ url: format.url, title: info.videoDetails?.title, thumbnail: info.videoDetails?.thumbnails?.pop()?.url });
+    } catch (e) { logger.warn('ytdl stream hatası', { error: e.message }); }
+  }
+
   if (mk) {
     try {
-      const stream = await mk.getStream(videoId);
+      const stream = await Promise.race([
+        mk.getStream(videoId),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+      ]);
       if (stream?.url) return res.json({ url: stream.url });
     } catch {}
   }
-  const piped = await getPipedStream(videoId);
-  if (piped) return res.json(piped);
+
   res.status(502).json({ error: 'Stream bulunamadı' });
 });
 
