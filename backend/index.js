@@ -135,6 +135,25 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
 // --- MUSIC STREAMING ---
+let Innertube, UniversalCache;
+try {
+  ({ Innertube, UniversalCache } = require('youtubei.js'));
+  logger.info('✅ youtubei.js yüklendi');
+} catch (e) { logger.warn('⚠️ youtubei.js yüklenemedi', { error: e.message }); }
+
+let innertube = null;
+async function getInnertube() {
+  if (!innertube && Innertube) {
+    innertube = await Innertube.create({
+      cache: new UniversalCache(false),
+      generate_session_locally: true,
+      retrieve_player: false,
+      fetch: fetch.bind(globalThis)
+    });
+  }
+  return innertube;
+}
+
 let mk = null;
 try {
   const { MusicKit } = require('musicstream-sdk');
@@ -142,15 +161,34 @@ try {
   logger.info('✅ musicstream-sdk yüklendi');
 } catch (e) { logger.warn('⚠️ musicstream-sdk yüklenemedi', { error: e.message }); }
 
-let ytdl = null;
-try {
-  ytdl = require('@distube/ytdl-core');
-  logger.info('✅ ytdl-core yüklendi');
-} catch (e) { logger.warn('⚠️ ytdl-core yüklenemedi', { error: e.message }); }
-
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
+
+  const yt = await getInnertube().catch(() => null);
+  if (yt) {
+    try {
+      const results = await yt.search(q, { type: 'music' });
+      const songs = [];
+      const contents = results.results || results.content || [];
+      for (const item of contents) {
+        if (songs.length >= 10) break;
+        const type = item.type || item?.content?.type;
+        if (type === 'MusicResponsiveListItem' || item.id) {
+          const id = item.id;
+          const title = item.title?.text || item.title?.toString() || '';
+          const artists = item.artists || item.author;
+          const artist = Array.isArray(artists) ? artists[0]?.name : (artists?.name || '');
+          const duration = item.duration?.text || item.duration?.seconds || '';
+          const thumbnails = item.thumbnails || [];
+          const thumb = thumbnails[thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+          if (id && title) songs.push({ id, title, artist, duration: typeof duration === 'string' ? duration : `${Math.floor(duration/60)}:${String(duration%60).padStart(2,'0')}`, thumbnail: thumb, src: id });
+        }
+      }
+      if (songs.length > 0) return res.json({ results: songs });
+    } catch (e) { logger.warn('youtubei.js arama hatası', { error: e.message }); }
+  }
+
   if (mk) {
     try {
       const songs = await mk.search(q, { filter: 'songs', limit: 10 });
@@ -162,6 +200,7 @@ app.get('/api/music/search', async (req, res) => {
       }))});
     } catch (e) { logger.warn('musicstream-sdk arama hatası', { error: e.message }); }
   }
+
   try {
     const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=10`);
     const data = await r.json();
@@ -177,12 +216,22 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
-  if (ytdl) {
+  const yt = await getInnertube().catch(() => null);
+  if (yt) {
     try {
-      const info = await ytdl.getInfo(videoId);
-      const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
-      if (format?.url) return res.json({ url: format.url, title: info.videoDetails?.title, thumbnail: info.videoDetails?.thumbnails?.pop()?.url });
-    } catch (e) { logger.warn('ytdl stream hatası', { error: e.message }); }
+      const info = await yt.getBasicInfo(videoId);
+      const formats = info.streaming_data?.formats || [];
+      const adaptiveFormats = info.streaming_data?.adaptive_formats || [];
+      const audioFormats = adaptiveFormats.filter(f => f.mime_type?.startsWith('audio/'));
+      const allAudio = [...formats.filter(f => f.mime_type?.startsWith('audio/')), ...audioFormats];
+      allAudio.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+      const best = allAudio[0];
+      if (best?.decipher) {
+        const url = best.decipher(yt.session.player);
+        return res.json({ url, title: info.basic_info?.title, thumbnail: info.basic_info?.thumbnail?.[0]?.url });
+      }
+      if (best?.url) return res.json({ url: best.url, title: info.basic_info?.title, thumbnail: info.basic_info?.thumbnail?.[0]?.url });
+    } catch (e) { logger.warn('youtubei.js stream hatası', { error: e.message }); }
   }
 
   if (mk) {
