@@ -1,8 +1,6 @@
 import { getStyles } from '../styles';
 import { useState, useRef, useEffect } from 'react';
 
-const API_BASE = 'https://couple-meeting.onrender.com';
-
 export default function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
   currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult,
@@ -12,9 +10,6 @@ export default function SearchBar({
   const [showResults, setShowResults] = useState(false);
   const [addedId, setAddedId] = useState(null);
   const searchRef = useRef(null);
-  const [spotifyResults, setSpotifyResults] = useState([]);
-  const [spotifySearching, setSpotifySearching] = useState(false);
-  const debounceRef = useRef(null);
 
   useEffect(() => {
     const handleOutside = (e) => {
@@ -26,24 +21,6 @@ export default function SearchBar({
     document.addEventListener('touchstart', handleOutside, { passive: true });
     return () => { document.removeEventListener('mousedown', handleOutside); document.removeEventListener('touchstart', handleOutside); };
   }, []);
-
-  useEffect(() => {
-    if (playerMode !== 'spotify' || !searchInput.trim()) {
-      setSpotifyResults([]);
-      return;
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setSpotifySearching(true);
-      try {
-        const res = await fetch(`${API_BASE}/api/spotify/search?q=${encodeURIComponent(searchInput.trim())}`);
-        const data = await res.json();
-        setSpotifyResults(data.results || []);
-      } catch (e) { setSpotifyResults([]); }
-      setSpotifySearching(false);
-    }, 500);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchInput, playerMode]);
 
   const handlePlay = () => {
     handleDirectPlay();
@@ -76,14 +53,7 @@ export default function SearchBar({
     }
   };
 
-  const formatDuration = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  };
-
-  const showYouTubeResults = playerMode === 'youtube' && showResults && (searchResults.length > 0 || isSearching);
-  const showSpotifyResults = playerMode === 'spotify' && showResults && (spotifyResults.length > 0 || spotifySearching);
+  const showYouTubeResults = showResults && (searchResults.length > 0 || isSearching);
 
   return (
     <div
@@ -97,7 +67,7 @@ export default function SearchBar({
     >
       <input
         type="text"
-        placeholder={playerMode === 'spotify' ? '🔍 Şarkı/sanatçı adı yazın veya Spotify linki yapıştırın...' : '🔍 YouTube linki veya şarkı adı yazın...'}
+        placeholder={playerMode === 'spotify' ? '🔗 Spotify linki yapıştırın (open.spotify.com/...)' : '🔍 Şarkı adı veya YouTube linki yazın...'}
         value={searchInput}
         onChange={handleInputChange}
         onFocus={() => setShowResults(true)}
@@ -113,24 +83,13 @@ export default function SearchBar({
         </>
       )}
 
-      {playerMode === 'spotify' && searchInput.trim() && (
-        <button className="cm-action-btn" onClick={() => {
-          if (searchInput.includes('open.spotify.com/') || searchInput.includes('spotify.link/')) {
-            onSpotifyUrl?.(searchInput);
-            setSearchInput('');
-            setShowResults(false);
-          }
-        }}
-          style={{ ...styles.buttonPrimary, background: '#1DB954' }}>🎵 Bağla</button>
-      )}
-
       {showYouTubeResults && (
         <div className="cm-search-results" style={{
           position: 'absolute', top: '62px', left: '20px', right: '20px',
           ...styles.card, padding: '14px', zIndex: 9999,
           display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: 340, overflowY: 'auto'
         }}>
-          {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
+          {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ Aranıyor...</div>}
           {searchResults.map((song) => (
             <div key={song.id} className="cm-search-result-row"
               style={{
@@ -158,44 +117,6 @@ export default function SearchBar({
                   </>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showSpotifyResults && (
-        <div className="cm-search-results" style={{
-          position: 'absolute', top: '62px', left: '20px', right: '20px',
-          background: 'linear-gradient(145deg,#1a1a2e,#121212)', border: '1px solid #333',
-          padding: '14px', zIndex: 9999, borderRadius: 16,
-          display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: 340, overflowY: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,.5)'
-        }}>
-          {spotifySearching && <div style={{ color: '#1DB954', fontSize: '13px', fontWeight: 'bold' }}>🎵 Spotify Aranıyor...</div>}
-          {!spotifySearching && spotifyResults.length === 0 && (
-            <div style={{ color: '#666', fontSize: '12px', textAlign: 'center', padding: 10 }}>Sonuç bulunamadı</div>
-          )}
-          {spotifyResults.map((track) => (
-            <div key={track.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                background: '#1a1a2e', padding: '8px 12px', borderRadius: '10px',
-                border: '1px solid #333', cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              onClick={() => { onSpotifyUrl?.(track.spotifyUrl); setSearchInput(''); setShowResults(false); }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#222244'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#1a1a2e'}>
-              {track.thumbnail ? (
-                <img src={track.thumbnail} alt={track.title} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: 44, height: 44, borderRadius: 6, background: '#282828', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎵</div>
-              )}
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{track.title}</div>
-                <div style={{ fontSize: '11px', color: '#b3b3b3', marginTop: 2, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{track.artist} • {track.album}</div>
-              </div>
-              <div style={{ color: '#888', fontSize: 11, whiteSpace: 'nowrap' }}>{formatDuration(track.duration)}</div>
-              <div style={{ background: '#1DB954', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>▶ Çal</div>
             </div>
           ))}
         </div>
