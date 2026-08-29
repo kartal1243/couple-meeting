@@ -5,8 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <!-- Tam Kapsamlı CSP (Stil ve Script İzinleri Dahil) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; font-src * data:; media-src * blob: data:; img-src * data: blob:; connect-src * wss: ws:;" />
+    <!-- Tam Kapsamlı CSP Güvenlik İzinleri -->
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com; style-src * 'unsafe-inline'; font-src * data:; media-src * blob: data: https: http:; img-src * data: blob: https: http:; frame-src * https://www.youtube.com https://youtube.com; connect-src * wss: ws: https: http:;" />
 
     <title>Couple Meeting - Watch, Listen & Connect</title>
   </head>

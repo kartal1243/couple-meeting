@@ -37,7 +37,7 @@ export default function Player({
     ytPlayerRef.current = e.target;
   }, [ytPlayerRef]);
 
-  // Kilit ekranında bildirim gösterme ve arka plan oynatma
+  // Telefonun kilit ekranında bildirim gösterme ve arka planda çalma
   const setupMediaSession = useCallback(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -68,7 +68,7 @@ export default function Player({
     }
   }, [mediaMeta, videoId]);
 
-  // SADECE VE SADECE KENDİ SUNUCUMUZUN IP'SİNDEN SES ÇEKİYORUZ
+  // Kendi sunucumuzun IP'si üzerinden saf ses akışı
   useEffect(() => {
     if (mediaType === 'music' && videoId && audioRef.current) {
       setMusicLoading(true);
@@ -116,7 +116,7 @@ export default function Player({
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
-      {/* HTML5 Saf Ses Oynatıcı - Kendi Sunucumuzdan Canlı Akış */}
+      {/* HTML5 Saf Ses Oynatıcı - Kilit Ekranında Çalan Motor */}
       <audio
         ref={audioRef}
         playsInline
@@ -147,7 +147,7 @@ export default function Player({
         </div>
       )}
 
-      {/* MÜZİK MODU (Kendi Sunucumuz + Kilit Ekranı Desteği) */}
+      {/* MÜZİK MODU (Kendi Sunucumuzdan Canlı Akış) */}
       {mediaType === 'music' && videoId && (
         <div style={{ textAlign: 'center', color: '#fff', padding: '20px', zIndex: 2 }}>
           <img

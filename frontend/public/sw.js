@@ -1,6 +1,5 @@
-// Service Worker - Arka plan çalma desteği
+// Service Worker - Arka plan çalma ve önbellek yönetimi
 const CACHE_NAME = 'couple-meeting-v2';
-const urlsToCache = ['/'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -12,7 +11,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName); // Eski önbellekleri temizle
+            return caches.delete(cacheName);
           }
         })
       );
@@ -20,11 +19,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Arka planda ses ve API isteklerini engellemeden yönlendir
+// Arka planda ses ve API isteklerini engellemeden canlı akıt
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Müzik stream'leri, API çağrıları, web socketler ve oda parametrelerini SW'den muaf tut
+  // Müzik ses akışlarını, API çağrılarını ve oda bağlantılarını Service Worker'dan muaf tut
   if (
     event.request.method !== 'GET' ||
     url.pathname.includes('/api/') ||
@@ -35,14 +34,12 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('youtube.com') ||
     event.request.headers.get('range')
   ) {
-    return; // Doğrudan internetten çeksin, Service Worker araya girmesin
+    return;
   }
 
-  // Sadece normal statik dosyalar için önbellek kontrolü
   event.respondWith(
     caches.match(event.request).then((response) => {
-      return response || fetch(event.request).catch((err) => {
-        // Hata durumunda akışı kilitleme
+      return response || fetch(event.request).catch(() => {
         return new Response('Ağ bağlantısı kurulamadı', { status: 408 });
       });
     })

@@ -97,10 +97,7 @@ function App() {
   const [youtubeError, setYoutubeError] = useState(null);
   const [fallbackUrl, setFallbackUrl] = useState('');
 
-  // --- YENİ: Yanıtlama ---
   const [replyTo, setReplyTo] = useState(null);
-
-  // --- YENİ: Arkada online durumları ---
   const [friendOnlineStatuses, setFriendOnlineStatuses] = useState({});
 
   const [authUser, setAuthUser] = useState(() => {
@@ -127,7 +124,6 @@ function App() {
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
   const [quickRoomType, setQuickRoomType] = useState('video');
-  const [pendingJoin, setPendingJoin] = useState(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
   const [joinModalPass, setJoinModalPass] = useState('');
@@ -179,7 +175,6 @@ function App() {
     } catch {}
   };
 
-  // Oda mesajlarını localStorage'a kaydet
   const saveRoomMessages = useCallback((rid, msgs) => {
     try { localStorage.setItem(`cm_room_msgs_${rid}`, JSON.stringify(msgs.slice(-200))); } catch {}
   }, []);
@@ -282,21 +277,6 @@ function App() {
     setJoinModalPass('');
   };
 
-  const handleCreateRoomSubmit = (e) => {
-    e.preventDefault();
-    const finalRoomId = roomId.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
-    localStorage.setItem('cm_saved_pass', roomPassword.trim());
-    socket.emit('join_room', { roomId: finalRoomId, password: roomPassword.trim(), maxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType });
-  };
-
-  const handleJoinRoomSubmit = (e) => {
-    e.preventDefault();
-    if (!joinRoomInput.trim()) return;
-    localStorage.setItem('cm_saved_pass', joinPassInput.trim());
-    socket.emit('join_room', { roomId: joinRoomInput.trim().toLowerCase(), password: joinPassInput.trim(), userId, userCity, username, avatar: myAvatar, roomType: 'video' });
-  };
-
-  // Düzeltilen kısım: Tanımsız setAudioMode ve stopAudio kaldırıldı
   const handleLeaveRoom = () => {
     socket.emit('leave_room');
     setInRoom(false);
@@ -322,7 +302,6 @@ function App() {
     setNewCategoryInput('');
   };
 
-  // handleMediaEnd ref'leri - stale closure engeli
   const playlistRef = useRef(playlist);
   const playModeRef = useRef(playMode);
   const mediaSrcRef = useRef(mediaSrc);
@@ -538,19 +517,6 @@ function App() {
     if (mediaType !== 'none') requestWakeLock();
     return () => { if (wakeLock) wakeLock.release(); };
   }, [mediaType]);
-
-  useEffect(() => {
-    if ('mediaSession' in navigator && mediaType !== 'none') {
-      const title = playlist.find(i => i.src === mediaSrc)?.title || roomName || 'Couple Meeting Medya';
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title, artist: 'Couple Meeting', album: 'Birlikte Dinleme Odası',
-        artwork: [
-          { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '96x96', type: 'image/png' },
-          { src: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png', sizes: '512x512', type: 'image/png' },
-        ]
-      });
-    }
-  }, [mediaSrc, mediaType, playlist, roomName]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -787,12 +753,6 @@ function App() {
                 <span style={{ fontWeight: 300, color: '#a78bfa' }}>meeting</span>
               </div>
               <div className="cm-footer-slogan">Uzaklığı biraz daha küçük yapan internet. ❤️</div>
-              <div className="cm-footer-socials">
-                <a href="#" title="Instagram">📷</a>
-                <a href="#" title="Twitter/X">🐦</a>
-                <a href="#" title="YouTube">▶️</a>
-                <a href="#" title="Discord">💬</a>
-              </div>
             </div>
           </main>
 
@@ -838,10 +798,9 @@ function App() {
                     <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adı</label>
                     <input
                       value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)}
-                      placeholder="ör:ifer ile müzik gecesi"
+                      placeholder="ör: müzik gecesi"
                       style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
                     />
-                    <div style={{ color:'#475569', fontSize:10, marginTop:4 }}>Boş bırakırsan otomatik isim verilir</div>
                   </div>
                   <div>
                     <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Şifre (isteğe bağlı)</label>
@@ -870,139 +829,4 @@ function App() {
                         🎬 Video
                       </button>
                       <button type="button" onClick={() => setQuickRoomType('music')}
-                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        🎵 Müzik
-                      </button>
-                    </div>
-                  </div>
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
-                    🚀 Odayı Başlat
-                  </button>
-                  <div style={{ textAlign:'center', color:'#475569', fontSize:10 }}>
-                    ✓ Hesapsız giriş &nbsp; ✓ Anında senkron &nbsp; ✓ Ücretsiz
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-          {showJoinModal && joinRoomTarget && (
-            <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
-              <div style={{ width:'min(380px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
-                <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ color:'#2563eb', fontSize:11, fontWeight:900 }}>🚪 ODAYA KATIL</div>
-                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>{joinRoomTarget.name}</div>
-                  </div>
-                  <button onClick={() => { setShowJoinModal(false); setJoinRoomTarget(null); setJoinModalPass(''); }} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
-                </div>
-                <form onSubmit={handleJoinRoomFromModal} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)' }}>
-                    <div style={{ fontSize:24 }}>{joinRoomTarget.hasPassword ? '🔒' : '🎵'}</div>
-                    <div>
-                      <div style={{ color:'#fff', fontSize:14, fontWeight:900 }}>{joinRoomTarget.name}</div>
-                      <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kişi • {joinRoomTarget.hasPassword ? 'Şifreli' : 'Açık'}</div>
-                    </div>
-                  </div>
-                  {joinRoomTarget.hasPassword && (
-                    <div>
-                      <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Şifresi</label>
-                      <input
-                        type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)}
-                        placeholder="Şifreyi girin..."
-                        autoFocus
-                        style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                      />
-                    </div>
-                  )}
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>
-                    🚪 Odaya Gir
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `\n@keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n`}</style>
-
-      {showFolderModal && (
-        <FolderModal
-          pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory}
-          setModalTargetCategory={setModalTargetCategory} categories={categories}
-          confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal}
-          currentTheme={currentTheme} styles={styles}
-        />
-      )}
-
-      {showSettingsModal && (
-        <SettingsModal
-          hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput}
-          setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme}
-          setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings}
-          roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin}
-          handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal}
-          currentTheme={currentTheme} authUser={authUser} styles={styles}
-        />
-      )}
-
-      <Header
-        roomName={roomName} currentTheme={currentTheme} isConnected={isConnected}
-        currentRoomInfo={currentRoomInfo} showInstallBtn={showInstallBtn}
-        handleInstallApp={handleInstallApp} setShowSettingsModal={setShowSettingsModal}
-        authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveRoom}
-      />
-
-      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
-        <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
-          <SearchBar
-            searchInput={searchInput} setSearchInput={setSearchInput}
-            searchResults={searchResults} isSearching={isSearching}
-            currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
-            handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
-          />
-          <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta} roomType={roomType}
-            customVideoRef={customVideoRef} ytPlayerRef={ytPlayerRef}
-            reactions={reactions} fallbackUrl={fallbackUrl} setFallbackUrl={setFallbackUrl}
-            useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
-            setYoutubeError={setYoutubeError} setMediaType={setMediaType}
-            handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-          />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
-        </div>
-
-        <div className="cm-sidebar" style={{ width: '380px', maxWidth: '100%', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
-          </div>
-
-          {sidebarTab === 'chat' ? (
-            <Chat
-              messages={messages} mySocketId={mySocketId} username={authUser?.username || username}
-              chatInput={chatInput} setChatInput={setChatInput}
-              handleSendMessage={handleSendMessage} currentTheme={currentTheme}
-              replyTo={replyTo} setReplyTo={setReplyTo}
-            />
-          ) : (
-            <Playlist
-              categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-              newCategoryInput={newCategoryInput} setNewCategoryInput={setNewCategoryInput}
-              handleCreateCategory={handleCreateCategory} playMode={playMode}
-              handleModeChange={handleModeChange} filteredPlaylist={filteredPlaylist}
-              mediaSrc={mediaSrc} handleSelectPlaylistItem={handleSelectPlaylistItem}
-              handleRemovePlaylistItem={handleRemovePlaylistItem} currentTheme={currentTheme}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default App;
+                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', b

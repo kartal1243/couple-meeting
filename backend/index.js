@@ -13,7 +13,6 @@ const db = require('./utils/database');
 
 const app = express();
 
-// --- SECURITY ---
 app.use(helmet({ contentSecurityPolicy: false }));
 
 const ALLOWED_ORIGINS = [
@@ -85,11 +84,9 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
 app.use(express.json({ limit: '1mb' }));
 
-// --- RATE LIMITING ---
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { ok: false, message: 'Çok fazla istek.' } });
 app.use('/api/', apiLimiter);
 
-// --- ROUTES ---
 app.get('/', (req, res) => res.status(200).send('🚀 Couple Meeting Backend Active!'));
 app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now() }));
 
@@ -132,7 +129,7 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- YTIFY / INNERTUBE ENGINE ---
+// --- YTIFY SES MOTORU (SUNUCU KENDİ IP'Sİ İLE AKITIR) ---
 let Innertube, UniversalCache;
 try {
   ({ Innertube, UniversalCache } = require('youtubei.js'));
@@ -156,7 +153,6 @@ async function getInnertube() {
   return innertube;
 }
 
-// Arama Rotası
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [] });
@@ -177,7 +173,7 @@ app.get('/api/music/search', async (req, res) => {
   res.json({ results: [] });
 });
 
-// 🔥 DOĞRUDAN SUNUCU IP'Sİ ÜZERİNDEN SES AKITMA (PIPE STREAM) 🔥
+// DOĞRUDAN SUNUCU IP'Sİ ÜZERİNDEN CANLI SES AKIŞI
 app.get('/api/music/play/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).send('videoId gerekli');
@@ -193,12 +189,10 @@ app.get('/api/music/play/:videoId', async (req, res) => {
       return res.status(404).send('Uygun ses formatı bulunamadı');
     }
 
-    // Ses başlıklarını ayarla (Kilit ekranında arkaplanda çalmayı sağlar)
     res.setHeader('Content-Type', format.mime_type?.split(';')[0] || 'audio/webm');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
-    // Sunucumuz YouTube'dan sesi indirip anında kullanıcıya canlı aktarır (Pipe)
     const stream = await yt.download(videoId, {
       type: 'audio',
       quality: 'best'
@@ -212,15 +206,13 @@ app.get('/api/music/play/:videoId', async (req, res) => {
   }
 });
 
-// Stream Bilgi Rotası
 app.get('/api/music/stream/:videoId', (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
-  // Doğrudan kendi sunucumuzdaki play linkini dön
   res.json({ url: `/api/music/play/${videoId}` });
 });
 
-// --- SERVER & SOCKET ---
+// --- SOCKET.IO ---
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true }
