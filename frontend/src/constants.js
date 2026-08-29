@@ -95,10 +95,10 @@ export const HOME_CSS = `
   @keyframes cmFloat { 0%,100%{transform:translate3d(0,0,0)} 50%{transform:translate3d(25px,-22px,0)} }
   .cm-home-nav { position:relative; z-index:5; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:18px 5vw; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(5,7,12,.34); backdrop-filter:blur(18px); position:sticky; top:0; }
   .cm-home-brand { display:flex; align-items:center; gap:11px; }
-  .cm-home-logo { width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#2563eb);font-size:22px;box-shadow:0 12px 35px rgba(124,58,237,.36);animation:cmLogoGlow 3s ease-in-out infinite;position:relative;overflow:hidden; }
-  .cm-home-logo::after { content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:conic-gradient(from 0deg, transparent, rgba(255,255,255,.15), transparent); animation:cmLogoSpin 4s linear infinite; }
-  @keyframes cmLogoGlow { 0%,100%{box-shadow:0 12px 35px rgba(124,58,237,.36)} 50%{box-shadow:0 12px 45px rgba(37,99,235,.5), 0 0 20px rgba(124,58,237,.3)} }
-  @keyframes cmLogoSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+  .cm-home-logo-wrap { position:relative; width:42px; height:42px; display:grid; place-items:center; }
+  .cm-home-logo { width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#2563eb);font-size:18px;box-shadow:0 8px 24px rgba(124,58,237,.4);position:relative;z-index:2; }
+  .cm-home-logo-ring { position:absolute; inset:-3px; border-radius:50%; border:2px solid transparent; background:conic-gradient(#7c3aed,#2563eb,#00a884,#7c3aed) border-box; -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; animation:cmLogoRing 3s linear infinite; }
+  @keyframes cmLogoRing { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
   .cm-nav-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
   .cm-home-main { position:relative; z-index:2; width:min(1200px,92vw); margin:0 auto; padding:40px 0 70px; }
 
@@ -165,30 +165,30 @@ export const HOME_CSS = `
   .cm-feature span{display:block;color:#7f8b96;font-size:12px;line-height:1.6;margin-top:8px}
 
   /* Açık odalar */
-  .cm-room-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
-  .cm-room { padding:22px;border-radius:22px;background:linear-gradient(160deg,rgba(30,40,55,.85),rgba(12,20,32,.95));border:1px solid rgba(255,255,255,.06);cursor:pointer;transition:.3s;position:relative;overflow:hidden; }
+  .cm-room-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px; }
+  .cm-room { padding:16px;border-radius:16px;background:linear-gradient(160deg,rgba(30,40,55,.85),rgba(12,20,32,.95));border:1px solid rgba(255,255,255,.06);cursor:pointer;transition:.3s;position:relative;overflow:hidden; }
   .cm-room-glow { position:absolute;top:-40%;right:-40%;width:80%;height:80%;background:radial-gradient(circle,rgba(124,58,237,.12),transparent 70%);pointer-events:none;transition:.4s; }
   .cm-room:hover .cm-room-glow { opacity:1;top:-30%;right:-30%; }
   .cm-room::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#7c3aed,#2563eb,#00a884); transform:scaleX(0); transition:.3s; }
-  .cm-room:hover { transform:translateY(-6px);border-color:rgba(124,58,237,.3);box-shadow:0 20px 50px rgba(0,0,0,.4); }
+  .cm-room:hover { transform:translateY(-4px);border-color:rgba(124,58,237,.3);box-shadow:0 12px 30px rgba(0,0,0,.35); }
   .cm-room:hover::after { transform:scaleX(1); }
-  .cm-room-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px; }
-  .cm-room-icon-wrap { width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(37,99,235,.15));display:grid;place-items:center; }
-  .cm-room-emoji { font-size:22px; }
-  .cm-room-count { color:#94a3b8;font-size:11px;font-weight:800;background:rgba(255,255,255,.06);padding:5px 10px;border-radius:20px; }
-  .cm-room-name { color:#fff;font-weight:900;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-  .cm-room-meta { color:#64748b;font-size:11px;margin-top:4px; }
-  .cm-room-bottom { display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.05); }
+  .cm-room-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px; }
+  .cm-room-icon-wrap { width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(37,99,235,.15));display:grid;place-items:center; }
+  .cm-room-emoji { font-size:18px; }
+  .cm-room-count { color:#94a3b8;font-size:10px;font-weight:800;background:rgba(255,255,255,.06);padding:3px 8px;border-radius:12px; }
+  .cm-room-name { color:#fff;font-weight:900;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .cm-room-meta { color:#64748b;font-size:10px;margin-top:3px; }
+  .cm-room-bottom { display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05); }
   .cm-room-users { display:flex;align-items:center; }
-  .cm-room-user-avatar { width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;margin-left:-8px;border:2px solid rgba(15,23,35,.9); }
+  .cm-room-user-avatar { width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:10px;margin-left:-6px;border:2px solid rgba(15,23,35,.9); }
   .cm-room-user-avatar:first-child { margin-left:0; }
-  .cm-room-user-more { width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:9px;color:#94a3b8;background:rgba(255,255,255,.08);margin-left:-8px;border:2px solid rgba(15,23,35,.9);font-weight:800; }
-  .cm-room-join-btn { color:#a78bfa;font-size:13px;font-weight:800;transition:.2s; }
-  .cm-room:hover .cm-room-join-btn { color:#c4b5fd;transform:translateX(4px); }
-  .cm-empty-state { text-align:center;padding:50px 20px; }
-  .cm-empty-icon { font-size:52px;margin-bottom:14px; }
-  .cm-empty-title { color:#fff;font-weight:900;font-size:18px; }
-  .cm-empty-desc { color:#64748b;font-size:13px;margin-top:6px; }
+  .cm-room-user-more { width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:8px;color:#94a3b8;background:rgba(255,255,255,.08);margin-left:-6px;border:2px solid rgba(15,23,35,.9);font-weight:800; }
+  .cm-room-join-btn { color:#a78bfa;font-size:12px;font-weight:800;transition:.2s; }
+  .cm-room:hover .cm-room-join-btn { color:#c4b5fd;transform:translateX(3px); }
+  .cm-empty-state { text-align:center;padding:40px 20px; }
+  .cm-empty-icon { font-size:44px;margin-bottom:10px; }
+  .cm-empty-title { color:#fff;font-weight:900;font-size:16px; }
+  .cm-empty-desc { color:#64748b;font-size:12px;margin-top:5px; }
 
   .cm-social-card { padding:24px;border-radius:24px;background:linear-gradient(145deg,rgba(30,40,55,.8),rgba(15,23,35,.9));border:1px solid rgba(255,255,255,.06); }
   .cm-social-grid { display:grid;grid-template-columns:1.1fr .9fr;gap:20px; }
