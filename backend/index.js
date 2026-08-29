@@ -175,25 +175,35 @@ app.get('/api/music/search', async (req, res) => {
   const yt = await getInnertube().catch(() => null);
   if (yt) {
     try {
-      const results = await yt.search(q, { type: 'music' });
-      const songs = [];
-      const contents = results.results || results.content || [];
-      for (const item of contents) {
-        if (songs.length >= 10) break;
-        const type = item.type || item?.content?.type;
-        if (type === 'MusicResponsiveListItem' || item.id) {
-          const id = item.id;
-          const title = item.title?.text || item.title?.toString() || '';
-          const artists = item.artists || item.author;
-          const artist = Array.isArray(artists) ? artists[0]?.name : (artists?.name || '');
-          const duration = item.duration?.text || item.duration?.seconds || '';
-          const thumbnails = item.thumbnails || [];
-          const thumb = thumbnails[thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-          if (id && title) songs.push({ id, title, artist, duration: typeof duration === 'string' ? duration : `${Math.floor(duration/60)}:${String(duration%60).padStart(2,'0')}`, thumbnail: thumb, src: id });
-        }
-      }
+      const results = await yt.music.search(q, { type: 'song' });
+      const songs = (results.songs?.contents || [])
+        .map(s => {
+          const id = s.id;
+          const title = s.title?.text || s.title?.toString() || '';
+          const artist = s.artists?.[0]?.name || s.artist?.name || '';
+          const duration = s.duration?.text || '';
+          const thumb = s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+          return { id, title, artist, duration, thumbnail: thumb, src: id };
+        })
+        .filter(s => s.id && s.title);
+      if (songs.length > 0) return res.json({ results: songs.slice(0, 10) });
+    } catch (e) { logger.warn('yt.music.search hatası', { error: e.message }); }
+
+    try {
+      const results = await yt.search(q, { type: 'video' });
+      const songs = (results.videos || [])
+        .slice(0, 10)
+        .map(v => ({
+          id: v.id,
+          title: v.title?.text || v.title?.toString() || '',
+          artist: v.author?.name || '',
+          duration: v.duration?.text || '',
+          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+          src: v.id
+        }))
+        .filter(s => s.id && s.title);
       if (songs.length > 0) return res.json({ results: songs });
-    } catch (e) { logger.warn('youtubei.js arama hatası', { error: e.message }); }
+    } catch (e) { logger.warn('yt.search fallback hatası', { error: e.message }); }
   }
 
   if (mk) {
