@@ -323,7 +323,7 @@ io.on('connection', (socket) => {
     const term = sanitize(q, 20).toLowerCase();
     const current = db.getUserByToken(token)?.username;
     if (!term || term.length < 1) return socket.emit('friend_search_results', []);
-    const results = db.getDb().prepare('SELECT * FROM users WHERE username LIKE ? AND username != ? LIMIT 20').all(`%${term}%`, current || '').map(publicUser);
+    const results = db.searchUsers(term, current);
     socket.emit('friend_search_results', results);
   });
 
