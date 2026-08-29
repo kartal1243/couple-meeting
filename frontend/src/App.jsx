@@ -258,11 +258,15 @@ function App() {
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
     const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType };
-    if (socket.connected) {
-      socket.emit('join_room', joinData);
-    } else {
-      setPendingJoin(joinData);
-    }
+    const tryJoin = () => {
+      if (socket.connected) {
+        socket.emit('join_room', joinData);
+      } else {
+        socket.once('connect', () => socket.emit('join_room', joinData));
+        if (!socket.connected) socket.connect();
+      }
+    };
+    tryJoin();
     setShowQuickCreate(false);
     setQuickRoomName('');
     setQuickRoomPass('');
@@ -576,10 +580,6 @@ function App() {
     if (!socket) return;
     socket.on('connect', () => {
       setIsConnected(true);
-      if (pendingJoin) {
-        socket.emit('join_room', pendingJoin);
-        setPendingJoin(null);
-      }
     });
     socket.on('disconnect', () => setIsConnected(false));
     socket.on('public_rooms_update', (roomsList) => setPublicRooms(Array.isArray(roomsList) ? roomsList : []));
