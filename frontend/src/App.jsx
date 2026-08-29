@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import io from 'socket.io-client';
 
 import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
@@ -26,10 +26,7 @@ import SettingsModal from './Modals/SettingsModal';
 function App() {
   const [userId] = useState(() => {
     let savedId = localStorage.getItem('cm_user_id');
-    if (!savedId) {
-      savedId = 'usr_' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('cm_user_id', savedId);
-    }
+    if (!savedId) { savedId = 'usr_' + Math.random().toString(36).substring(2, 9); localStorage.setItem('cm_user_id', savedId); }
     return savedId;
   });
 
@@ -96,6 +93,12 @@ function App() {
   const [youtubeError, setYoutubeError] = useState(null);
   const [fallbackUrl, setFallbackUrl] = useState('');
 
+  // --- YENİ: Yanıtlama ---
+  const [replyTo, setReplyTo] = useState(null);
+
+  // --- YENİ: Arkada online durumları ---
+  const [friendOnlineStatuses, setFriendOnlineStatuses] = useState({});
+
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
   });
@@ -120,11 +123,14 @@ function App() {
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
   const socketRef = useRef(null);
+  const currentRoomIdRef = useRef(roomId);
 
   if (!socketRef.current) {
     socketRef.current = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
   }
   const socket = socketRef.current;
+
+  useEffect(() => { currentRoomIdRef.current = roomId; }, [roomId]);
 
   const persistAuth = (user, token) => {
     setAuthUser(user);
@@ -145,7 +151,7 @@ function App() {
   };
 
   const sendAction = (type, payload) => {
-    if (socket) socket.emit('room_action', { roomId, type, payload: { ...payload, mediaType } });
+    if (socket) socket.emit('room_action', { roomId: currentRoomIdRef.current, type, payload: { ...payload, mediaType } });
   };
 
   const saveToRecentRooms = (targetRoomId) => {
@@ -157,6 +163,15 @@ function App() {
     } catch {}
   };
 
+  // --- YENİ: Oda mesajlarını localStorage'a kaydet ---
+  const saveRoomMessages = useCallback((rid, msgs) => {
+    try { localStorage.setItem(`cm_room_msgs_${rid}`, JSON.stringify(msgs.slice(-200))); } catch {}
+  }, []);
+
+  const loadRoomMessages = useCallback((rid) => {
+    try { return JSON.parse(localStorage.getItem(`cm_room_msgs_${rid}`)) || []; } catch { return []; }
+  }, []);
+
   const openAuth = (mode = 'login') => {
     setAuthMode(mode);
     setAuthForm((prev) => ({ ...prev, password: '' }));
@@ -167,6 +182,7 @@ function App() {
     e.preventDefault();
     if (authBusy) return;
     setAuthBusy(true);
+    setErrorMessage('');
     socket.emit(authMode === 'register' ? 'auth_register' : 'auth_login', authForm);
   };
 
@@ -183,10 +199,8 @@ function App() {
     const text = globalChatInput.trim();
     if (!text) return;
     socket.emit('global_chat_message', {
-      text,
-      username: authUser?.username || username || 'Misafir',
-      avatar: authUser?.avatar || myAvatar,
-      token: authToken || ''
+      text, username: authUser?.username || username || 'Misafir',
+      avatar: authUser?.avatar || myAvatar, token: authToken || ''
     });
     setGlobalChatInput('');
   };
@@ -206,13 +220,15 @@ function App() {
     socket.emit('friend_request_response', { requestId, action, token: authToken });
   };
 
+  const unfriendUser = (targetUsername) => {
+    socket.emit('unfriend', { targetUsername, token: authToken });
+  };
+
   const saveProfile = () => {
     if (!authUser) return;
     socket.emit('update_profile', {
-      token: authToken,
-      bio: profileBioInput.trim().slice(0, 120),
-      status: profileStatusInput.trim().slice(0, 80),
-      avatar: myAvatar
+      token: authToken, bio: profileBioInput.trim().slice(0, 120),
+      status: profileStatusInput.trim().slice(0, 80), avatar: myAvatar
     });
   };
 
@@ -242,6 +258,7 @@ function App() {
     setMediaType('none');
     setMediaSrc('');
     setMessages([]);
+    setReplyTo(null);
     localStorage.removeItem('cm_saved_room');
     localStorage.removeItem('cm_saved_pass');
     window.history.replaceState({}, '', window.location.pathname);
@@ -249,13 +266,13 @@ function App() {
 
   const handleModeChange = (mode) => {
     setPlayMode(mode);
-    socket.emit('change_play_mode', { roomId, mode });
+    socket.emit('change_play_mode', { roomId: currentRoomIdRef.current, mode });
   };
 
   const handleCreateCategory = (e) => {
     e.preventDefault();
     if (!newCategoryInput.trim()) return;
-    socket.emit('create_category', { roomId, categoryName: newCategoryInput.trim() });
+    socket.emit('create_category', { roomId: currentRoomIdRef.current, categoryName: newCategoryInput.trim() });
     setSelectedCategory(newCategoryInput.trim());
     setNewCategoryInput('');
   };
@@ -304,16 +321,12 @@ function App() {
         item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
       }
     }
-    if (item) {
-      setPendingMediaItem(item);
-      setModalTargetCategory(selectedCategory || 'Genel');
-      setShowFolderModal(true);
-    }
+    if (item) { setPendingMediaItem(item); setModalTargetCategory(selectedCategory || 'Genel'); setShowFolderModal(true); }
   };
 
   const confirmAddToPlaylist = () => {
     if (!pendingMediaItem) return;
-    socket.emit('add_to_playlist', { roomId, item: { ...pendingMediaItem, category: modalTargetCategory } });
+    socket.emit('add_to_playlist', { roomId: currentRoomIdRef.current, item: { ...pendingMediaItem, category: modalTargetCategory } });
     setShowFolderModal(false);
     setPendingMediaItem(null);
   };
@@ -321,35 +334,27 @@ function App() {
   const handleSelectSearchResult = (song, playImmediately = true) => {
     if (!song) return;
     if (playImmediately) {
-      setYoutubeError(null);
-      setMediaType('youtube');
-      setMediaSrc(song.src);
+      setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src });
-    } else {
-      handleOpenAddModal(song);
-    }
+    } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
-    setYoutubeError(null);
-    setMediaType(item.type);
-    setMediaSrc(item.src);
+    setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src });
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
     e.stopPropagation();
-    socket.emit('remove_from_playlist', { roomId, itemId });
+    socket.emit('remove_from_playlist', { roomId: currentRoomIdRef.current, itemId });
   };
 
   const handlePlay = () => {
     let time = 0;
     if (mediaType === 'youtube' && ytPlayerRef.current) {
-      time = ytPlayerRef.current.getCurrentTime();
-      ytPlayerRef.current.playVideo();
+      time = ytPlayerRef.current.getCurrentTime(); ytPlayerRef.current.playVideo();
     } else if (mediaType === 'custom_video' && customVideoRef.current) {
-      time = customVideoRef.current.currentTime;
-      customVideoRef.current.play().catch(() => {});
+      time = customVideoRef.current.currentTime; customVideoRef.current.play().catch(() => {});
     } else if (mediaType === 'iframe') return;
     sendAction('PLAY', { time });
   };
@@ -360,16 +365,24 @@ function App() {
     sendAction('PAUSE', {});
   };
 
+  // --- YENİ: Mesaj gönderme + yanıtlama ---
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const newMsg = {
-      senderId: mySocketId, text: chatInput, sender: username || 'İzleyici',
-      avatar: myAvatar, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      senderId: mySocketId, text: chatInput, sender: authUser?.username || username || 'İzleyici',
+      avatar: authUser?.avatar || myAvatar,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      replyTo: replyTo?.id || null, replyToText: replyTo?.text || null, replyToSender: replyTo?.sender || null
     };
-    setMessages((prev) => [...prev, newMsg]);
+    setMessages((prev) => {
+      const updated = [...prev, newMsg];
+      saveRoomMessages(currentRoomIdRef.current, updated);
+      return updated;
+    });
     sendAction('CHAT_MESSAGE', newMsg);
     setChatInput('');
+    setReplyTo(null);
   };
 
   const sendReaction = (emoji) => {
@@ -380,26 +393,25 @@ function App() {
 
   const handleSaveSettings = () => {
     socket.emit('update_room_settings', {
-      roomId, newName: editRoomNameInput.trim() || roomName, newTheme: roomTheme
+      roomId: currentRoomIdRef.current, newName: editRoomNameInput.trim() || roomName, newTheme: roomTheme
     });
     setShowSettingsModal(false);
   };
 
-  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId, targetUserId });
-
+  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId });
   const handleTransferAdmin = (targetUserId) => {
-    socket.emit('update_room_settings', { roomId, newHostUserId: targetUserId });
+    socket.emit('update_room_settings', { roomId: currentRoomIdRef.current, newHostUserId: targetUserId });
   };
 
   const handleYouTubeError = (event) => {
     const code = event?.data;
-    const messages = {
+    const msgs = {
       2: 'YouTube bağlantısı geçersiz.', 5: 'Video HTML5 oynatıcı hatası verdi.',
       100: 'Video bulunamadı veya kaldırıldı.',
       101: 'Video sahibi bu videonun başka sitelerde oynatılmasına izin vermiyor.',
       150: 'Video sahibi bu videonun başka sitelerde oynatılmasına izin vermiyor.'
     };
-    setYoutubeError({ code, message: messages[code] || 'YouTube videosu bu sitede oynatılamıyor.' });
+    setYoutubeError({ code, message: msgs[code] || 'YouTube videosu bu sitede oynatılamıyor.' });
   };
 
   const useFallbackSource = () => {
@@ -407,11 +419,8 @@ function App() {
     if (!url) return;
     const parsed = processUrl(url);
     if (!parsed || !parsed.src) return;
-    setYoutubeError(null);
-    setMediaType(parsed.type);
-    setMediaSrc(parsed.src);
-    sendAction('CHANGE_MEDIA', { type: parsed.type, src: parsed.src });
-    setFallbackUrl('');
+    setYoutubeError(null); setMediaType(parsed.type); setMediaSrc(parsed.src);
+    sendAction('CHANGE_MEDIA', { type: parsed.type, src: parsed.src }); setFallbackUrl('');
   };
 
   const openYouTubeExternally = () => {
@@ -421,36 +430,21 @@ function App() {
   const filteredPlaylist = useMemo(() => {
     if (!Array.isArray(playlist)) return [];
     let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
-    if (playMode === 'alphabetical') {
-      return [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
-    }
+    if (playMode === 'alphabetical') return [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
     return filtered;
   }, [playlist, selectedCategory, playMode]);
 
   // --- Effects ---
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallBtn(true);
-    };
+    const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      socketRef.current?.disconnect();
-      socketRef.current = null;
-    };
+    return () => { window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); socketRef.current?.disconnect(); socketRef.current = null; };
   }, []);
 
   const handleInstallApp = async () => {
-    if (!deferredPrompt) {
-      alert('Tarayıcınızın menüsünden "Ana Ekrana Ekle" seçeneğiyle uygulamayı cihazınıza yükleyebilirsiniz!');
-      return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBtn(false);
-    setDeferredPrompt(null);
+    if (!deferredPrompt) { alert('Tarayıcınızın menüsünden "Ana Ekrana Ekle" seçeneğiyle uygulamayı cihazınıza yükleyebilirsiniz!'); return; }
+    deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setShowInstallBtn(false); setDeferredPrompt(null);
   };
 
   useEffect(() => {
@@ -485,14 +479,10 @@ function App() {
 
   useEffect(() => {
     if (!searchInput.trim() || searchInput.trim().length < 2 || searchInput.includes('http://') || searchInput.includes('https://')) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
+      setSearchResults([]); setIsSearching(false); return;
     }
     setIsSearching(true);
-    const timer = setTimeout(() => {
-      if (socket) socket.emit('search_music', { query: searchInput.trim() });
-    }, 300);
+    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim() }); }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
@@ -504,12 +494,9 @@ function App() {
     socket.on('search_results', (results) => { setSearchResults(Array.isArray(results) ? results : []); setIsSearching(false); });
 
     socket.on('room_joined', (data) => {
-      setInRoom(true);
-      setErrorMessage('');
-      setRoomId(data.roomId);
-      setRoomName(data.roomName || data.roomId);
-      setHostUserId(data.hostUserId);
-      setRoomTheme(data.theme || 'default');
+      setInRoom(true); setErrorMessage('');
+      setRoomId(data.roomId); setRoomName(data.roomName || data.roomId);
+      setHostUserId(data.hostUserId); setRoomTheme(data.theme || 'default');
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
@@ -518,24 +505,27 @@ function App() {
       if (Array.isArray(data.categories)) { setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
       if (data.playMode) setPlayMode(data.playMode);
 
+      // --- YENİ: Mesaj geçmişi hem sunucudan hem local'den ---
+      const serverMsgs = Array.isArray(data.messages) ? data.messages : [];
+      const localMsgs = loadRoomMessages(data.roomId);
+      const mergedMsgs = serverMsgs.length > 0 ? serverMsgs : localMsgs;
+      setMessages(mergedMsgs);
+      saveRoomMessages(data.roomId, mergedMsgs);
+
       localStorage.setItem('cm_saved_room', data.roomId);
       saveToRecentRooms(data.roomId);
       window.history.replaceState({}, '', `?room=${data.roomId}`);
       if (authToken) socket.emit('social_sync', { token: authToken });
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
-        setYoutubeError(null);
-        setMediaType(data.currentMedia.type);
-        setMediaSrc(data.currentMedia.src);
+        setYoutubeError(null); setMediaType(data.currentMedia.type); setMediaSrc(data.currentMedia.src);
         setTimeout(() => {
           if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
             ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
-            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo();
-            else ytPlayerRef.current.pauseVideo();
+            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo(); else ytPlayerRef.current.pauseVideo();
           } else if (data.currentMedia.type === 'custom_video' && customVideoRef.current) {
             customVideoRef.current.currentTime = data.currentMedia.time || 0;
-            if (data.currentMedia.isPlaying) customVideoRef.current.play();
-            else customVideoRef.current.pause();
+            if (data.currentMedia.isPlaying) customVideoRef.current.play(); else customVideoRef.current.pause();
           }
         }, 800);
       }
@@ -579,7 +569,15 @@ function App() {
       } else if (type === 'CHANGE_MEDIA') {
         setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
       } else if (type === 'CHAT_MESSAGE') {
-        setMessages((prev) => [...prev, payload]);
+        setMessages((prev) => {
+          const updated = [...prev, payload];
+          saveRoomMessages(currentRoomIdRef.current, updated);
+          return updated;
+        });
+        // --- YENİ: Bildirim (sayfa gizliyse) ---
+        if (document.hidden && Notification.permission === 'granted') {
+          new Notification(`${payload.sender} mesaj gönderdi`, { body: payload.text, icon: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png' });
+        }
       } else if (type === 'REACTION') {
         showFloatingEmoji(payload);
       }
@@ -599,9 +597,7 @@ function App() {
         setAuthForm({ username: '', email: '', password: '', bio: '', avatar: data.user?.avatar || '🐱' });
         setShowAuthModal(false); setShowSocialModal(true); setErrorMessage('');
         socket.emit('social_sync', { token: data.token });
-      } else {
-        setErrorMessage(data?.message || 'İşlem başarısız.');
-      }
+      } else { setErrorMessage(data?.message || 'İşlem başarısız.'); }
     });
     socket.on('friends_update', (data) => {
       setFriends(Array.isArray(data?.friends) ? data.friends : []);
@@ -614,13 +610,24 @@ function App() {
       socket.emit('social_sync', { token: authToken });
     });
 
+    // --- YENİ: Arkadaş online durumu ---
+    socket.on('friend_online_status', (data) => {
+      setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
+    });
+
+    // --- YENİ: Bildirim izni ---
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     return () => {
       socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
       socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
-      socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received'); socket.off('friend_request_status');
+      socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
+      socket.off('friend_request_status'); socket.off('friend_online_status');
     };
   }, []);
 
@@ -673,7 +680,7 @@ function App() {
             <AuthModal
               authMode={authMode} setAuthMode={setAuthMode} authForm={authForm}
               setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth}
-              setShowAuthModal={setShowAuthModal} styles={styles}
+              setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles}
             />
           )}
           {showSocialModal && (
@@ -684,7 +691,8 @@ function App() {
               friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends}
               friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest}
               friendRequests={friendRequests} respondFriendRequest={respondFriendRequest}
-              friends={friends} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput}
+              friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser}
+              profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput}
               profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput}
               myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile}
               openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal}
@@ -754,9 +762,10 @@ function App() {
 
           {sidebarTab === 'chat' ? (
             <Chat
-              messages={messages} mySocketId={mySocketId} username={username}
+              messages={messages} mySocketId={mySocketId} username={authUser?.username || username}
               chatInput={chatInput} setChatInput={setChatInput}
               handleSendMessage={handleSendMessage} currentTheme={currentTheme}
+              replyTo={replyTo} setReplyTo={setReplyTo}
             />
           ) : (
             <Playlist
