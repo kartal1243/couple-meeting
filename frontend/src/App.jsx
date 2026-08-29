@@ -35,7 +35,7 @@ function App() {
 
   const [inRoom, setInRoom] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    return !!(urlParams.get('room') || localStorage.getItem('cm_saved_room'));
+    return !!urlParams.get('room');
   });
 
   const [activeTab, setActiveTab] = useState('create');
@@ -55,7 +55,7 @@ function App() {
 
   const [roomId, setRoomId] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('room') || localStorage.getItem('cm_saved_room') || '';
+    return urlParams.get('room') || '';
   });
   const [roomName, setRoomName] = useState('');
   const [hostUserId, setHostUserId] = useState('');
@@ -551,10 +551,9 @@ function App() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const targetRoom = urlParams.get('room') || localStorage.getItem('cm_saved_room');
+    const targetRoom = urlParams.get('room');
     if (targetRoom && socket) {
-      const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoom, password: savedPass, userId, userCity, username, avatar: myAvatar, roomType: 'video' });
+      socket.emit('join_room', { roomId: targetRoom, password: '', userId, userCity, username, avatar: myAvatar, roomType: 'video' });
     }
   }, [userId]);
 
