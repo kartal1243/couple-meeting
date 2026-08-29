@@ -3,8 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 
 export default function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
-  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult,
-  onSpotifyUrl, playerMode
+  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult
 }) {
   const styles = getStyles(currentTheme);
   const [showResults, setShowResults] = useState(false);
@@ -42,17 +41,6 @@ export default function SearchBar({
     }
   };
 
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setSearchInput(val);
-    setShowResults(true);
-    if (val.includes('open.spotify.com/') || val.includes('spotify.link/')) {
-      onSpotifyUrl?.(val);
-      setSearchInput('');
-      setShowResults(false);
-    }
-  };
-
   const showYouTubeResults = showResults && (searchResults.length > 0 || isSearching);
 
   return (
@@ -67,21 +55,17 @@ export default function SearchBar({
     >
       <input
         type="text"
-        placeholder={playerMode === 'spotify' ? '🔗 Spotify linki yapıştırın (open.spotify.com/...)' : '🔍 Şarkı adı veya YouTube linki yazın...'}
+        placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
         value={searchInput}
-        onChange={handleInputChange}
+        onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
         onFocus={() => setShowResults(true)}
         style={{ ...styles.input, flex: 1 }}
       />
 
-      {playerMode === 'youtube' && (
-        <>
-          <button className="cm-action-btn" onClick={handlePlay}
-            style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
-          <button className="cm-action-btn" onClick={handleAddToPlaylist}
-            style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
-        </>
-      )}
+      <button className="cm-action-btn" onClick={handlePlay}
+        style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
+      <button className="cm-action-btn" onClick={handleAddToPlaylist}
+        style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
 
       {showYouTubeResults && (
         <div className="cm-search-results" style={{
@@ -89,7 +73,7 @@ export default function SearchBar({
           ...styles.card, padding: '14px', zIndex: 9999,
           display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: 340, overflowY: 'auto'
         }}>
-          {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ Aranıyor...</div>}
+          {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ YouTube Aranıyor...</div>}
           {searchResults.map((song) => (
             <div key={song.id} className="cm-search-result-row"
               style={{

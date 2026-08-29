@@ -5,7 +5,7 @@ import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
-import { playYouTubeAudio, pauseAudio, resumeAudio, seekAudio, getCurrentTime, stopAudio, isAudioPlaying, getCurrentVideoId } from './utils/youtubeAudio';
+
 
 import Hero from './Home/Hero';
 import Features from './Home/Features';
@@ -72,8 +72,6 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
-  const [playerMode, setPlayerMode] = useState('youtube');
-  const [spotifyUrl, setSpotifyUrl] = useState('');
 
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
@@ -136,7 +134,6 @@ function App() {
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
   const socketRef = useRef(null);
-  const startAudioPlaybackRef = useRef(null);
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
   const currentRoomIdRef = useRef(roomId);
@@ -318,7 +315,6 @@ function App() {
   const playlistRef = useRef(playlist);
   const playModeRef = useRef(playMode);
   const mediaSrcRef = useRef(mediaSrc);
-  const startAudioPlaybackHolder = useRef(null);
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { playModeRef.current = playMode; }, [playMode]);
   useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
@@ -342,9 +338,6 @@ function App() {
       setMediaType(nextTrack.type);
       setMediaSrc(nextTrack.src);
       sendAction('CHANGE_MEDIA', { type: nextTrack.type, src: nextTrack.src, title: nextTrack.title });
-      if (nextTrack.type === 'youtube' && startAudioPlaybackHolder.current) {
-        startAudioPlaybackHolder.current(nextTrack.src, nextTrack.title);
-      }
     }
   }, []);
 
@@ -356,7 +349,6 @@ function App() {
     else return;
     setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
-    if (media.type === 'youtube') startAudioPlayback(media.src, searchResults[0]?.title);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -387,14 +379,13 @@ function App() {
     if (playImmediately) {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
-      startAudioPlayback(song.src, song.title);
     } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
-    if (item.type === 'youtube') startAudioPlayback(item.src, item.title);
+
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -403,15 +394,13 @@ function App() {
   };
 
   const handlePlay = () => {
-    resumeAudio();
     if (mediaType === 'youtube' && ytPlayerRef.current) {
       try { ytPlayerRef.current.playVideo(); } catch {}
     }
-    sendAction('PLAY', { time: getCurrentTime() });
+    sendAction('PLAY', { time: 0 });
   };
 
   const handlePause = () => {
-    pauseAudio();
     if (mediaType === 'youtube' && ytPlayerRef.current) {
       try { ytPlayerRef.current.pauseVideo(); } catch {}
     }
@@ -480,21 +469,6 @@ function App() {
     if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
   };
 
-  // --- Medya değiştiğinde ses extraction başlat ---
-  const startAudioPlayback = useCallback(async (src, title) => {
-    if (!src) return;
-    if (getCurrentVideoId() === src && isAudioPlaying()) return;
-    stopAudio();
-    // Her zaman ses çıkarmayı dene (arka plan çalma için)
-    await playYouTubeAudio(src, title || 'Couple Meeting', {
-      onEnd: () => handleMediaEndRef.current?.(),
-      onTimeUpdate: () => {},
-      onError: () => {}
-    });
-  }, []);
-
-  startAudioPlaybackHolder.current = startAudioPlayback;
-
   const filteredPlaylist = useMemo(() => {
     if (!Array.isArray(playlist)) return [];
     let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
@@ -530,7 +504,6 @@ function App() {
   }, [mediaSrc, mediaType, playMode, playlist]);
 
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
-  useEffect(() => { startAudioPlaybackRef.current = startAudioPlayback; }, []);
   useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
 
   // --- YENİ: Wake Lock (ekran uyumasın, arka planda devam) ---
@@ -654,25 +627,19 @@ function App() {
 
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
-        resumeAudio();
         if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
           try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {}
         }
       } else if (type === 'PAUSE') {
-        pauseAudio();
         if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
           try { ytPlayerRef.current.pauseVideo(); } catch {}
         }
       } else if (type === 'SEEK') {
-        seekAudio(payload.time || 0);
         if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
           try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {}
         }
       } else if (type === 'CHANGE_MEDIA') {
         setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
-        if (payload.type === 'youtube' && startAudioPlaybackRef.current) {
-          startAudioPlaybackRef.current(payload.src, payload.title);
-        }
       } else if (type === 'CHAT_MESSAGE') {
         setMessages((prev) => {
           const updated = [...prev, payload];
@@ -971,8 +938,6 @@ function App() {
             searchResults={searchResults} isSearching={isSearching}
             currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
-            onSpotifyUrl={(url) => { setSpotifyUrl(url); setPlayerMode('spotify'); }}
-            playerMode={playerMode}
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError}
@@ -981,8 +946,6 @@ function App() {
             useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
             setYoutubeError={setYoutubeError} setMediaType={setMediaType}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-            playlist={playlist} playerMode={playerMode} setPlayerMode={setPlayerMode}
-            spotifyUrl={spotifyUrl} setSpotifyUrl={setSpotifyUrl}
           />
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
         </div>
