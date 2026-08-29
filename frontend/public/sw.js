@@ -1,5 +1,5 @@
 // Service Worker - Arka plan çalma desteği
-const CACHE_NAME = 'couple-meeting-v1';
+const CACHE_NAME = 'couple-meeting-v2';
 const urlsToCache = ['/'];
 
 self.addEventListener('install', (event) => {
@@ -7,19 +7,49 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName); // Eski önbellekleri temizle
+          }
+        })
+      );
+    }).then(() => clients.claim())
+  );
 });
 
-// Arka planda ses çalarken sayfayı canlı tut
+// Arka planda ses ve API isteklerini engellemeden yönlendir
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Müzik stream'leri, API çağrıları, web socketler ve oda parametrelerini SW'den muaf tut
+  if (
+    event.request.method !== 'GET' ||
+    url.pathname.includes('/api/') ||
+    url.searchParams.has('room') ||
+    url.pathname.endsWith('.mp3') ||
+    url.pathname.endsWith('.webm') ||
+    url.hostname.includes('googlevideo.com') ||
+    url.hostname.includes('youtube.com') ||
+    event.request.headers.get('range')
+  ) {
+    return; // Doğrudan internetten çeksin, Service Worker araya girmesin
+  }
+
+  // Sadece normal statik dosyalar için önbellek kontrolü
   event.respondWith(
     caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+      return response || fetch(event.request).catch((err) => {
+        // Hata durumunda akışı kilitleme
+        return new Response('Ağ bağlantısı kurulamadı', { status: 408 });
+      });
     })
   );
 });
 
-// Push notification desteği (ileride kullanılabilir)
+// Push notification desteği
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || { title: 'Couple Meeting', body: 'Yeni bir mesaj var!' };
   event.waitUntil(
