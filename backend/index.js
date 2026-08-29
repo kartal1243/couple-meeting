@@ -86,8 +86,8 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 app.use(express.json({ limit: '1mb' }));
 
 // --- RATE LIMITING ---
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' } });
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 120, message: { ok: false, message: 'Çok fazla istek.' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 15, message: { ok: false, message: 'Çok fazla deneme.' } });
 app.use('/api/', apiLimiter);
 app.use('/api/vip/create-checkout', authLimiter);
 app.use('/api/vip/admin-grant', authLimiter);
@@ -151,12 +151,16 @@ try {
 let innertube = null;
 async function getInnertube() {
   if (!innertube && Innertube) {
-    innertube = await Innertube.create({
-      cache: new UniversalCache(false),
-      generate_session_locally: true,
-      retrieve_player: true,
-      fetch: fetch.bind(globalThis)
-    });
+    try {
+      innertube = await Innertube.create({
+        cache: new UniversalCache(false),
+        generate_session_locally: true,
+        retrieve_player: true,
+        fetch: fetch.bind(globalThis)
+      });
+    } catch (err) {
+      logger.warn('Innertube create hatası:', err.message);
+    }
   }
   return innertube;
 }
@@ -226,34 +230,54 @@ app.get('/api/music/search', async (req, res) => {
   } catch (e) { res.json({ results: [], error: e.message }); }
 });
 
+// Güncel ve Canlı Stream Sunucuları
+const PIPED_INSTANCES = [
+  'https://pipedapi.leptons.xyz',
+  'https://piped-api.hosthatch.com',
+  'https://api.piped.yt',
+  'https://pipedapi.frontendfriendly.xyz'
+];
+
+const INVIDIOUS_INSTANCES = [
+  'https://invidious.nerdvpn.de',
+  'https://inv.tux.pizza',
+  'https://invidious.protokolla.fi',
+  'https://iv.ggtyler.dev',
+  'https://invidious.no-logs.com',
+  'https://yt.drgnz.club'
+];
+
 app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
-  // 1. youtubei.js Ses Akışı
-  try {
-    const yt = await getInnertube();
-    if (yt) {
-      const info = await yt.getBasicInfo(videoId);
-      const format = info.chooseFormat({ type: 'audio', quality: 'best' });
-      if (format && format.decipher(yt.session.player)) {
-        logger.info(`Stream bulundu (youtubei.js): ${videoId}`);
-        return res.json({ url: format.decipher(yt.session.player), title: info.basic_info.title });
+  // 1. Invidious Doğrudan Audio Formatları
+  for (const instance of INVIDIOUS_INSTANCES) {
+    try {
+      const r = await fetch(`${instance}/api/v1/videos/${videoId}`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (!data?.adaptiveFormats) continue;
+      const audio = data.adaptiveFormats
+        .filter(f => (f.type && f.type.startsWith('audio/')) || f.container === 'm4a' || f.container === 'webm')
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (audio?.url) {
+        logger.info(`Stream bulundu (Invidious): ${videoId} via ${instance}`);
+        return res.json({ url: audio.url, title: data.title, thumbnail: data.thumbnailUrl });
       }
-    }
-  } catch (e) { logger.warn('youtubei.js stream hatası', { videoId, error: e.message }); }
+    } catch (e) {}
+  }
 
-  // 2. Piped & Cobalt API Yedekleri
-  const PIPED_INSTANCES = [
-    'https://pipedapi.kavin.rocks',
-    'https://api.piped.privacydev.net',
-    'https://pipedapi.tokhmi.xyz',
-    'https://piped-api.garudalinux.org'
-  ];
-
+  // 2. Piped Stream API
   for (const instance of PIPED_INSTANCES) {
     try {
-      const r = await fetch(`${instance}/streams/${videoId}`, { signal: AbortSignal.timeout(4000) });
+      const r = await fetch(`${instance}/streams/${videoId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(3500)
+      });
       if (!r.ok) continue;
       const data = await r.json();
       const audio = (data.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
@@ -264,61 +288,47 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
     } catch (e) {}
   }
 
-  // 3. Invidious Sunucuları
-  const INVIDIOUS_INSTANCES = [
-    'https://yt.omada.cafe',
-    'https://invidious.schenkel.eti.br',
-    'https://invidious.kemonomimi.nl',
-    'https://invidious.privacyredirect.com',
-    'https://vid.puffyan.us'
-  ];
-
-  for (const instance of INVIDIOUS_INSTANCES) {
+  // 3. Invidious Latest Version Doğrudan Audio Bağlantısı (Fallback)
+  for (const instance of INVIDIOUS_INSTANCES.slice(0, 3)) {
     try {
-      const r = await fetch(`${instance}/api/v1/videos/${videoId}`, {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(4000)
-      });
-      if (!r.ok) continue;
-      const data = await r.json();
-      if (!data?.adaptiveFormats) continue;
-      const audio = data.adaptiveFormats
-        .filter(f => f.type?.startsWith('audio/'))
-        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-      if (audio?.url) {
-        logger.info(`Stream bulundu (Invidious): ${videoId} via ${instance}`);
-        return res.json({ url: audio.url, title: data.title, thumbnail: data.thumbnailUrl });
+      const directAudioUrl = `${instance}/latest_version?id=${videoId}&itag=140`;
+      const testRes = await fetch(directAudioUrl, { method: 'HEAD', signal: AbortSignal.timeout(2500) });
+      if (testRes.ok || testRes.status === 302 || testRes.status === 206) {
+        logger.info(`Stream bulundu (Direct Invidious Audio): ${videoId}`);
+        return res.json({ url: directAudioUrl });
       }
     } catch (e) {}
   }
 
-  // 4. Cobalt API
+  // 4. youtubei.js Ses Akışı
   try {
-    const r = await fetch('https://api.cobalt.tools/api/json', {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId}`, isAudioOnly: true }),
-      signal: AbortSignal.timeout(5000)
-    });
-    const data = await r.json();
-    if (data?.url) {
-      logger.info(`Stream bulundu (Cobalt): ${videoId}`);
-      return res.json({ url: data.url });
+    const yt = await getInnertube();
+    if (yt) {
+      const info = await yt.getBasicInfo(videoId);
+      const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+      if (format) {
+        const decipheredUrl = format.decipher(yt.session.player);
+        if (decipheredUrl) {
+          logger.info(`Stream bulundu (youtubei.js): ${videoId}`);
+          return res.json({ url: decipheredUrl, title: info.basic_info.title });
+        }
+      }
     }
-  } catch (e) {}
+  } catch (e) { logger.warn('youtubei.js stream hatası', { videoId, error: e.message }); }
 
   // 5. MusicKit Yedek
   if (mk) {
     try {
       const stream = await Promise.race([
         mk.getStream(videoId),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
       ]);
       if (stream?.url) return res.json({ url: stream.url });
     } catch {}
   }
 
-  res.status(502).json({ error: 'Stream bulunamadı' });
+  // Hiçbiri bulunamazsa sunucuyu 502 ile çökertmeden güvenli JSON döndür
+  res.status(404).json({ error: 'Stream bulunamadı' });
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
