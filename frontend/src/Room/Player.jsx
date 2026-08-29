@@ -96,20 +96,13 @@ export default function Player({
       )}
 
       {mediaType === 'music' && (
-        <div style={{ textAlign: 'center', color: '#fff', padding: '20px' }}>
-          {mediaMeta?.thumbnail && (
-            <img src={mediaMeta.thumbnail} alt="" style={{ width: '240px', height: '240px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 10px 40px rgba(0,0,0,.5)', marginBottom: '16px' }} />
-          )}
-          <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Müzik'}</div>
-          <div style={{ fontSize: '13px', color: '#8696a0' }}>{mediaMeta?.artist || ''}</div>
-          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginTop: '10px' }}>⏳ Yükleniyor...</div>}
-          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginTop: '10px' }}>❌ Şarkı yüklenemedi. Tekrar deneyin.</div>}
-          <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-            <button onClick={() => { if (audioRef.current) audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause(); }}
-              style={{ background: '#00a884', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>
-              ▶ / ⏸
-            </button>
-          </div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0b141a' }}>
+          <iframe
+            src={`https://ytify.pp.ua/queue/${mediaSrc}`}
+            style={{ width: '100%', height: '100%', border: 'none', borderRadius: '12px' }}
+            allow="autoplay; encrypted-media"
+            title="ytify player"
+          />
         </div>
       )}
 
