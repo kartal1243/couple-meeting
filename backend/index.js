@@ -154,7 +154,7 @@ async function getInnertube() {
     innertube = await Innertube.create({
       cache: new UniversalCache(false),
       generate_session_locally: true,
-      retrieve_player: false,
+      retrieve_player: true,
       fetch: fetch.bind(globalThis)
     });
   }
