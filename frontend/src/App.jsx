@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
+import { playMessageSound } from './utils/notificationSound';
 
 import Hero from './Home/Hero';
 import Features from './Home/Features';
@@ -440,6 +441,12 @@ function App() {
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // --- YENİ: Service Worker kaydı (arka plan çalma için) ---
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     return () => { window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); socketRef.current?.disconnect(); socketRef.current = null; };
   }, []);
 
@@ -456,6 +463,21 @@ function App() {
       navigator.mediaSession.setActionHandler('nexttrack', handleMediaEnd);
     }
   }, [mediaSrc, mediaType, playMode, playlist]);
+
+  // --- YENİ: Wake Lock (ekran uyumasın, arka planda devam) ---
+  useEffect(() => {
+    let wakeLock = null;
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator && mediaType !== 'none') {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+      } catch (e) {}
+    };
+    if (mediaType !== 'none') requestWakeLock();
+    return () => { if (wakeLock) wakeLock.release(); };
+  }, [mediaType]);
 
   useEffect(() => {
     if ('mediaSession' in navigator && mediaType !== 'none') {
@@ -576,9 +598,19 @@ function App() {
           saveRoomMessages(currentRoomIdRef.current, updated);
           return updated;
         });
-        // --- YENİ: Bildirim (sayfa gizliyse) ---
-        if (document.hidden && Notification.permission === 'granted') {
-          new Notification(`${payload.sender} mesaj gönderdi`, { body: payload.text, icon: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png' });
+        // --- YENİ: Bildirim sesi (her zaman) + tarayıcı bildirimi (sayfa gizliyse) ---
+        if (payload.senderId !== mySocketId) {
+          playMessageSound();
+          if (document.hidden && Notification.permission === 'granted') {
+            try {
+              new Notification(`${payload.sender} mesaj gönderdi`, {
+                body: payload.text,
+                icon: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png',
+                sound: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png',
+                vibrate: [200, 100, 200]
+              });
+            } catch (e) {}
+          }
         }
       } else if (type === 'REACTION') {
         showFloatingEmoji(payload);
@@ -631,7 +663,16 @@ function App() {
       Notification.requestPermission();
     }
 
+    // --- YENİ: Sayfa görünürlüğü değiştiğinde socket'i canlı tut ---
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && socketRef.current) {
+        socketRef.current.connect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
       socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
