@@ -5,7 +5,7 @@ import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
-import { playYouTubeAudio, pauseAudio, resumeAudio, seekAudio, getCurrentTime, stopAudio, isAudioPlaying } from './utils/youtubeAudio';
+import { playYouTubeAudio, pauseAudio, resumeAudio, seekAudio, getCurrentTime, stopAudio, isAudioPlaying, getCurrentVideoId } from './utils/youtubeAudio';
 
 import Hero from './Home/Hero';
 import Features from './Home/Features';
@@ -128,6 +128,10 @@ function App() {
   const ytPlayerRef = useRef(null);
   const customVideoRef = useRef(null);
   const socketRef = useRef(null);
+  const audioModeRef = useRef(false);
+  const startAudioPlaybackRef = useRef(null);
+  const handleMediaEndRef = useRef(null);
+  const mySocketIdRef = useRef('');
   const currentRoomIdRef = useRef(roomId);
 
   if (!socketRef.current) {
@@ -311,7 +315,6 @@ function App() {
     else return;
     setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
-    if (media.type === 'youtube') startAudioPlayback(media.src, searchResults[0]?.title);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -342,14 +345,12 @@ function App() {
     if (playImmediately) {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
-      startAudioPlayback(song.src, song.title);
     } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
-    if (item.type === 'youtube') startAudioPlayback(item.src, item.title);
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -448,13 +449,17 @@ function App() {
   // --- YENİ: Medya değiştiğinde audio modunu başlat ---
   const startAudioPlayback = useCallback(async (src, title) => {
     if (!src || mediaType !== 'youtube') return;
+    if (getCurrentVideoId() === src && isAudioPlaying()) return;
     stopAudio();
     setAudioMode(true);
-    await playYouTubeAudio(src, title || 'Couple Meeting', {
+    const audio = await playYouTubeAudio(src, title || 'Couple Meeting', {
       onEnd: () => handleMediaEnd(),
-      onTimeUpdate: (data) => { /* zaman senkronu gerekirse */ },
-      onError: () => setAudioMode(false) // hata olursa iframe'e dön
+      onTimeUpdate: () => {},
+      onError: () => {
+        setAudioMode(false);
+      }
     });
+    if (!audio) setAudioMode(false);
   }, [mediaType, handleMediaEnd]);
 
   const filteredPlaylist = useMemo(() => {
@@ -490,6 +495,11 @@ function App() {
       navigator.mediaSession.setActionHandler('nexttrack', handleMediaEnd);
     }
   }, [mediaSrc, mediaType, playMode, playlist]);
+
+  useEffect(() => { audioModeRef.current = audioMode; }, [audioMode]);
+  useEffect(() => { startAudioPlaybackRef.current = startAudioPlayback; }, [startAudioPlayback]);
+  useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, [handleMediaEnd]);
+  useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
 
   // --- YENİ: Wake Lock (ekran uyumasın, arka planda devam) ---
   useEffect(() => {
@@ -611,17 +621,33 @@ function App() {
     });
 
     socket.on('room_action', ({ type, payload }) => {
+      const isAudio = audioModeRef.current;
       if (type === 'PLAY') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); }
-        else if (payload.mediaType === 'custom_video' && customVideoRef.current) { customVideoRef.current.currentTime = payload.time || 0; customVideoRef.current.play(); }
+        if (isAudio) {
+          resumeAudio();
+        } else if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+          ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo();
+        } else if (payload.mediaType === 'custom_video' && customVideoRef.current) {
+          customVideoRef.current.currentTime = payload.time || 0; customVideoRef.current.play();
+        }
       } else if (type === 'PAUSE') {
-        if (payload.mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
-        if (payload.mediaType === 'custom_video') customVideoRef.current?.pause();
+        if (isAudio) {
+          pauseAudio();
+        } else {
+          if (payload.mediaType === 'youtube') ytPlayerRef.current?.pauseVideo();
+          if (payload.mediaType === 'custom_video') customVideoRef.current?.pause();
+        }
+      } else if (type === 'SEEK') {
+        if (isAudio) {
+          seekAudio(payload.time || 0);
+        } else {
+          if (payload.mediaType === 'youtube' && ytPlayerRef.current) ytPlayerRef.current.seekTo(payload.time || 0, true);
+          if (payload.mediaType === 'custom_video' && customVideoRef.current) customVideoRef.current.currentTime = payload.time || 0;
+        }
       } else if (type === 'CHANGE_MEDIA') {
         setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
-        // YouTube ise audio modunu başlat (arka plan için)
-        if (payload.type === 'youtube') {
-          startAudioPlayback(payload.src, payload.title);
+        if (payload.type === 'youtube' && startAudioPlaybackRef.current) {
+          startAudioPlaybackRef.current(payload.src, payload.title);
         }
       } else if (type === 'CHAT_MESSAGE') {
         setMessages((prev) => {
@@ -630,7 +656,7 @@ function App() {
           return updated;
         });
         // --- YENİ: Bildirim sesi (her zaman) + tarayıcı bildirimi (sayfa gizliyse) ---
-        if (payload.senderId !== mySocketId) {
+        if (payload.senderId !== mySocketIdRef.current) {
           playMessageSound();
           if (document.hidden && Notification.permission === 'granted') {
             try {
