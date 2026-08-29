@@ -7,8 +7,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const ytSearch = require('yt-search');
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const logger = require('./utils/logger');
+const db = require('./utils/database');
 
 const app = express();
 
@@ -27,86 +27,72 @@ app.use(cors({
   credentials: true
 }));
 
-// Stripe webhook - express.json() DAN ÖNCE olmalı (raw body gerekli)
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+// --- STRIPE ---
 let stripe = null;
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
 if (STRIPE_KEY && STRIPE_KEY !== 'sk_test_BURAYA_STRIPE_ANAHTARINI_YAZ') {
   stripe = require('stripe')(STRIPE_KEY);
-  console.log('💳 Stripe entegrasyonu aktif.');
+  logger.info('💳 Stripe entegrasyonu aktif.');
 } else {
-  console.log('⚠️  Stripe tanımlı değil. Ödeme sistemi pasif (test modu).');
+  logger.warn('⚠️  Stripe tanımlı değil. Test modu.');
 }
 
+// Stripe webhook - express.json() ÖNCE
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) return res.status(200).send('Stripe pasif');
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret || webhookSecret === 'whsec_BURAYA_WEBHOOK_SECRET_YAZ') {
-    return res.status(200).send('Webhook secret yok');
-  }
+  if (!webhookSecret || webhookSecret === 'whsec_BURAYA_WEBHOOK_SECRET_YAZ') return res.status(200).send('Webhook secret yok');
+
   let event;
   try { event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret); }
-  catch (err) { console.error('Webhook imza hatası:', err.message); return res.status(400).send(`Webhook Error: ${err.message}`); }
+  catch (err) { logger.error('Webhook imza hatası', { error: err.message }); return res.status(400).send(`Webhook Error: ${err.message}`); }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const { username, plan } = session.metadata;
-    const user = socialData.users[username];
+    const user = db.getUser(username);
     if (user && VIP_PLANS[plan]) {
       const now = Date.now();
-      const currentExpiry = user.vipExpiry || 0;
-      const startFrom = currentExpiry > now ? currentExpiry : now;
-      user.isVip = true;
-      user.vipExpiry = startFrom + VIP_PLANS[plan].duration;
-      user.vipPlan = plan;
-      user.vipActivatedAt = now;
-      user.stripeCustomerId = session.customer;
-      user.stripeSubscriptionId = session.subscription;
-      saveSocialData();
-      console.log(`👑 [STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
-      for (const [, s] of io.sockets.sockets) {
-        if (s.socialUsername === username) s.emit('vip_activated', { isVip: true, vipExpiry: user.vipExpiry, plan });
-      }
+      const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+      db.updateUser(username, {
+        is_vip: 1, vip_expiry: startFrom + VIP_PLANS[plan].duration,
+        vip_plan: plan, vip_activated_at: now,
+        stripe_customer_id: session.customer || '', stripe_subscription_id: session.subscription || ''
+      });
+      logger.info(`👑 [STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
+      emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: startFrom + VIP_PLANS[plan].duration, plan });
     }
   }
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;
-    const user = Object.values(socialData.users).find(u => u.stripeSubscriptionId === sub.id);
-    if (user) {
-      user.isVip = false; user.vipExpiry = Date.now();
-      saveSocialData();
-      console.log(`❌ [STRIPE] VIP iptal: ${user.username}`);
-      for (const [, s] of io.sockets.sockets) {
-        if (s.socialUsername === user.username) s.emit('vip_activated', { isVip: false, vipExpiry: Date.now(), plan: null });
-      }
+    const allUsers = db.getDb().prepare('SELECT username FROM users WHERE stripe_subscription_id = ?').all(sub.id);
+    for (const u of allUsers) {
+      db.updateUser(u.username, { is_vip: 0, vip_expiry: Date.now() });
+      logger.info(`❌ [STRIPE] VIP iptal: ${u.username}`);
+      emitToUser(u.username, 'vip_activated', { isVip: false, vipExpiry: Date.now(), plan: null });
     }
   }
   res.status(200).json({ received: true });
 });
 
-// JSON body - webhook'tan sonra
 app.use(express.json({ limit: '1mb' }));
 
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek. Biraz bekle.' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme. 15 dakika bekle.' } });
+// --- RATE LIMITING ---
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' } });
 app.use('/api/', apiLimiter);
-app.use('/api/vip/activate', authLimiter);
+app.use('/api/vip/create-checkout', authLimiter);
 app.use('/api/vip/admin-grant', authLimiter);
 
 // --- INPUT VALIDATION ---
-function sanitize(str, maxLen = 500) {
-  return String(str || '').trim().slice(0, maxLen).replace(/[<>]/g, '');
-}
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-function isValidUsername(u) {
-  return /^[a-z0-9_]{3,20}$/.test(u);
-}
+function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>]/g, ''); }
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
 
 // --- ROUTES ---
 app.get('/', (req, res) => res.status(200).send('🚀 Couple Meeting Backend Active!'));
-app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now() }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now(), db: 'sqlite' }));
 
 // --- VIP ---
 const VIP_PLANS = {
@@ -114,37 +100,26 @@ const VIP_PLANS = {
   yearly: { price: 199.90, duration: 365 * 24 * 60 * 60 * 1000, label: 'Yıllık VIP' }
 };
 
-// --- STRIPE ÖDEME ---
-// Checkout Session oluştur
 app.post('/api/vip/create-checkout', async (req, res) => {
   const { token, plan } = req.body;
   if (!token || !plan || !VIP_PLANS[plan]) return res.json({ ok: false, message: 'Geçersiz plan.' });
-  const user = getUserByToken(token);
+  const user = db.getUserByToken(token);
   if (!user) return res.json({ ok: false, message: 'Giriş yapmalısın.' });
 
   if (!stripe) {
-    // Test modu: direkt aktifleştir
     const now = Date.now();
-    const currentExpiry = user.vipExpiry || 0;
-    const startFrom = currentExpiry > now ? currentExpiry : now;
-    user.isVip = true;
-    user.vipExpiry = startFrom + VIP_PLANS[plan].duration;
-    user.vipPlan = plan;
-    user.vipActivatedAt = now;
-    saveSocialData();
-    for (const [, s] of io.sockets.sockets) {
-      if (s.socialUsername === user.username) s.emit('vip_activated', { isVip: true, vipExpiry: user.vipExpiry, plan });
-    }
-    return res.json({ ok: true, testMode: true, message: 'Test modunda aktifleştirildi.', vipExpiry: user.vipExpiry, plan });
+    const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+    const newExpiry = startFrom + VIP_PLANS[plan].duration;
+    db.updateUser(user.username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan, vip_activated_at: now });
+    emitToUser(user.username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan });
+    logger.info(`👑 VIP test aktif: ${user.username} (${VIP_PLANS[plan].label})`);
+    return res.json({ ok: true, testMode: true, message: 'Test modunda aktifleştirildi.', vipExpiry: newExpiry, plan });
   }
 
-  // Gerçek Stripe checkout
   try {
     const priceId = plan === 'monthly' ? process.env.STRIPE_PRICE_MONTHLY : process.env.STRIPE_PRICE_YEARLY;
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      customer_email: user.email,
+      mode: 'subscription', payment_method_types: ['card'], customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${req.headers.origin || 'https://couple-meeting-flax.vercel.app'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin || 'https://couple-meeting-flax.vercel.app'}/payment-cancel`,
@@ -152,7 +127,7 @@ app.post('/api/vip/create-checkout', async (req, res) => {
     });
     res.json({ ok: true, sessionId: session.id, url: session.url });
   } catch (err) {
-    console.error('Stripe checkout hatası:', err.message);
+    logger.error('Stripe checkout hatası', { error: err.message });
     res.json({ ok: false, message: 'Ödeme başlatılamadı.' });
   }
 });
@@ -160,88 +135,32 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
-if (!ADMIN_SECRET) { console.error('⚠️ ADMIN_SECRET tanımlı değil! .env dosyasını kontrol et.'); process.exit(1); }
+if (!ADMIN_SECRET) { logger.error('ADMIN_SECRET tanımlı değil!'); process.exit(1); }
 
 app.post('/api/vip/admin-grant', (req, res) => {
   const { secret, username, plan } = req.body;
   if (secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz erişim.' });
   if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Geçersiz parametre.' });
-  const user = socialData.users[username];
+  const user = db.getUser(username);
   if (!user) return res.json({ ok: false, message: 'Kullanıcı bulunamadı.' });
 
   const now = Date.now();
-  const currentExpiry = user.vipExpiry || 0;
-  const startFrom = currentExpiry > now ? currentExpiry : now;
-  user.isVip = true;
-  user.vipExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
-  user.vipPlan = plan || 'yearly';
-  user.vipActivatedAt = now;
-  saveSocialData();
-
-  console.log(`👑 [ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
-  for (const [, s] of io.sockets.sockets) {
-    if (s.socialUsername === username) s.emit('vip_activated', { isVip: true, vipExpiry: user.vipExpiry, plan: plan || 'yearly' });
-  }
-  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: user.vipExpiry });
+  const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+  const newExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
+  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now });
+  logger.info(`👑 [ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
+  emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan: plan || 'yearly' });
+  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: newExpiry });
 });
 
+// --- SERVER ---
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: (origin, cb) => {
-      if (!origin || ALLOWED_ORIGINS.length === 0) return cb(null, true);
-      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-      cb(null, false);
-    },
-    credentials: true
-  }
+  cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true }
 });
 
 const rooms = {};
 const onlineUsers = {};
-
-// --- SOSYAL SİSTEM ---
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
-const socialData = { users: {}, emailToUsername: {}, tokens: {}, friendRequests: {}, friendships: {}, globalMessages: [] };
-
-function loadSocialData() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) return;
-    const saved = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    Object.assign(socialData, saved);
-    socialData.globalMessages = Array.isArray(socialData.globalMessages) ? socialData.globalMessages.slice(-100) : [];
-  } catch (e) { console.error('Veri yüklenemedi:', e.message); }
-}
-function saveSocialData() {
-  try { fs.writeFileSync(DATA_FILE, JSON.stringify(socialData, null, 2), 'utf8'); }
-  catch (e) { console.error('Veri kaydedilemedi:', e.message); }
-}
-function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  return `${salt}:${crypto.scryptSync(password, salt, 64).toString('hex')}`;
-}
-function verifyPassword(password, stored) {
-  try {
-    const [salt, hash] = stored.split(':');
-    const check = crypto.scryptSync(password, salt, 64).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(check, 'hex'));
-  } catch { return false; }
-}
-function createToken(username) {
-  for (const [t, u] of Object.entries(socialData.tokens)) {
-    if (u === username) delete socialData.tokens[t];
-  }
-  return crypto.randomBytes(32).toString('hex');
-}
-const TOKEN_CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
-const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
-setInterval(() => {
-  const now = Date.now(); let cleaned = 0;
-  for (const [t, u] of Object.entries(socialData.tokens)) {
-    const user = socialData.users[u];
-    if (!user || (now - user.createdAt) > TOKEN_MAX_AGE) { delete socialData.tokens[t]; cleaned++; }
-  }
-  if (cleaned > 0) { console.log(`🧹 ${cleaned} eski token temizlendi.`); saveSocialData(); }
-}, TOKEN_CLEANUP_INTERVAL);
 
 function publicUser(u) {
   if (!u) return null;
@@ -254,44 +173,51 @@ function publicUser(u) {
     vipExpiry: u.vipExpiry || null
   };
 }
-function getUserByToken(token) { const username = socialData.tokens[token]; return username ? socialData.users[username] : null; }
-function getFriends(username) { return (socialData.friendships[username] || []).map(n => publicUser(socialData.users[n])).filter(Boolean); }
-function getPendingFriendRequests(username) { return Object.values(socialData.friendRequests).filter(r => r.toUsername === username && r.status === 'pending'); }
 
-function sendFriendsUpdate(targetUsername) {
+function emitToUser(username, event, data) {
   for (const [, s] of io.sockets.sockets) {
-    if (s.socialUsername === targetUsername) {
-      s.emit('friends_update', { friends: getFriends(targetUsername), requests: getPendingFriendRequests(targetUsername) });
-    }
+    if (s.socialUsername === username) s.emit(event, data);
   }
 }
+
+function sendFriendsUpdate(targetUsername) {
+  emitToUser(targetUsername, 'friends_update', {
+    friends: db.getFriends(targetUsername).map(publicUser).filter(Boolean),
+    requests: db.getPendingFriendRequests(targetUsername)
+  });
+}
+
 function setOnline(username, socketId) {
   if (!onlineUsers[username]) onlineUsers[username] = { lastSeen: Date.now(), socketIds: new Set() };
   onlineUsers[username].socketIds.add(socketId);
   onlineUsers[username].lastSeen = Date.now();
 }
+
 function setOffline(username, socketId) {
   if (onlineUsers[username]) {
     onlineUsers[username].socketIds.delete(socketId);
     if (onlineUsers[username].socketIds.size === 0) {
       onlineUsers[username].lastSeen = Date.now();
-      if (socialData.users[username]) socialData.users[username].lastSeen = Date.now();
+      db.updateLastSeen(username);
     }
   }
 }
+
 function broadcastOnlineStatus(username) {
-  for (const friendName of (socialData.friendships[username] || [])) {
-    for (const [, s] of io.sockets.sockets) {
-      if (s.socialUsername === friendName) {
-        s.emit('friend_online_status', { username, isOnline: !!onlineUsers[username], lastSeen: onlineUsers[username]?.lastSeen || Date.now() });
-      }
-    }
+  for (const friendName of (db.getDb().prepare('SELECT user2 as f FROM friendships WHERE user1 = ?').all(username).map(r => r.f))) {
+    emitToUser(friendName, 'friend_online_status', { username, isOnline: !!onlineUsers[username], lastSeen: onlineUsers[username]?.lastSeen || Date.now() });
   }
 }
 
-loadSocialData();
+// Token cleanup
+const TOKEN_CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+setInterval(() => {
+  const cleaned = db.cleanOldTokens(TOKEN_MAX_AGE);
+  if (cleaned > 0) logger.info(`🧹 ${cleaned} eski token temizlendi.`);
+}, TOKEN_CLEANUP_INTERVAL);
 
-// --- ODA TEMİZLİĞİ ---
+// Room cleanup
 const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000;
 const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000;
 setInterval(() => {
@@ -301,7 +227,7 @@ setInterval(() => {
       delete rooms[id]; cleaned++;
     }
   }
-  if (cleaned > 0) { console.log(`🧹 ${cleaned} boş oda temizlendi.`); broadcastRooms(); }
+  if (cleaned > 0) { logger.info(`🧹 ${cleaned} boş oda temizlendi.`); broadcastRooms(); }
 }, ROOM_CLEANUP_INTERVAL);
 
 function getPublicRoomsList() {
@@ -324,7 +250,7 @@ function updateRoomUsers(roomId) {
 // --- SOCKET.IO ---
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
-  socket.emit('global_chat_history', socialData.globalMessages.slice(-100));
+  socket.emit('global_chat_history', db.getGlobalMessages(100));
 
   // AUTH
   socket.on('auth_register', ({ username, email, password, bio, avatar }) => {
@@ -335,104 +261,107 @@ io.on('connection', (socket) => {
     if (!isValidEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Geçerli bir e-posta gir.' });
     if (typeof password !== 'string' || password.length < 6) return socket.emit('auth_result', { ok: false, message: 'Şifre en az 6 karakter olmalı.' });
     if (password.length > 128) return socket.emit('auth_result', { ok: false, message: 'Şifre çok uzun.' });
-    if (socialData.users[cleanUsername]) return socket.emit('auth_result', { ok: false, message: 'Bu kullanıcı adı zaten alınmış.' });
-    if (socialData.emailToUsername[cleanEmail]) return socket.emit('auth_result', { ok: false, message: 'Bu e-posta zaten kayıtlı.' });
-    socialData.users[cleanUsername] = {
-      username: cleanUsername, email: cleanEmail, passwordHash: hashPassword(password),
-      avatar: sanitize(avatar, 10) || '🐱', bio: sanitize(bio, 120),
-      status: '', createdAt: Date.now(), lastSeen: Date.now()
-    };
-    socialData.emailToUsername[cleanEmail] = cleanUsername;
-    const token = createToken(cleanUsername); socialData.tokens[token] = cleanUsername;
-    saveSocialData();
+    if (db.getUser(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Bu kullanıcı adı zaten alınmış.' });
+    if (db.getUserByEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Bu e-posta zaten kayıtlı.' });
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '🐱', sanitize(bio, 120));
+    const token = db.createToken(cleanUsername);
     socket.socialUsername = cleanUsername;
     setOnline(cleanUsername, socket.id);
-    socket.emit('auth_result', { ok: true, user: publicUser(socialData.users[cleanUsername]), token });
+    logger.info(`✅ Yeni kayıt: ${cleanUsername}`);
+    socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
   });
 
   socket.on('auth_login', ({ email, password }) => {
     const cleanEmail = sanitize(email, 100).toLowerCase();
-    const username = socialData.emailToUsername[cleanEmail];
-    const user = username ? socialData.users[username] : null;
-    if (!user || !verifyPassword(password || '', user.passwordHash)) return socket.emit('auth_result', { ok: false, message: 'E-posta veya şifre hatalı.' });
-    const token = createToken(username); socialData.tokens[token] = username;
-    socket.socialUsername = username;
-    setOnline(username, socket.id);
-    broadcastOnlineStatus(username);
+    const user = db.getUserByEmail(cleanEmail);
+    if (!user) return socket.emit('auth_result', { ok: false, message: 'E-posta veya şifre hatalı.' });
+    try {
+      const [salt, storedHash] = user.passwordHash.split(':');
+      const check = crypto.scryptSync(password || '', salt, 64).toString('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(check, 'hex'))) {
+        return socket.emit('auth_result', { ok: false, message: 'E-posta veya şifre hatalı.' });
+      }
+    } catch { return socket.emit('auth_result', { ok: false, message: 'E-posta veya şifre hatalı.' }); }
+
+    const token = db.createToken(user.username);
+    socket.socialUsername = user.username;
+    setOnline(user.username, socket.id);
+    broadcastOnlineStatus(user.username);
+    logger.info(`🔑 Giriş: ${user.username}`);
     socket.emit('auth_result', { ok: true, user: publicUser(user), token });
-    socket.emit('friends_update', { friends: getFriends(username), requests: getPendingFriendRequests(username) });
+    socket.emit('friends_update', {
+      friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
+      requests: db.getPendingFriendRequests(user.username)
+    });
   });
 
   socket.on('social_sync', ({ token }) => {
-    const user = getUserByToken(token);
+    const user = db.getUserByToken(token);
     if (!user) return;
     socket.socialUsername = user.username;
     setOnline(user.username, socket.id);
     broadcastOnlineStatus(user.username);
     socket.emit('social_profile', publicUser(user));
-    socket.emit('friends_update', { friends: getFriends(user.username), requests: getPendingFriendRequests(user.username) });
+    socket.emit('friends_update', {
+      friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
+      requests: db.getPendingFriendRequests(user.username)
+    });
   });
 
   socket.on('update_profile', ({ token, bio, status, avatar }) => {
-    const user = getUserByToken(token);
+    const user = db.getUserByToken(token);
     if (!user) return;
-    user.bio = sanitize(bio, 120);
-    user.status = sanitize(status, 80);
-    user.avatar = sanitize(avatar, 10) || user.avatar || '🐱';
-    saveSocialData();
-    socket.emit('social_profile', publicUser(user));
+    db.updateUser(user.username, { bio: sanitize(bio, 120), status: sanitize(status, 80), avatar: sanitize(avatar, 10) || user.avatar || '🐱' });
+    socket.emit('social_profile', publicUser(db.getUser(user.username)));
   });
 
   // ARKADAŞLIK
   socket.on('friend_search', ({ q, token }) => {
     const term = sanitize(q, 20).toLowerCase();
-    const current = getUserByToken(token)?.username;
-    const results = Object.values(socialData.users)
-      .filter(u => u.username.includes(term) && u.username !== current)
-      .slice(0, 20).map(publicUser);
+    const current = db.getUserByToken(token)?.username;
+    if (!term || term.length < 1) return socket.emit('friend_search_results', []);
+    const results = db.getDb().prepare('SELECT * FROM users WHERE username LIKE ? AND username != ? LIMIT 20').all(`%${term}%`, current || '').map(publicUser);
     socket.emit('friend_search_results', results);
   });
 
   socket.on('friend_request', ({ targetUsername, token }) => {
-    const from = getUserByToken(token);
-    const target = socialData.users[sanitize(targetUsername, 20).toLowerCase()];
+    const from = db.getUserByToken(token);
+    const target = db.getUser(sanitize(targetUsername, 20).toLowerCase());
     if (!from) return socket.emit('friend_request_status', { message: 'Giriş yapmalısın.' });
     if (!target) return socket.emit('friend_request_status', { message: 'Kullanıcı bulunamadı.' });
     if (target.username === from.username) return socket.emit('friend_request_status', { message: 'Kendine istek gönderemezsin.' });
-    if ((socialData.friendships[from.username] || []).includes(target.username)) return socket.emit('friend_request_status', { message: 'Zaten arkadaşsınız.' });
-    if (Object.values(socialData.friendRequests).find(r => r.fromUsername === from.username && r.toUsername === target.username && r.status === 'pending'))
-      return socket.emit('friend_request_status', { message: 'İstek zaten gönderilmiş.' });
-    if (Object.values(socialData.friendRequests).find(r => r.fromUsername === target.username && r.toUsername === from.username && r.status === 'pending'))
-      return socket.emit('friend_request_status', { message: 'Bu kullanıcı sana zaten istek göndermiş.' });
-    const id = crypto.randomBytes(10).toString('hex');
-    socialData.friendRequests[id] = { id, fromUsername: from.username, fromAvatar: from.avatar, toUsername: target.username, status: 'pending', createdAt: Date.now() };
-    saveSocialData();
+    if (db.areFriends(from.username, target.username)) return socket.emit('friend_request_status', { message: 'Zaten arkadaşsınız.' });
+    if (db.hasPendingRequest(from.username, target.username)) return socket.emit('friend_request_status', { message: 'İstek zaten gönderilmiş.' });
+    if (db.hasPendingRequest(target.username, from.username)) return socket.emit('friend_request_status', { message: 'Bu kullanıcı sana zaten istek göndermiş.' });
+
+    const id = db.sendFriendRequest(from.username, from.avatar, target.username);
     socket.emit('friend_request_status', { message: 'Arkadaşlık isteği gönderildi ✅' });
     sendFriendsUpdate(target.username);
-    for (const [, s] of io.sockets.sockets) if (s.socialUsername === target.username) s.emit('friend_request_received', { id, fromUsername: from.username, avatar: from.avatar });
+    emitToUser(target.username, 'friend_request_received', { id, fromUsername: from.username, avatar: from.avatar });
   });
 
   socket.on('friend_request_response', ({ requestId, action, token }) => {
-    const me = getUserByToken(token);
-    const req = socialData.friendRequests[requestId];
-    if (!me || !req || req.toUsername !== me.username || req.status !== 'pending') return;
+    const me = db.getUserByToken(token);
+    const req = db.getFriendRequest(requestId);
+    if (!me || !req || req.to_username !== me.username || req.status !== 'pending') return;
+    db.updateFriendRequest(requestId, action === 'accept' ? 'accepted' : 'rejected');
     if (action === 'accept') {
-      req.status = 'accepted';
-      socialData.friendships[me.username] = Array.from(new Set([...(socialData.friendships[me.username] || []), req.fromUsername]));
-      socialData.friendships[req.fromUsername] = Array.from(new Set([...(socialData.friendships[req.fromUsername] || []), me.username]));
-    } else req.status = 'rejected';
-    saveSocialData();
-    sendFriendsUpdate(me.username); sendFriendsUpdate(req.fromUsername);
+      db.addFriendship(me.username, req.from_username);
+    }
+    sendFriendsUpdate(me.username);
+    sendFriendsUpdate(req.from_username);
     socket.emit('friend_request_status', { message: action === 'accept' ? 'Arkadaşlık kabul edildi ✅' : 'İstek silindi.' });
   });
 
   socket.on('unfriend', ({ targetUsername, token }) => {
-    const me = getUserByToken(token);
+    const me = db.getUserByToken(token);
     if (!me) return;
-    socialData.friendships[me.username] = (socialData.friendships[me.username] || []).filter(u => u !== targetUsername);
-    socialData.friendships[targetUsername] = (socialData.friendships[targetUsername] || []).filter(u => u !== me.username);
-    saveSocialData();
-    sendFriendsUpdate(me.username); sendFriendsUpdate(targetUsername);
+    db.removeFriendship(me.username, targetUsername);
+    sendFriendsUpdate(me.username);
+    sendFriendsUpdate(targetUsername);
     socket.emit('friend_request_status', { message: 'Arkadaşlık silindi.' });
   });
 
@@ -440,7 +369,7 @@ io.on('connection', (socket) => {
   socket.on('global_chat_message', ({ text, username, avatar, token }) => {
     const cleanText = sanitize(text, 500);
     if (!cleanText) return;
-    const accountUser = getUserByToken(token);
+    const accountUser = db.getUserByToken(token);
     const msg = {
       id: crypto.randomBytes(8).toString('hex'),
       username: accountUser?.username || sanitize(username, 24) || 'Misafir',
@@ -449,9 +378,7 @@ io.on('connection', (socket) => {
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now()
     };
-    socialData.globalMessages.push(msg);
-    socialData.globalMessages = socialData.globalMessages.slice(-100);
-    saveSocialData();
+    db.addGlobalMessage(msg);
     io.emit('global_chat_message', msg);
   });
 
@@ -473,7 +400,7 @@ io.on('connection', (socket) => {
         return { id: videoId, title: v.title || v.name || 'YouTube Videosu', timestamp: v.duration || v.timestamp || 'Müzik', thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, type: 'youtube', src: videoId };
       }).filter(v => v.src && v.src.length === 11);
       socket.emit('search_results', results);
-    } catch (err) { console.error("Arama hatası:", err); socket.emit('search_results', []); }
+    } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
   });
 
   // ODA
@@ -497,12 +424,9 @@ io.on('connection', (socket) => {
     }
     const existingIndex = room.users.findIndex(u => u.userId === userId);
     const userInfo = { socketId: socket.id, userId, username: sanitize(username, 24) || 'İzleyici', avatar: sanitize(avatar, 10) || '🐱', userCity };
-    if (existingIndex !== -1) room.users[existingIndex] = userInfo;
-    else room.users.push(userInfo);
+    if (existingIndex !== -1) room.users[existingIndex] = userInfo; else room.users.push(userInfo);
     room.lastActivityAt = Date.now();
-    socket.currentRoom = cleanRoomId;
-    socket.userId = userId;
-    socket.join(cleanRoomId);
+    socket.currentRoom = cleanRoomId; socket.userId = userId; socket.join(cleanRoomId);
 
     let calcTime = room.currentMedia.time;
     if (room.currentMedia.isPlaying) calcTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
@@ -513,8 +437,7 @@ io.on('connection', (socket) => {
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
       isVip: !!room.isVip, currentMedia: { ...room.currentMedia, time: calcTime }
     });
-    updateRoomUsers(cleanRoomId);
-    broadcastRooms();
+    updateRoomUsers(cleanRoomId); broadcastRooms();
   });
 
   socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId }) => {
@@ -523,7 +446,7 @@ io.on('connection', (socket) => {
       if (newName && newName.trim()) room.name = sanitize(newName, 50);
       if (newTheme) room.theme = newTheme;
       if (newHostUserId) room.hostUserId = newHostUserId;
-      io.to(roomId).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId });
+      io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId });
       broadcastRooms();
     }
   });
@@ -535,9 +458,9 @@ io.on('connection', (socket) => {
       if (target) {
         io.to(target.socketId).emit('kicked_from_room', '⚠️ Odadan çıkarıldınız.');
         const targetSocket = io.sockets.sockets.get(target.socketId);
-        if (targetSocket) targetSocket.leave(roomId);
+        if (targetSocket) targetSocket.leave(sanitize(roomId, 50));
         room.users = room.users.filter(u => u.userId !== targetUserId);
-        updateRoomUsers(roomId); broadcastRooms();
+        updateRoomUsers(sanitize(roomId, 50)); broadcastRooms();
       }
     }
   });
@@ -545,29 +468,27 @@ io.on('connection', (socket) => {
   socket.on('create_category', ({ roomId, categoryName }) => {
     const room = rooms[sanitize(roomId, 50)];
     const name = sanitize(categoryName, 50);
-    if (room && name && !room.categories.includes(name)) {
-      room.categories.push(name);
-      io.to(roomId).emit('categories_updated', room.categories);
-    }
+    if (room && name && !room.categories.includes(name)) { room.categories.push(name); io.to(sanitize(roomId, 50)).emit('categories_updated', room.categories); }
   });
 
   socket.on('add_to_playlist', ({ roomId, item }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room && item) { room.playlist.push(item); io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
+    if (room && item) { room.playlist.push(item); io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
   });
 
   socket.on('remove_from_playlist', ({ roomId, itemId }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room) { room.playlist = room.playlist.filter(i => i.id !== itemId); io.to(roomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
+    if (room) { room.playlist = room.playlist.filter(i => i.id !== itemId); io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
   });
 
   socket.on('change_play_mode', ({ roomId, mode }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room) { room.playMode = mode; io.to(roomId).emit('play_mode_changed', mode); }
+    if (room) { room.playMode = mode; io.to(sanitize(roomId, 50)).emit('play_mode_changed', mode); }
   });
 
   socket.on('room_action', ({ roomId, type, payload }) => {
-    const room = rooms[sanitize(roomId, 50)];
+    const cleanRoomId = sanitize(roomId, 50);
+    const room = rooms[cleanRoomId];
     if (room) {
       if (type === 'CHANGE_MEDIA') {
         room.currentMedia = { type: payload.type, src: payload.src, title: sanitize(payload.title, 200) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
@@ -589,9 +510,9 @@ io.on('connection', (socket) => {
       }
       room.lastActivityAt = Date.now();
     }
-    socket.to(sanitize(roomId, 50)).emit('room_action', { type, payload });
+    socket.to(cleanRoomId).emit('room_action', { type, payload });
     if (type === 'CHANGE_MEDIA') {
-      io.to(sanitize(roomId, 50)).emit('media_source_changed', { type: payload.type, src: payload.src, source: payload.source || payload.type, title: sanitize(payload.title, 200) || '' });
+      io.to(cleanRoomId).emit('media_source_changed', { type: payload.type, src: payload.src, source: payload.source || payload.type, title: sanitize(payload.title, 200) || '' });
     }
   });
 
@@ -606,21 +527,21 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      const rId = socket.currentRoom;
-      const sid = socket.id;
+      const rId = socket.currentRoom; const sid = socket.id;
       setTimeout(() => {
         if (rooms[rId]) { rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid); rooms[rId].lastActivityAt = Date.now(); updateRoomUsers(rId); broadcastRooms(); }
       }, 3000);
     }
-    if (socket.socialUsername) {
-      setOffline(socket.socialUsername, socket.id);
-      broadcastOnlineStatus(socket.socialUsername);
-    }
+    if (socket.socialUsername) { setOffline(socket.socialUsername, socket.id); broadcastOnlineStatus(socket.socialUsername); }
   });
 });
+
+// --- GRACEFUL SHUTDOWN ---
+process.on('SIGTERM', () => { logger.info('SIGTERM alındı, kapatılıyor...'); db.closeDb(); process.exit(0); });
+process.on('SIGINT', () => { logger.info('SIGINT alındı, kapatılıyor...'); db.closeDb(); process.exit(0); });
 
 // --- START ---
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Sunucu ${PORT} portunda aktif! (${isProd ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+  logger.info(`🚀 Sunucu ${PORT} portunda aktif! (${isProd ? 'PRODUCTION' : 'DEVELOPMENT'})`);
 });
