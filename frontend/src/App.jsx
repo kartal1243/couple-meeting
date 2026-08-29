@@ -122,6 +122,10 @@ function App() {
   const [profileStatusInput, setProfileStatusInput] = useState('');
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [showVipModal, setShowVipModal] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickRoomName, setQuickRoomName] = useState('');
+  const [quickRoomPass, setQuickRoomPass] = useState('');
+  const [quickMaxUsers, setQuickMaxUsers] = useState('2');
 
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
@@ -242,9 +246,18 @@ function App() {
   };
 
   const handleQuickCreateRoom = () => {
-    const quickId = 'oda-' + Math.floor(1000 + Math.random() * 9000);
-    localStorage.setItem('cm_saved_pass', '');
-    socket.emit('join_room', { roomId: quickId, password: '', maxUsers: '2', userId, userCity, username, avatar: myAvatar });
+    setShowQuickCreate(true);
+  };
+
+  const handleQuickCreateSubmit = (e) => {
+    e.preventDefault();
+    const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
+    localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
+    socket.emit('join_room', { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar });
+    setShowQuickCreate(false);
+    setQuickRoomName('');
+    setQuickRoomPass('');
+    setQuickMaxUsers('2');
   };
 
   const handleCreateRoomSubmit = (e) => {
@@ -839,6 +852,55 @@ function App() {
           )}
           {showVipModal && (
             <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />
+          )}
+          {showQuickCreate && (
+            <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
+              <div style={{ width:'min(420px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
+                <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <div style={{ color:'#a78bfa', fontSize:11, fontWeight:900 }}>🚀 YENİ ODA</div>
+                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>Oda Oluştur</div>
+                  </div>
+                  <button onClick={() => setShowQuickCreate(false)} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
+                </div>
+                <form onSubmit={handleQuickCreateSubmit} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
+                  <div>
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adı</label>
+                    <input
+                      value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)}
+                      placeholder="ör:ifer ile müzik gecesi"
+                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
+                    />
+                    <div style={{ color:'#475569', fontSize:10, marginTop:4 }}>Boş bırakırsan otomatik isim verilir</div>
+                  </div>
+                  <div>
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Şifre (isteğe bağlı)</label>
+                    <input
+                      type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)}
+                      placeholder="Şifre koymak istersen yaz"
+                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kişi</label>
+                    <select
+                      value={quickMaxUsers} onChange={(e) => setQuickMaxUsers(e.target.value)}
+                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
+                    >
+                      <option value="2">2 Kişi 💑</option>
+                      <option value="4">4 Kişi 👥</option>
+                      <option value="8">8 Kişi 🎉</option>
+                    </select>
+                  </div>
+                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
+                    🚀 Odayı Başlat
+                  </button>
+                  <div style={{ textAlign:'center', color:'#475569', fontSize:10 }}>
+                    ✓ Hesapsız giriş &nbsp; ✓ Anında senkron &nbsp; ✓ Ücretsiz
+                  </div>
+                </form>
+              </div>
+            </div>
           )}
         </div>
       </div>
