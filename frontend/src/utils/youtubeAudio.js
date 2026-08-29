@@ -4,8 +4,7 @@ let currentAudio = null;
 let audioCallbacks = { onPlay: null, onPause: null, onEnd: null, onTimeUpdate: null, onError: null };
 let currentVideoId = null;
 
-// Timeout ile fetch
-async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -23,10 +22,10 @@ async function extractAudioUrl(videoId) {
 
   const services = [
     async () => {
-      const res = await fetchWithTimeout('https://api.cobalt.tools/api/json', {
+      const res = await fetchWithTimeout('https://api.cobalt.tools/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId}`, isAudioOnly: true, aFormat: 'mp3' })
+        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId}`, audioFormat: 'mp3', isAudioOnly: true })
       });
       if (res.ok) {
         const data = await res.json();
@@ -35,7 +34,7 @@ async function extractAudioUrl(videoId) {
       throw new Error('cobalt failed');
     },
     async () => {
-      const instances = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://vid.puffyan.us'];
+      const instances = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://vid.puffyan.us', 'https://yewtu.be', 'https://invidious.lunar.icu'];
       for (const inst of instances) {
         try {
           const res = await fetchWithTimeout(`${inst}/latest_version?id=${videoId}&itag=140`, { redirect: 'follow' }, 4000);
@@ -43,6 +42,13 @@ async function extractAudioUrl(videoId) {
         } catch (e) {}
       }
       throw new Error('invidious failed');
+    },
+    async () => {
+      const res = await fetchWithTimeout(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`, {}, 3000);
+      if (res.ok) {
+        return null;
+      }
+      throw new Error('noembed failed');
     }
   ];
 
@@ -71,7 +77,6 @@ function createAudioElement() {
 
   const audio = new Audio();
   audio.preload = 'auto';
-  audio.crossOrigin = 'anonymous';
 
   audio.onplay = () => audioCallbacks.onPlay?.();
   audio.onpause = () => audioCallbacks.onPause?.();

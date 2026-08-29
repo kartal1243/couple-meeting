@@ -288,24 +288,39 @@ function App() {
     setNewCategoryInput('');
   };
 
-  const handleMediaEnd = () => {
-    if (!playlist || playlist.length === 0) return;
+  // handleMediaEnd ref'leri - stale closure engeli
+  const playlistRef = useRef(playlist);
+  const playModeRef = useRef(playMode);
+  const mediaSrcRef = useRef(mediaSrc);
+  const startAudioPlaybackHolder = useRef(null);
+  useEffect(() => { playlistRef.current = playlist; }, [playlist]);
+  useEffect(() => { playModeRef.current = playMode; }, [playMode]);
+  useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
+
+  const handleMediaEnd = useCallback(() => {
+    const pl = playlistRef.current;
+    const pm = playModeRef.current;
+    const ms = mediaSrcRef.current;
+    if (!pl || pl.length === 0) return;
     let nextTrack;
-    if (playMode === 'shuffle') {
-      nextTrack = playlist[Math.floor(Math.random() * playlist.length)];
+    if (pm === 'shuffle') {
+      nextTrack = pl[Math.floor(Math.random() * pl.length)];
     } else {
-      const activeList = playMode === 'alphabetical'
-        ? [...playlist].sort((a, b) => a.title.localeCompare(b.title, 'tr'))
-        : playlist;
-      const currentIndex = activeList.findIndex(item => item.src === mediaSrc);
+      const activeList = pm === 'alphabetical'
+        ? [...pl].sort((a, b) => a.title.localeCompare(b.title, 'tr'))
+        : pl;
+      const currentIndex = activeList.findIndex(item => item.src === ms);
       nextTrack = activeList[(currentIndex + 1) % activeList.length];
     }
     if (nextTrack) {
       setMediaType(nextTrack.type);
       setMediaSrc(nextTrack.src);
-      sendAction('CHANGE_MEDIA', { type: nextTrack.type, src: nextTrack.src });
+      sendAction('CHANGE_MEDIA', { type: nextTrack.type, src: nextTrack.src, title: nextTrack.title });
+      if (nextTrack.type === 'youtube' && startAudioPlaybackHolder.current) {
+        startAudioPlaybackHolder.current(nextTrack.src, nextTrack.title);
+      }
     }
-  };
+  }, []);
 
   const handleDirectPlay = () => {
     if (!searchInput.trim()) return;
@@ -315,6 +330,7 @@ function App() {
     else return;
     setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
+    if (media.type === 'youtube') startAudioPlayback(media.src, searchResults[0]?.title);
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -345,12 +361,14 @@ function App() {
     if (playImmediately) {
       setYoutubeError(null); setMediaType('youtube'); setMediaSrc(song.src);
       sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
+      startAudioPlayback(song.src, song.title);
     } else { handleOpenAddModal(song); }
   };
 
   const handleSelectPlaylistItem = (item) => {
     setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
+    if (item.type === 'youtube') startAudioPlayback(item.src, item.title);
   };
 
   const handleRemovePlaylistItem = (itemId, e) => {
@@ -448,19 +466,21 @@ function App() {
 
   // --- YENİ: Medya değiştiğinde audio modunu başlat ---
   const startAudioPlayback = useCallback(async (src, title) => {
-    if (!src || mediaType !== 'youtube') return;
+    if (!src) return;
     if (getCurrentVideoId() === src && isAudioPlaying()) return;
     stopAudio();
     setAudioMode(true);
     const audio = await playYouTubeAudio(src, title || 'Couple Meeting', {
-      onEnd: () => handleMediaEnd(),
+      onEnd: () => handleMediaEndRef.current?.(),
       onTimeUpdate: () => {},
       onError: () => {
         setAudioMode(false);
       }
     });
     if (!audio) setAudioMode(false);
-  }, [mediaType, handleMediaEnd]);
+  }, []);
+
+  startAudioPlaybackHolder.current = startAudioPlayback;
 
   const filteredPlaylist = useMemo(() => {
     if (!Array.isArray(playlist)) return [];
@@ -492,14 +512,14 @@ function App() {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', handlePlay);
       navigator.mediaSession.setActionHandler('pause', handlePause);
-      navigator.mediaSession.setActionHandler('nexttrack', handleMediaEnd);
+      navigator.mediaSession.setActionHandler('nexttrack', () => handleMediaEndRef.current?.());
     }
   }, [mediaSrc, mediaType, playMode, playlist]);
 
   useEffect(() => { audioModeRef.current = audioMode; }, [audioMode]);
-  useEffect(() => { startAudioPlaybackRef.current = startAudioPlayback; }, [startAudioPlayback]);
-  useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, [handleMediaEnd]);
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
+  useEffect(() => { startAudioPlaybackRef.current = startAudioPlayback; }, []);
+  useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
 
   // --- YENİ: Wake Lock (ekran uyumasın, arka planda devam) ---
   useEffect(() => {

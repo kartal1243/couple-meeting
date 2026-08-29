@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { VIP_PLANS, VIP_FEATURES } from '../constants';
-import { BACKEND_URL } from '../constants';
+import { VIP_PLANS, VIP_FEATURES, BACKEND_URL } from '../constants';
 
 export default function VipModal({ authUser, setShowVipModal, setAuthUser, styles }) {
   const [selectedPlan, setSelectedPlan] = useState('yearly');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [adminSecret, setAdminSecret] = useState('');
+  const [adminResult, setAdminResult] = useState('');
 
   const handlePurchase = async () => {
     if (!authUser) return;
     setProcessing(true);
     try {
-      // Gerçek uygulamada: Stripe/Papara iframe burada açılır
-      // Simülasyon: 2 saniye bekle
       await new Promise(r => setTimeout(r, 2000));
       const paymentId = 'pay_' + Date.now();
       const res = await fetch(`${BACKEND_URL}/api/vip/activate`, {
@@ -28,6 +27,27 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
       }
     } catch (e) { console.error('VIP activation error:', e); }
     setProcessing(false);
+  };
+
+  const handleAdminGrant = async () => {
+    if (!adminSecret || !authUser?.username) return;
+    setAdminResult('İşleniyor...');
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/vip/admin-grant`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: adminSecret, username: authUser.username, plan: selectedPlan })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAdminResult('VIP aktifleştirildi!');
+        setAuthUser({ ...authUser, isVip: true, vipExpiry: data.vipExpiry });
+        localStorage.setItem('cm_auth_user', JSON.stringify({ ...authUser, isVip: true, vipExpiry: data.vipExpiry }));
+        setSuccess(true);
+        setTimeout(() => { setSuccess(false); setShowVipModal(false); }, 2000);
+      } else {
+        setAdminResult(data.message || 'Hata oluştu.');
+      }
+    } catch (e) { setAdminResult('Bağlantı hatası.'); }
   };
 
   if (success) return (
@@ -46,9 +66,9 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
       <div style={{
         width: 'min(860px, 100%)', background: 'linear-gradient(180deg, #111b21, #0a0f14)',
         border: '1px solid #2a3942', borderRadius: 28, overflow: 'hidden',
-        boxShadow: '0 40px 120px rgba(0,0,0,.6), 0 0 60px rgba(245,158,11,.08)'
+        boxShadow: '0 40px 120px rgba(0,0,0,.6), 0 0 60px rgba(245,158,11,.08)',
+        maxHeight: '90vh', overflowY: 'auto'
       }}>
-        {/* Header */}
         <div style={{ padding: '24px 28px', background: 'linear-gradient(135deg, rgba(245,158,11,.12), rgba(249,115,22,.08))', borderBottom: '1px solid #2a3942', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ color: '#f59e0b', fontSize: 11, fontWeight: 900 }}>⭐ COUPLE MEETING VIP</div>
@@ -60,9 +80,8 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
           </button>
         </div>
 
-        <div style={{ display: 'flex', minHeight: 480 }}>
-          {/* Sol: Özellikler */}
-          <div style={{ flex: 1, padding: 24, borderRight: '1px solid #25313a' }}>
+        <div style={{ display: 'flex', minHeight: 480, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 280, padding: 24, borderRight: '1px solid #25313a' }}>
             <div style={{ color: '#f59e0b', fontSize: 12, fontWeight: 900, marginBottom: 14 }}>VIP NE KAZANDIRIR?</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {VIP_FEATURES.map((f, i) => (
@@ -77,8 +96,7 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
             </div>
           </div>
 
-          {/* Sağ: Planlar */}
-          <div style={{ width: 320, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ width: 320, padding: 24, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 280 }}>
             <div style={{ color: '#f59e0b', fontSize: 12, fontWeight: 900, marginBottom: 4 }}>PLAN SEÇ</div>
 
             {Object.entries(VIP_PLANS).map(([key, plan]) => (
@@ -127,6 +145,34 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
                 {processing ? '⏳ İşleniyor...' : `🚀 VIP Ol - ₺${VIP_PLANS[selectedPlan].price}`}
               </button>
             )}
+
+            {/* Admin VIP Verme */}
+            <div style={{ borderTop: '1px solid #25313a', paddingTop: 12, marginTop: 8 }}>
+              <div style={{ color: '#63727d', fontSize: 10, fontWeight: 900, marginBottom: 6 }}>🔧 ADMIN VIP AKTİVASYON</div>
+              <input
+                type="password"
+                value={adminSecret}
+                onChange={(e) => setAdminSecret(e.target.value)}
+                placeholder="Admin anahtarı..."
+                style={{
+                  width: '100%', padding: '10px 12px', background: '#0b141a', border: '1px solid #25313a',
+                  color: '#e9edef', borderRadius: 10, fontSize: 12, outline: 'none', marginBottom: 6, boxSizing: 'border-box'
+                }}
+              />
+              <button onClick={handleAdminGrant}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                  background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                  color: '#fff', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}>
+                👑 Kendime VIP Ver
+              </button>
+              {adminResult && (
+                <div style={{ color: adminResult.includes('aktifleştirildi') ? '#00a884' : '#ef4444', fontSize: 11, marginTop: 4, textAlign: 'center' }}>
+                  {adminResult}
+                </div>
+              )}
+            </div>
 
             <div style={{ textAlign: 'center', color: '#63727d', fontSize: 10, marginTop: 8 }}>
               Güvenli ödeme • İstediğin zaman iptal et

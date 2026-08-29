@@ -55,6 +55,31 @@ app.get('/api/vip/plans', (req, res) => {
   res.json({ plans: VIP_PLANS });
 });
 
+// --- ADMIN: Kendine VIP verme ---
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'couple-meeting-admin-2024';
+app.post('/api/vip/admin-grant', express.json(), (req, res) => {
+  const { secret, username, plan } = req.body;
+  if (secret !== ADMIN_SECRET) return res.json({ ok: false, message: 'Yetkisiz erişim.' });
+  if (!username || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Geçersiz parametre.' });
+  const user = socialData.users[username];
+  if (!user) return res.json({ ok: false, message: 'Kullanıcı bulunamadı.' });
+
+  const now = Date.now();
+  const currentExpiry = user.vipExpiry || 0;
+  const startFrom = currentExpiry > now ? currentExpiry : now;
+  user.isVip = true;
+  user.vipExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
+  user.vipPlan = plan || 'yearly';
+  user.vipActivatedAt = now;
+  saveSocialData();
+
+  console.log(`👑 [ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
+  for (const [sid, s] of io.sockets.sockets) {
+    if (s.socialUsername === username) s.emit('vip_activated', { isVip: true, vipExpiry: user.vipExpiry, plan: plan || 'yearly' });
+  }
+  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: user.vipExpiry });
+});
+
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
