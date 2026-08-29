@@ -1,63 +1,150 @@
 export default function Hero({ authUser, openAuth, handleQuickCreateRoom }) {
   return (
     <section className="cm-hero">
-      <div>
-        <div className="cm-badge">
-          <span className="cm-live-dot" /> Uzaklık sadece bir detay.
-        </div>
-        <h1>Birlikte izleyin.<br /><span>Birlikte hissedin.</span></h1>
-        <p>
-          Sevgilinle, arkadaşınla veya yeni insanlarla aynı videoyu aynı anda izle,
-          müzik dinle ve anlık sohbet et. Hesap açmak zorunda değilsin; ama hesabın
-          olursa profilin, arkadaşların ve sosyal özelliklerin yanında kalır.
-        </p>
-        <div className="cm-hero-actions">
-          <button
-            className="cm-big-btn"
-            onClick={handleQuickCreateRoom}
-            style={{ background: 'linear-gradient(135deg,#00a884,#008f6f)' }}
-          >
-            🚀 Hemen Oda Oluştur
-          </button>
-          <button
-            className="cm-big-btn"
-            onClick={() => openAuth(authUser ? 'login' : 'register')}
-            style={{ background: '#202c33', border: '1px solid #34424c' }}
-          >
-            👤 Hesapla Daha Fazlasını Yap
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 22, color: '#778590', fontSize: 11, fontWeight: 800 }}>
-          <span>✓ Misafir giriş</span>
-          <span>✓ Arkadaş sistemi</span>
-          <span>✓ Global sohbet</span>
-          <span>✓ Profil & durum</span>
-        </div>
+      {/* Büyük başlık */}
+      <h1 className="cm-hero-title">
+        BİRLİKTE<br />DİNLE
+      </h1>
+      <p className="cm-hero-sub">
+        Sevgilinle, arkadaşınla veya yeni insanlarla<br />
+        aynı müziği aynı anda dinle ve anlık sohbet et.
+      </p>
+
+      <div className="cm-hero-actions">
+        <button
+          className="cm-big-btn"
+          onClick={handleQuickCreateRoom}
+          style={{ background: 'linear-gradient(135deg,#00a884,#008f6f)' }}
+        >
+          🚀 Hemen Oda Oluştur
+        </button>
+        <button
+          className="cm-big-btn"
+          onClick={() => openAuth(authUser ? 'login' : 'register')}
+          style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)' }}
+        >
+          👤 Hesapla Daha Fazlasını Yap
+        </button>
       </div>
 
-      <div className="cm-hero-card">
-        <div className="cm-floating-chip cm-chip-a">💬 "Başlattım, gelsene ❤️"</div>
-        <div className="cm-floating-chip cm-chip-b">🟢 2 kişi odada</div>
-        <div className="cm-floating-chip cm-chip-c">❤️ birlikte 12:48</div>
-        <div className="cm-now-playing">
-          <div className="cm-mini-top">
-            <span>NOW PLAYING</span>
-            <span style={{ color: '#53e6bc' }}>● LIVE</span>
-          </div>
-          <div>
-            <div className="cm-cover"></div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>Our Little Moment</div>
-              <div style={{ color: '#778590', fontSize: 11, marginTop: 5 }}>Couple Meeting Radio</div>
+      <div className="cm-hero-features">
+        <span>✓ Misafir giriş</span>
+        <span>✓ Arkadaş sistemi</span>
+        <span>✓ Global sohbet</span>
+        <span>✓ Profil & durum</span>
+      </div>
+
+      {/* Cihaz mockupları */}
+      <div className="cm-devices-showcase">
+        {/* Laptop */}
+        <div className="cm-device cm-device-laptop">
+          <div className="cm-device-screen">
+            <div className="cm-screen-header">
+              <span className="cm-screen-dot" style={{ background: '#ff5f57' }} />
+              <span className="cm-screen-dot" style={{ background: '#ffbd2e' }} />
+              <span className="cm-screen-dot" style={{ background: '#28c840' }} />
+              <span className="cm-screen-title">Couple Meeting</span>
             </div>
-            <div className="cm-wave">
-              {Array.from({ length: 7 }).map((_, i) => <i key={i} />)}
+            <div className="cm-screen-body">
+              <div className="cm-screen-player">
+                <div className="cm-screen-album" />
+                <div className="cm-screen-song">
+                  <div className="cm-screen-song-name">Our Little Moment</div>
+                  <div className="cm-screen-song-artist">Couple Meeting Radio</div>
+                </div>
+              </div>
+              <div className="cm-screen-chat">
+                <div className="cm-screen-msg cm-msg-them">Başlattım gelsene ❤️</div>
+                <div className="cm-screen-msg cm-msg-me">Geliyorum!</div>
+                <div className="cm-screen-msg cm-msg-them">💝</div>
+              </div>
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7f8c98', fontSize: 12 }}>
-            <span>♡ 248</span>
-            <span style={{ color: '#53e6bc' }}>◀︎ 2:18 ━━━━━ 4:12 ▶︎</span>
-            <span>♡</span>
+          <div className="cm-device-base" />
+          <div className="cm-device-label">
+            <span>🖥️</span> Masaüstü
+          </div>
+        </div>
+
+        {/* Telefon 1 */}
+        <div className="cm-device cm-device-phone cm-phone-left">
+          <div className="cm-device-notch" />
+          <div className="cm-device-screen cm-phone-screen">
+            <div className="cm-screen-header">
+              <span className="cm-screen-title" style={{ fontSize: 8 }}>Couple Meeting</span>
+            </div>
+            <div className="cm-screen-body">
+              <div className="cm-screen-player">
+                <div className="cm-screen-album cm-album-small" />
+                <div className="cm-screen-song">
+                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Yıldız Tozu</div>
+                  <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Tarkan</div>
+                </div>
+              </div>
+              <div className="cm-screen-chat">
+                <div className="cm-screen-msg cm-msg-them" style={{ fontSize: 7 }}>Müzik harika 🔥</div>
+                <div className="cm-screen-msg cm-msg-me" style={{ fontSize: 7 }}>Biliyorum!</div>
+              </div>
+            </div>
+          </div>
+          <div className="cm-device-label">
+            <span>📱</span> iPhone
+          </div>
+        </div>
+
+        {/* Telefon 2 */}
+        <div className="cm-device cm-device-phone cm-phone-right">
+          <div className="cm-device-notch" />
+          <div className="cm-device-screen cm-phone-screen">
+            <div className="cm-screen-header">
+              <span className="cm-screen-title" style={{ fontSize: 8 }}>Couple Meeting</span>
+            </div>
+            <div className="cm-screen-body">
+              <div className="cm-screen-player">
+                <div className="cm-screen-album cm-album-small" />
+                <div className="cm-screen-song">
+                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Gece</div>
+                  <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Mabel Matiz</div>
+                </div>
+              </div>
+              <div className="cm-screen-chat">
+                <div className="cm-screen-msg cm-msg-me" style={{ fontSize: 7 }}>Bu gece de dinliyoruz 🌙</div>
+                <div className="cm-screen-msg cm-msg-them" style={{ fontSize: 7 }}>Her gece ❤️</div>
+              </div>
+            </div>
+          </div>
+          <div className="cm-device-label">
+            <span>📱</span> Android
+          </div>
+        </div>
+
+        {/* Büyük ekran */}
+        <div className="cm-device cm-device-desktop">
+          <div className="cm-device-screen cm-desktop-screen">
+            <div className="cm-screen-header">
+              <span className="cm-screen-dot" style={{ background: '#ff5f57' }} />
+              <span className="cm-screen-dot" style={{ background: '#ffbd2e' }} />
+              <span className="cm-screen-dot" style={{ background: '#28c840' }} />
+              <span className="cm-screen-title">Couple Meeting</span>
+            </div>
+            <div className="cm-screen-body">
+              <div className="cm-screen-player">
+                <div className="cm-screen-album" />
+                <div className="cm-screen-song">
+                  <div className="cm-screen-song-name">Seni Dert Etmek</div>
+                  <div className="cm-screen-song-artist">Sezen Aksu</div>
+                </div>
+              </div>
+              <div className="cm-screen-chat">
+                <div className="cm-screen-msg cm-msg-them">İzliyor musun? 🎬</div>
+                <div className="cm-screen-msg cm-msg-me">Evet başladım!</div>
+                <div className="cm-screen-msg cm-msg-them">Süper ❤️</div>
+              </div>
+            </div>
+          </div>
+          <div className="cm-device-base" />
+          <div className="cm-device-label">
+            <span>🖥️</span> Windows
           </div>
         </div>
       </div>

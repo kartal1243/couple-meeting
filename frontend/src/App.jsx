@@ -770,10 +770,10 @@ function App() {
 
           <header className="cm-home-nav">
             <div className="cm-home-brand">
-              <div className="cm-home-logo">❤️⚡</div>
+              <div className="cm-home-logo">❤️‍🔥</div>
               <div>
                 <div style={{ fontWeight: 950, color: '#fff', fontSize: 17 }}>Couple Meeting</div>
-                <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 800 }}>WATCH • LISTEN • CONNECT</div>
+                <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 800 }}>LISTEN • CONNECT • SHARE</div>
               </div>
             </div>
             <div className="cm-nav-actions">
@@ -802,7 +802,15 @@ function App() {
               handleCreateRoomSubmit={handleCreateRoomSubmit} handleJoinRoomSubmit={handleJoinRoomSubmit}
               currentTheme={currentTheme}
             />
-            <div className="cm-footer">Couple Meeting • Uzaklığı biraz daha küçük yapan internet. ❤️</div>
+            <div className="cm-footer">
+              <div className="cm-footer-socials">
+                <a href="#" title="Instagram">📷</a>
+                <a href="#" title="Twitter/X">🐦</a>
+                <a href="#" title="YouTube">▶️</a>
+                <a href="#" title="Discord">💬</a>
+              </div>
+              Couple Meeting • Uzaklığı biraz daha küçük yapan internet. ❤️
+            </div>
           </main>
 
           {showAuthModal && (
