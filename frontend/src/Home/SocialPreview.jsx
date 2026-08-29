@@ -4,35 +4,44 @@ export default function SocialPreview({ globalMessages, setShowSocialModal }) {
       <div className="cm-social-card">
         <div className="cm-social-grid">
           <div>
-            <div style={{ color: '#53e6bc', fontSize: 11, fontWeight: 900 }}>🌐 GLOBAL TOPLULUK</div>
-            <div style={{ fontSize: 28, color: '#fff', fontWeight: 950, letterSpacing: -1, marginTop: 7 }}>
-              Sadece odada değil, dünyada da bağlan.
+            <div className="cm-social-badge">🌐 GLOBAL TOPLULUK</div>
+            <div className="cm-social-title">
+              Sadece odada değil,<br />dünyada da bağlan.
             </div>
-            <div style={{ color: '#7f8c98', fontSize: 13, lineHeight: 1.6, marginTop: 8 }}>
+            <div className="cm-social-desc">
               Global sohbette konuş, profilini doldur, arkadaşlık isteği gönder.
-              Misafir olarak okuyabilir ve konuşabilirsin; arkadaşlık ve profil özellikleri hesapla açılır.
+              Misafir olarak okuyabilir ve konuşabilirsin.
             </div>
             <button
-              className="cm-big-btn"
+              className="cm-big-btn cm-social-btn"
               onClick={() => setShowSocialModal(true)}
-              style={{ marginTop: 18, background: 'linear-gradient(135deg,#3742fa,#5352ed)' }}
             >
               🌍 Sosyal Alanı Aç
             </button>
           </div>
           <div className="cm-global-preview">
-            {globalMessages.slice(-5).reverse().map((m, i) => (
-              <div className="cm-preview-msg" key={m.id || i}>
-                <div style={{ fontSize: 19 }}>{m.avatar || '🐱'}</div>
-                <div>
-                  <b>{m.username || 'Misafir'}</b>
-                  <div style={{ color: '#8d9aa5', fontSize: 11, marginTop: 2 }}>{m.text}</div>
+            {globalMessages.length > 0 ? (
+              <>
+                <div className="cm-preview-header">
+                  <span className="cm-preview-live" />
+                  <span>Canlı Sohbet</span>
+                  <span className="cm-preview-count">{globalMessages.length} mesaj</span>
                 </div>
-              </div>
-            ))}
-            {globalMessages.length === 0 && (
-              <div style={{ color: '#75838e', fontSize: 12, padding: 20, textAlign: 'center' }}>
-                Global sohbet burada görünecek. İlk mesajı sen yaz. 👋
+                {globalMessages.slice(-5).reverse().map((m, i) => (
+                  <div className="cm-preview-msg" key={m.id || i}>
+                    <div className="cm-preview-avatar">{m.avatar || '🐱'}</div>
+                    <div className="cm-preview-content">
+                      <b>{m.username || 'Misafir'}</b>
+                      <span>{m.text}</span>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="cm-preview-empty">
+                <div className="cm-preview-empty-icon">💬</div>
+                <div>Global sohbet burada görünecek.</div>
+                <div>İlk mesajı sen yaz. 👋</div>
               </div>
             )}
           </div>

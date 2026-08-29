@@ -796,10 +796,10 @@ function App() {
 
           <header className="cm-home-nav">
             <div className="cm-home-brand">
-              <div className="cm-home-logo">❤️‍🔥</div>
+              <div className="cm-home-logo">⚡</div>
               <div>
-                <div style={{ fontWeight: 950, color: '#fff', fontSize: 17 }}>Couple Meeting</div>
-                <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 800 }}>LISTEN • CONNECT • SHARE</div>
+                <div style={{ fontWeight: 950, color: '#fff', fontSize: 17, letterSpacing: '-0.5px' }}>Couple Meeting</div>
+                <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 800, letterSpacing: '0.5px' }}>LISTEN • CONNECT • SHARE</div>
               </div>
             </div>
             <div className="cm-nav-actions">
