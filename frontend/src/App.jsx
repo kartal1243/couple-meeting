@@ -72,6 +72,8 @@ function App() {
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
+  const [playerMode, setPlayerMode] = useState('youtube');
+  const [spotifyUrl, setSpotifyUrl] = useState('');
 
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
@@ -969,6 +971,7 @@ function App() {
             searchResults={searchResults} isSearching={isSearching}
             currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
+            onSpotifyUrl={(url) => { setSpotifyUrl(url); setPlayerMode('spotify'); }}
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError}
@@ -977,7 +980,8 @@ function App() {
             useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
             setYoutubeError={setYoutubeError} setMediaType={setMediaType}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-            playlist={playlist}
+            playlist={playlist} playerMode={playerMode} setPlayerMode={setPlayerMode}
+            spotifyUrl={spotifyUrl} setSpotifyUrl={setSpotifyUrl}
           />
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
         </div>

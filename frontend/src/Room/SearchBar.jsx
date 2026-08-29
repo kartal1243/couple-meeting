@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 
 export default function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
-  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult
+  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult,
+  onSpotifyUrl
 }) {
   const styles = getStyles(currentTheme);
   const [showResults, setShowResults] = useState(false);
@@ -53,9 +54,19 @@ export default function SearchBar({
     >
       <input
         type="text"
-        placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
+        placeholder="🔍 YouTube linki veya Spotify linki yapıştırın..."
         value={searchInput}
-        onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
+        onChange={(e) => {
+          const val = e.target.value;
+          setSearchInput(val);
+          setShowResults(true);
+          // Spotify linki algılama
+          if (val.includes('open.spotify.com/') || val.includes('spotify.link/')) {
+            onSpotifyUrl?.(val);
+            setSearchInput('');
+            setShowResults(false);
+          }
+        }}
         onFocus={() => setShowResults(true)}
         style={{ ...styles.input, flex: 1 }}
       />
