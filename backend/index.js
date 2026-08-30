@@ -229,60 +229,73 @@ app.get('/api/music/search', async (req, res) => {
   } catch (e) { res.json({ results: [], error: e.message }); }
 });
 
+app.get('/api/debug', (req, res) => {
+  const { execSync } = require('child_process');
+  const info = { node: process.version, uptime: process.uptime() };
+  try { info.ytVersion = execSync('yt-dlp --version', { timeout: 5000 }).toString().trim(); } catch { info.ytVersion = 'BULUNAMADI'; }
+  try { info.python = execSync('python3 --version', { timeout: 5000 }).toString().trim(); } catch { info.python = 'BULUNAMADI'; }
+  res.json(info);
+});
+
 app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
   const { spawn } = require('child_process');
 
-  res.setHeader('Content-Type', 'audio/mpeg');
-  res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Access-Control-Allow-Origin', '*');
 
-  let started = false;
-  let killed = false;
+    let started = false;
+    let killed = false;
 
-  const kill = () => {
-    if (!killed) { killed = true; try { yt.kill('SIGTERM'); } catch {} }
-  };
+    const kill = () => {
+      if (!killed) { killed = true; try { yt.kill('SIGTERM'); } catch {} }
+    };
 
-  const yt = spawn('yt-dlp', [
-    '-f', 'bestaudio[ext=m4a]/bestaudio/best',
-    '--no-playlist',
-    '--no-check-certificates',
-    '-x', '--audio-format', 'mp3',
-    '-o', '-',
-    `https://www.youtube.com/watch?v=${videoId}`
-  ], { timeout: 120000 });
+    const yt = spawn('yt-dlp', [
+      '-f', 'bestaudio[ext=m4a]/bestaudio/best',
+      '--no-playlist',
+      '--no-check-certificates',
+      '-x', '--audio-format', 'mp3',
+      '-o', '-',
+      `https://www.youtube.com/watch?v=${videoId}`
+    ], { timeout: 120000 });
 
-  yt.stdout.on('data', (chunk) => {
-    if (!started) {
-      started = true;
-    }
-    if (!res.writableEnded) res.write(chunk);
-  });
+    yt.stdout.on('data', (chunk) => {
+      if (!started) {
+        started = true;
+      }
+      if (!res.writableEnded) res.write(chunk);
+    });
 
-  yt.stderr.on('data', (data) => {
-    const msg = data.toString().trim();
-    if (msg) logger.warn('yt-dlp', { videoId, msg: msg.slice(0, 200) });
-  });
+    yt.stderr.on('data', (data) => {
+      const msg = data.toString().trim();
+      if (msg) logger.warn('yt-dlp', { videoId, msg: msg.slice(0, 200) });
+    });
 
-  yt.on('close', (code) => {
-    if (!started) {
-      if (!res.headersSent) res.status(502).json({ error: 'Stream bulunamadı' });
-    } else if (!res.writableEnded) {
-      res.end();
-    }
-  });
+    yt.on('close', (code) => {
+      if (!started) {
+        if (!res.headersSent) res.status(502).json({ error: 'Stream bulunamadı' });
+      } else if (!res.writableEnded) {
+        res.end();
+      }
+    });
 
-  yt.on('error', (err) => {
-    logger.warn('yt-dlp spawn hatası', { videoId, error: err.message });
-    if (!started && !res.headersSent) res.status(502).json({ error: 'Stream bulunamadı' });
-  });
+    yt.on('error', (err) => {
+      logger.warn('yt-dlp spawn hatası', { videoId, error: err.message });
+      if (!started && !res.headersSent) res.status(502).json({ error: 'yt-dlp bulunamadı' });
+    });
 
-  req.on('close', kill);
-  req.on('aborted', kill);
+    req.on('close', kill);
+    req.on('aborted', kill);
+  } catch (e) {
+    logger.error('stream endpoint crash', { error: e.message });
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/music/proxy-audio', async (req, res) => {
