@@ -359,12 +359,7 @@ function App() {
     if (!song) return;
     if (playImmediately) {
       setYoutubeError(null);
-      if (song.source === 'audiomack' && song.src) {
-        setMediaType('audiomack');
-        setMediaSrc(song.src);
-        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: 'audiomack', src: song.src, title: song.title });
-      } else if (roomType === 'music' && song.src) {
+      if (roomType === 'music' && song.src) {
         setMediaType('music');
         setMediaSrc(song.src);
         setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
@@ -595,17 +590,14 @@ function App() {
     });
 
     socket.on('room_action', ({ type, payload }) => {
-      const audio = document.querySelector('audio');
       if (type === 'PLAY') {
         if (ytPlayerRef.current) {
           try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {}
         }
-        if (audio && mediaType === 'audiomack') { audio.play().catch(() => {}); }
       } else if (type === 'PAUSE') {
         if (ytPlayerRef.current) {
           try { ytPlayerRef.current.pauseVideo(); } catch {}
         }
-        if (audio && mediaType === 'audiomack') { audio.pause(); }
       } else if (type === 'SEEK') {
         if (ytPlayerRef.current) {
           try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {}

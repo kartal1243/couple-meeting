@@ -1,6 +1,5 @@
 import YouTube from 'react-youtube';
-import { useCallback, useRef, useEffect, useState } from 'react';
-import { BACKEND_URL } from '../constants';
+import { useCallback } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -14,10 +13,6 @@ export default function Player({
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError
 }) {
   const videoId = extractVideoId(mediaSrc);
-  const audioRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
 
   const ytOpts = {
     height: '100%', width: '100%',
@@ -28,52 +23,11 @@ export default function Player({
     ytPlayerRef.current = e.target;
   }, [ytPlayerRef]);
 
-  // Music mode: YouTube → MP3 conversion via yt-audio-api
-  useEffect(() => {
-    if (mediaType === 'music' && videoId && audioRef.current) {
-      setLoading(true);
-      setError(false);
-      setIsPlaying(false);
-      const audio = audioRef.current;
-
-      fetch(`${BACKEND_URL}/api/yt-audio/token?url=https://www.youtube.com/watch?v=${videoId}`)
-        .then(r => { if (!r.ok) throw new Error('fail'); return r.json(); })
-        .then(data => {
-          if (!data.downloadUrl) throw new Error('no url');
-          audio.src = data.downloadUrl;
-          audio.load();
-          audio.oncanplay = () => {
-            setLoading(false);
-            audio.play().then(() => {
-              setIsPlaying(true);
-              if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                  title: mediaMeta?.title || 'Müzik', artist: mediaMeta?.artist || 'Couple Meeting',
-                  artwork: [{ src: mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, sizes: '512x512', type: 'image/jpeg' }]
-                });
-                navigator.mediaSession.setActionHandler('play', () => { audio.play(); setIsPlaying(true); });
-                navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); setIsPlaying(false); });
-              }
-            }).catch(() => setIsPlaying(false));
-          };
-          audio.onerror = () => { setLoading(false); setError(true); };
-        })
-        .catch(() => { setLoading(false); setError(true); });
-    }
-  }, [mediaType, videoId, mediaMeta]);
-
-  const togglePlayPause = () => {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) { audioRef.current.play(); setIsPlaying(true); }
-    else { audioRef.current.pause(); setIsPlaying(false); }
-  };
-
   return (
     <div className="cm-video-wrap" style={{
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
-      <audio ref={audioRef} playsInline preload="auto" onEnded={() => { setIsPlaying(false); handleMediaEnd?.(); }} />
 
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
@@ -82,36 +36,19 @@ export default function Player({
         </div>
       )}
 
-      {mediaType === 'youtube' && videoId && !youtubeError && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
-          <YouTube videoId={videoId} opts={ytOpts} style={{ width: '100%', height: '100%', maxWidth: '100%' }}
+      {(mediaType === 'youtube' || mediaType === 'music') && videoId && !youtubeError && (
+        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', position: 'relative' }}>
+          {mediaType === 'music' && (
+            <img src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt=""
+              style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15, filter: 'blur(20px)', zIndex: 0 }} />
+          )}
+          <YouTube videoId={videoId} opts={ytOpts}
+            style={{ width: '100%', height: '100%', maxWidth: '100%', position: 'relative', zIndex: 1 }}
             onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
         </div>
       )}
 
-      {mediaType === 'music' && videoId && (
-        <div style={{ textAlign: 'center', color: '#fff', padding: '20px', zIndex: 2 }}>
-          <img src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt="" style={{
-            width: '240px', height: '240px', borderRadius: '20px', objectFit: 'cover',
-            boxShadow: isPlaying ? '0 15px 50px rgba(0, 168, 132, 0.4)' : '0 10px 40px rgba(0,0,0,.6)',
-            marginBottom: '18px', transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-            transform: isPlaying ? 'scale(1.03)' : 'scale(1)'
-          }} />
-          <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Şarkı Çalıyor'}</div>
-          <div style={{ fontSize: '14px', color: '#8696a0', marginBottom: '16px' }}>{mediaMeta?.artist || 'Couple Meeting Müzik'}</div>
-          {loading && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ MP3'e dönüştürülüyor...</div>}
-          {error && <div style={{ fontSize: '13px', color: '#ea4335', marginBottom: '12px' }}>❌ Yüklenemedi. Tekrar deneyin.</div>}
-          <button onClick={togglePlayPause} style={{
-            background: isPlaying ? '#ea4335' : '#00a884', color: '#fff', border: 'none',
-            padding: '12px 32px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer',
-            fontSize: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', transition: '0.2s all'
-          }}>
-            {isPlaying ? '⏸ Durdur' : '▶ Çal'}
-          </button>
-        </div>
-      )}
-
-      {mediaType === 'youtube' && youtubeError && (
+      {(mediaType === 'youtube' || mediaType === 'music') && youtubeError && (
         <div style={{
           width: 'min(760px, 92%)', padding: '28px', borderRadius: '24px',
           background: 'linear-gradient(145deg,#151b23,#0a0e14)',
