@@ -233,38 +233,24 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
-  const INVIDIOUS_INSTANCES = [
-    'https://yt.omada.cafe',
-    'https://invidious.schenkel.eti.br',
-  ];
+  if (!mk) return res.status(500).json({ error: 'musicstream-sdk yüklenmedi' });
 
-  for (const instance of INVIDIOUS_INSTANCES) {
-    try {
-      const r = await fetch(`${instance}/api/v1/videos/${videoId}`, {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(10000)
+  try {
+    const stream = await Promise.race([
+      mk.getStream(videoId),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
+    ]);
+    if (stream?.url) {
+      logger.info(`Stream bulundu: ${videoId} via musicstream-sdk`);
+      return res.json({
+        url: stream.url,
+        proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(stream.url)}`,
+        title: stream.title,
+        thumbnail: stream.thumbnailUrl
       });
-      if (!r.ok) continue;
-      const data = await r.json();
-      if (!data?.adaptiveFormats) continue;
-      const audio = data.adaptiveFormats
-        .filter(f => f.type?.startsWith('audio/'))
-        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-      if (audio?.url) {
-        logger.info(`Stream bulundu: ${videoId} via ${instance}`);
-        return res.json({ url: audio.url, proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(audio.url)}`, title: data.title, thumbnail: data.thumbnailUrl });
-      }
-    } catch (e) { logger.warn(`Invidious ${instance} başarısız`, { videoId, error: e.message }); }
-  }
-
-  if (mk) {
-    try {
-      const stream = await Promise.race([
-        mk.getStream(videoId),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
-      ]);
-      if (stream?.url) return res.json({ url: stream.url, proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(stream.url)}` });
-    } catch {}
+    }
+  } catch (e) {
+    logger.warn('musicstream-sdk stream hatası', { videoId, error: e.message });
   }
 
   res.status(502).json({ error: 'Stream bulunamadı' });
