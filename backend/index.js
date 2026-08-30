@@ -236,9 +236,6 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   const INVIDIOUS_INSTANCES = [
     'https://yt.omada.cafe',
     'https://invidious.schenkel.eti.br',
-    'https://invidious.kemonomimi.nl',
-    'https://invidious.privacyredirect.com',
-    'https://vid.puffyan.us',
   ];
 
   for (const instance of INVIDIOUS_INSTANCES) {
@@ -527,7 +524,20 @@ io.on('connection', (socket) => {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
       let results = [];
-      if (mk) {
+
+      const yt = await getInnertube().catch(() => null);
+      if (yt) {
+        try {
+          const sr = await yt.music.search(q, { type: 'song' });
+          results = (sr.songs?.contents || []).map(s => ({
+            id: s.id, title: s.title?.text || s.title?.toString() || '',
+            artist: s.artists?.[0]?.name || '', duration: s.duration?.text || '',
+            thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
+            src: s.id
+          })).filter(s => s.id && s.title).slice(0, 8);
+        } catch {}
+      }
+      if (results.length === 0 && mk) {
         try {
           const songs = await mk.search(q, { filter: 'songs', limit: 8 });
           results = songs.map(s => ({
@@ -550,7 +560,7 @@ io.on('connection', (socket) => {
         } catch {}
       }
       socket.emit('search_results', results);
-    } catch (err) { logger.error('Arama hatas─▒', { error: err.message }); socket.emit('search_results', []); }
+    } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
   });
 
   // ODA

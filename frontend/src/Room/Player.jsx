@@ -76,7 +76,7 @@ export default function Player({
       setIsPlaying(false);
 
       const audio = audioRef.current;
-      audio.src = `${BACKEND_URL}/api/music/play/${videoId}`;
+      audio.src = `${BACKEND_URL}/api/music/stream/${videoId}`;
       audio.load();
 
       audio.oncanplay = () => {
