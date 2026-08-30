@@ -140,7 +140,7 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC SEARCH ---
+// --- YOUTUBE SEARCH (youtubei.js) ---
 let Innertube, UniversalCache;
 try {
   ({ Innertube, UniversalCache } = require('youtubei.js'));
@@ -159,104 +159,6 @@ async function getInnertube() {
   }
   return innertube;
 }
-
-app.get('/api/music/search', async (req, res) => {
-  const q = (req.query.q || '').trim();
-  if (!q) return res.json({ results: [] });
-
-  const yt = await getInnertube().catch(() => null);
-  if (yt) {
-    try {
-      const results = await yt.music.search(q, { type: 'song' });
-      const songs = (results.songs?.contents || [])
-        .map(s => {
-          const id = s.id;
-          const title = s.title?.text || s.title?.toString() || '';
-          const artist = s.artists?.[0]?.name || s.artist?.name || '';
-          const duration = s.duration?.text || '';
-          const thumb = s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-          return { id, title, artist, duration, thumbnail: thumb, src: id };
-        })
-        .filter(s => s.id && s.title);
-      if (songs.length > 0) return res.json({ results: songs.slice(0, 10) });
-    } catch (e) { logger.warn('yt.music.search hatasi', { error: e.message }); }
-
-    try {
-      const results = await yt.search(q, { type: 'video' });
-      const songs = (results.videos || [])
-        .slice(0, 10)
-        .map(v => ({
-          id: v.id,
-          title: v.title?.text || v.title?.toString() || '',
-          artist: v.author?.name || '',
-          duration: v.duration?.text || '',
-          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
-          src: v.id
-        }))
-        .filter(s => s.id && s.title);
-      if (songs.length > 0) return res.json({ results: songs });
-    } catch (e) { logger.warn('yt.search fallback hatasi', { error: e.message }); }
-  }
-
-  res.json({ results: [] });
-});
-
-app.get('/api/music/stream/:videoId', async (req, res) => {
-  const { videoId } = req.params;
-  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
-
-  const yt = await getInnertube().catch(() => null);
-  if (!yt) return res.status(500).json({ error: 'InnerTube yüklenemedi' });
-
-  try {
-    const info = await yt.getBasicInfo(videoId);
-    const formats = info?.streaming_data?.adaptive_formats || [];
-    const audio = formats
-      .filter(f => f.mime_type?.startsWith('audio/'))
-      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-
-    if (audio?.decipher) {
-      audio.decipher(yt.session.player);
-    }
-
-    if (audio?.url) {
-      const proxyUrl = `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(audio.url)}`;
-      logger.info(`Stream bulundu: ${videoId}`);
-      return res.json({ url: audio.url, proxyUrl });
-    }
-
-    if (audio?.signature_cipher) {
-      const decoded = yt.session.player.decipher(undefined, audio.signature_cipher);
-      if (decoded) {
-        const proxyUrl = `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(decoded)}`;
-        logger.info(`Stream bulundu (cipher): ${videoId}`);
-        return res.json({ url: decoded, proxyUrl });
-      }
-    }
-  } catch (e) {
-    logger.warn('stream hatasi', { videoId, error: e.message });
-  }
-
-  res.status(502).json({ error: 'Stream bulunamadı' });
-});
-
-app.get('/api/music/proxy-audio', async (req, res) => {
-  const audioUrl = req.query.url;
-  if (!audioUrl) return res.status(400).end();
-  try {
-    const r = await fetch(audioUrl, { signal: AbortSignal.timeout(30000) });
-    if (!r.ok) return res.status(r.status).end();
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/webm');
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    const reader = r.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) { res.end(); return; }
-      res.write(value);
-    }
-  } catch (e) { if (!res.headersSent) res.status(502).end(); }
-});
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 if (!ADMIN_SECRET) logger.warn('ÔÜá´©Å ADMIN_SECRET tan─▒ml─▒ de─şil. Admin VIP ├Âzellikleri pasif olacak.');
@@ -511,43 +413,35 @@ io.on('connection', (socket) => {
     try {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
-      let results = [];
 
       const yt = await getInnertube().catch(() => null);
-      if (yt) {
-        try {
-          const sr = await yt.music.search(q, { type: 'song' });
-          results = (sr.songs?.contents || []).map(s => ({
-            id: s.id, title: s.title?.text || s.title?.toString() || '',
-            artist: s.artists?.[0]?.name || '', duration: s.duration?.text || '',
-            thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
-            src: s.id
-          })).filter(s => s.id && s.title).slice(0, 8);
-        } catch {}
-      }
-      if (results.length === 0 && mk) {
-        try {
-          const songs = await mk.search(q, { filter: 'songs', limit: 8 });
-          results = songs.map(s => ({
-            id: s.videoId, title: s.title, artist: s.artist || '',
-            duration: s.duration || 0,
-            thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
-            src: s.videoId
-          }));
-        } catch {}
-      }
-      if (results.length === 0) {
-        try {
-          const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=8`);
-          const data = await r.json();
-          results = (data.data || []).map(t => ({
-            id: t.id, title: t.title, artist: t.artist?.name || '',
-            duration: t.duration, thumbnail: t.album?.cover_medium || '',
-            youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim(), src: ''
-          }));
-        } catch {}
-      }
-      socket.emit('search_results', results);
+      if (!yt) { socket.emit('search_results', []); return; }
+
+      try {
+        const sr = await yt.music.search(q, { type: 'song' });
+        const results = (sr.songs?.contents || []).map(s => ({
+          id: s.id, title: s.title?.text || s.title?.toString() || '',
+          artist: s.artists?.[0]?.name || '', duration: s.duration?.text || '',
+          thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
+          src: s.id
+        })).filter(s => s.id && s.title).slice(0, 8);
+        socket.emit('search_results', results);
+        return;
+      } catch {}
+
+      try {
+        const sr = await yt.search(q, { type: 'video' });
+        const results = (sr.videos || []).slice(0, 8).map(v => ({
+          id: v.id, title: v.title?.text || v.title?.toString() || '',
+          artist: v.author?.name || '', duration: v.duration?.text || '',
+          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+          src: v.id
+        })).filter(s => s.id && s.title);
+        socket.emit('search_results', results);
+        return;
+      } catch {}
+
+      socket.emit('search_results', []);
     } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
   });
 

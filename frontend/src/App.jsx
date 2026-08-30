@@ -95,7 +95,6 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [youtubeError, setYoutubeError] = useState(null);
-  const [fallbackUrl, setFallbackUrl] = useState('');
 
   const [replyTo, setReplyTo] = useState(null);
   const [friendOnlineStatuses, setFriendOnlineStatuses] = useState({});
@@ -131,7 +130,6 @@ function App() {
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
   const ytPlayerRef = useRef(null);
-  const customVideoRef = useRef(null);
   const socketRef = useRef(null);
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
@@ -456,15 +454,6 @@ function App() {
     setYoutubeError({ code, message: msgs[code] || 'YouTube videosu bu sitede oynatılamıyor.' });
   };
 
-  const useFallbackSource = () => {
-    const url = fallbackUrl.trim();
-    if (!url) return;
-    const parsed = processUrl(url);
-    if (!parsed || !parsed.src) return;
-    setYoutubeError(null); setMediaType(parsed.type); setMediaSrc(parsed.src);
-    sendAction('CHANGE_MEDIA', { type: parsed.type, src: parsed.src }); setFallbackUrl('');
-  };
-
   const openYouTubeExternally = () => {
     if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
   };
@@ -574,9 +563,6 @@ function App() {
           if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
             ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
             if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo(); else ytPlayerRef.current.pauseVideo();
-          } else if (data.currentMedia.type === 'custom_video' && customVideoRef.current) {
-            customVideoRef.current.currentTime = data.currentMedia.time || 0;
-            if (data.currentMedia.isPlaying) customVideoRef.current.play(); else customVideoRef.current.pause();
           }
         }, 800);
       }
@@ -922,11 +908,10 @@ function App() {
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
           />
           <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta} roomType={roomType}
-            customVideoRef={customVideoRef} ytPlayerRef={ytPlayerRef}
-            reactions={reactions} fallbackUrl={fallbackUrl} setFallbackUrl={setFallbackUrl}
-            useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
-            setYoutubeError={setYoutubeError} setMediaType={setMediaType}
+            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
+            ytPlayerRef={ytPlayerRef}
+            reactions={reactions}
+            openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
           />
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />

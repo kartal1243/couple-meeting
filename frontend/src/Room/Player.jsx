@@ -1,6 +1,5 @@
 import YouTube from 'react-youtube';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { BACKEND_URL } from '../constants';
+import { useCallback } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -10,15 +9,10 @@ function extractVideoId(src) {
 }
 
 export default function Player({
-  mediaType, mediaSrc, youtubeError, customVideoRef, ytPlayerRef, mediaMeta,
-  reactions, fallbackUrl, setFallbackUrl, useFallbackSource,
-  openYouTubeExternally, setYoutubeError, setMediaType, handleMediaEnd, handleYouTubeError
+  mediaType, mediaSrc, youtubeError, ytPlayerRef, mediaMeta,
+  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError
 }) {
   const videoId = extractVideoId(mediaSrc);
-  const audioRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [musicLoading, setMusicLoading] = useState(false);
-  const [musicError, setMusicError] = useState(false);
 
   const ytOpts = {
     height: '100%',
@@ -37,70 +31,11 @@ export default function Player({
     ytPlayerRef.current = e.target;
   }, [ytPlayerRef]);
 
-  const setupMediaSession = useCallback(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: mediaMeta?.title || 'Couple Meeting',
-        artist: mediaMeta?.artist || 'Müzik Odası',
-        album: 'Couple Meeting',
-        artwork: [{
-          src: mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }]
-      });
-      navigator.mediaSession.setActionHandler('play', () => { audioRef.current?.play(); setIsPlaying(true); });
-      navigator.mediaSession.setActionHandler('pause', () => { audioRef.current?.pause(); setIsPlaying(false); });
-      navigator.mediaSession.setActionHandler('stop', () => { audioRef.current?.pause(); setIsPlaying(false); });
-    }
-  }, [mediaMeta, videoId]);
-
-  useEffect(() => {
-    if (mediaType === 'music' && videoId && audioRef.current) {
-      setMusicLoading(true);
-      setMusicError(false);
-      setIsPlaying(false);
-
-      const audio = audioRef.current;
-      fetch(`${BACKEND_URL}/api/music/stream/${videoId}`)
-        .then(r => { if (!r.ok) throw new Error('fail'); return r.json(); })
-        .then(data => {
-          const streamUrl = data.proxyUrl || data.url;
-          if (!streamUrl) throw new Error('no url');
-          audio.src = streamUrl;
-          audio.load();
-          audio.oncanplay = () => {
-            setMusicLoading(false);
-            audio.play().then(() => {
-              setIsPlaying(true);
-              setupMediaSession();
-            }).catch(() => setIsPlaying(false));
-          };
-          audio.onerror = () => { setMusicLoading(false); setMusicError(true); };
-        })
-        .catch(() => { setMusicLoading(false); setMusicError(true); });
-    }
-  }, [mediaType, videoId, setupMediaSession]);
-
-  const togglePlayPause = () => {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) {
-      audioRef.current.play();
-      setIsPlaying(true);
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-    } else {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-    }
-  };
-
   return (
     <div className="cm-video-wrap" style={{
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
-      <audio ref={audioRef} playsInline preload="auto" onEnded={() => { setIsPlaying(false); handleMediaEnd?.(); }} />
 
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
@@ -123,30 +58,20 @@ export default function Player({
       )}
 
       {mediaType === 'music' && videoId && (
-        <div style={{ textAlign: 'center', color: '#fff', padding: '20px', zIndex: 2 }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', position: 'relative' }}>
           <img
             src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
             alt=""
-            style={{
-              width: '240px', height: '240px', borderRadius: '20px', objectFit: 'cover',
-              boxShadow: isPlaying ? '0 15px 50px rgba(0, 168, 132, 0.4)' : '0 10px 40px rgba(0,0,0,.6)',
-              marginBottom: '18px', transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-              transform: isPlaying ? 'scale(1.03)' : 'scale(1)'
-            }}
+            style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15, filter: 'blur(20px)', zIndex: 0 }}
           />
-          <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Şarkı Çalıyor'}</div>
-          <div style={{ fontSize: '14px', color: '#8696a0', marginBottom: '16px' }}>{mediaMeta?.artist || 'Couple Meeting Müzik'}</div>
-          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ Şarkı yükleniyor...</div>}
-          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginBottom: '12px' }}>❌ Şarkı yüklenemedi. Tekrar deneyin.</div>}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button onClick={togglePlayPause} style={{
-              background: isPlaying ? '#ea4335' : '#00a884', color: '#fff', border: 'none',
-              padding: '12px 32px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer',
-              fontSize: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', transition: '0.2s all'
-            }}>
-              {isPlaying ? '⏸ Durdur' : '▶ Çal'}
-            </button>
-          </div>
+          <YouTube
+            videoId={videoId}
+            opts={ytOpts}
+            style={{ width: '100%', height: '100%', maxWidth: '100%', position: 'relative', zIndex: 1 }}
+            onReady={handleYTReady}
+            onError={handleYouTubeError}
+            onEnd={handleMediaEnd}
+          />
         </div>
       )}
 
