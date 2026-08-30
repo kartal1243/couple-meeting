@@ -26,7 +26,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.length === 0) return cb(null, true);
+    if (!origin) return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(null, false);
   },
@@ -137,8 +137,6 @@ app.post('/api/vip/create-checkout', async (req, res) => {
     res.json({ ok: false, message: '├ûdeme ba┼şlat─▒lamad─▒.' });
   }
 });
-
-app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
 // --- YOUTUBE SEARCH (youtubei.js) ---
 let Innertube, UniversalCache;
@@ -557,9 +555,6 @@ io.on('connection', (socket) => {
       room.lastActivityAt = Date.now();
     }
     socket.to(cleanRoomId).emit('room_action', { type, payload });
-    if (type === 'CHANGE_MEDIA') {
-      io.to(cleanRoomId).emit('media_source_changed', { type: payload.type, src: payload.src, source: payload.source || payload.type, title: sanitize(payload.title, 200) || '' });
-    }
   });
 
   socket.on('leave_room', () => {

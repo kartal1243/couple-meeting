@@ -2,12 +2,6 @@ export const BACKEND_URL = 'https://couple-meeting.onrender.com';
 
 export const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
 
-export const CITIES = [
-  'Zonguldak', 'Tokat', 'İstanbul', 'Ankara', 'İzmir', 'Antalya',
-  'Bursa', 'Trabzon', 'Sivas', 'Adana', 'Eskişehir', 'Samsun',
-  'Kayseri', 'Konya', 'Diyarbakır'
-];
-
 export const THEMES = {
   default: { bg: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)', cardBg: '#111b21', primary: '#00a884' },
   purple: { bg: 'linear-gradient(135deg, #130f40 0%, #000000 100%)', cardBg: '#1e1b4b', primary: '#a855f7' },

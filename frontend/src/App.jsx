@@ -10,7 +10,6 @@ import Hero from './Home/Hero';
 import Features from './Home/Features';
 import PublicRooms from './Home/PublicRooms';
 import SocialPreview from './Home/SocialPreview';
-import CreateJoin from './Home/CreateJoin';
 
 import Header from './Room/Header';
 import SearchBar from './Room/SearchBar';
@@ -37,7 +36,6 @@ function App() {
     return !!urlParams.get('room');
   });
 
-  const [activeTab, setActiveTab] = useState('create');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
@@ -61,11 +59,6 @@ function App() {
   const [roomTheme, setRoomTheme] = useState('default');
   const [roomType, setRoomType] = useState('video');
   const [roomUsersList, setRoomUsersList] = useState([]);
-
-  const [roomPassword, setRoomPassword] = useState('');
-  const [maxUsers, setMaxUsers] = useState('2');
-  const [joinRoomInput, setJoinRoomInput] = useState('');
-  const [joinPassInput, setJoinPassInput] = useState('');
 
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
@@ -488,7 +481,7 @@ function App() {
       navigator.mediaSession.setActionHandler('pause', handlePause);
       navigator.mediaSession.setActionHandler('nexttrack', () => handleMediaEndRef.current?.());
     }
-  }, [mediaSrc, mediaType, playMode, playlist]);
+  }, [mediaType]);
 
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
   useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
