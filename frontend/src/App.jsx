@@ -386,14 +386,14 @@ function App() {
   };
 
   const handlePlay = () => {
-    if (mediaType === 'youtube' && ytPlayerRef.current) {
+    if (ytPlayerRef.current) {
       try { ytPlayerRef.current.playVideo(); } catch {}
     }
     sendAction('PLAY', { time: 0 });
   };
 
   const handlePause = () => {
-    if (mediaType === 'youtube' && ytPlayerRef.current) {
+    if (ytPlayerRef.current) {
       try { ytPlayerRef.current.pauseVideo(); } catch {}
     }
     sendAction('PAUSE', {});
@@ -591,15 +591,15 @@ function App() {
 
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+        if (ytPlayerRef.current) {
           try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {}
         }
       } else if (type === 'PAUSE') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+        if (ytPlayerRef.current) {
           try { ytPlayerRef.current.pauseVideo(); } catch {}
         }
       } else if (type === 'SEEK') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
+        if (ytPlayerRef.current) {
           try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {}
         }
       } else if (type === 'CHANGE_MEDIA') {
