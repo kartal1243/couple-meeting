@@ -76,25 +76,24 @@ export default function Player({
       setIsPlaying(false);
 
       const audio = audioRef.current;
-      audio.src = `${BACKEND_URL}/api/music/stream/${videoId}`;
-      audio.load();
-
-      audio.oncanplay = () => {
-        setMusicLoading(false);
-        audio.play().then(() => {
-          setIsPlaying(true);
-          setupMediaSession();
-          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        }).catch((err) => {
-          console.warn('Oynatma etkileşim bekliyor:', err);
-          setIsPlaying(false);
-        });
-      };
-
-      audio.onerror = () => {
-        setMusicLoading(false);
-        setMusicError(true);
-      };
+      fetch(`${BACKEND_URL}/api/music/stream/${videoId}`)
+        .then(r => { if (!r.ok) throw new Error('fail'); return r.json(); })
+        .then(data => {
+          const streamUrl = data.proxyUrl || data.url;
+          if (!streamUrl) throw new Error('no url');
+          audio.src = streamUrl;
+          audio.load();
+          audio.oncanplay = () => {
+            setMusicLoading(false);
+            audio.play().then(() => {
+              setIsPlaying(true);
+              setupMediaSession();
+              if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+            }).catch(() => setIsPlaying(false));
+          };
+          audio.onerror = () => { setMusicLoading(false); setMusicError(true); };
+        })
+        .catch(() => { setMusicLoading(false); setMusicError(true); });
     }
   }, [mediaType, videoId, setupMediaSession]);
 

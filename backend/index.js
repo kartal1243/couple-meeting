@@ -252,9 +252,9 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
         .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
       if (audio?.url) {
         logger.info(`Stream bulundu: ${videoId} via ${instance}`);
-        return res.json({ url: audio.url, title: data.title, thumbnail: data.thumbnailUrl });
+        return res.json({ url: audio.url, proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(audio.url)}`, title: data.title, thumbnail: data.thumbnailUrl });
       }
-    } catch (e) { logger.warn(`Invidious ${instance} ba┼şar─▒s─▒z`, { videoId, error: e.message }); }
+    } catch (e) { logger.warn(`Invidious ${instance} başarısız`, { videoId, error: e.message }); }
   }
 
   if (mk) {
@@ -263,11 +263,32 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
         mk.getStream(videoId),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
       ]);
-      if (stream?.url) return res.json({ url: stream.url });
+      if (stream?.url) return res.json({ url: stream.url, proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(stream.url)}` });
     } catch {}
   }
 
-  res.status(502).json({ error: 'Stream bulunamad─▒' });
+  res.status(502).json({ error: 'Stream bulunamadı' });
+});
+
+app.get('/api/music/proxy-audio', async (req, res) => {
+  const audioUrl = req.query.url;
+  if (!audioUrl) return res.status(400).end();
+  try {
+    const r = await fetch(audioUrl, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) return res.status(r.status).end();
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/webm');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const reader = r.body.getReader();
+    const pump = async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) { res.end(); return; }
+        res.write(value);
+      }
+    };
+    await pump();
+  } catch (e) { res.status(502).end(); }
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
