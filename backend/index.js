@@ -234,50 +234,55 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
   const { spawn } = require('child_process');
-  const yt = spawn('yt-dlp', [
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
-    '--no-playlist',
-    '-o', '-',
-    `https://www.youtube.com/watch?v=${videoId}`
-  ], { timeout: 30000 });
+
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Access-Control-Allow-Origin', '*');
 
   let started = false;
+  let killed = false;
+
+  const kill = () => {
+    if (!killed) { killed = true; try { yt.kill('SIGTERM'); } catch {} }
+  };
+
+  const yt = spawn('yt-dlp', [
+    '-f', 'bestaudio[ext=m4a]/bestaudio/best',
+    '--no-playlist',
+    '--no-check-certificates',
+    '-x', '--audio-format', 'mp3',
+    '-o', '-',
+    `https://www.youtube.com/watch?v=${videoId}`
+  ], { timeout: 120000 });
 
   yt.stdout.on('data', (chunk) => {
     if (!started) {
       started = true;
-      res.setHeader('Content-Type', 'audio/mp4');
-      res.setHeader('Transfer-Encoding', 'chunked');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Access-Control-Allow-Origin', '*');
     }
-    res.write(chunk);
+    if (!res.writableEnded) res.write(chunk);
   });
 
   yt.stderr.on('data', (data) => {
-    logger.warn('yt-dlp stderr', { msg: data.toString().trim() });
+    const msg = data.toString().trim();
+    if (msg) logger.warn('yt-dlp', { videoId, msg: msg.slice(0, 200) });
   });
 
   yt.on('close', (code) => {
     if (!started) {
-      if (!res.headersSent) {
-        res.status(502).json({ error: 'Stream bulunamadı' });
-      }
-    } else {
+      if (!res.headersSent) res.status(502).json({ error: 'Stream bulunamadı' });
+    } else if (!res.writableEnded) {
       res.end();
     }
   });
 
   yt.on('error', (err) => {
-    logger.warn('yt-dlp hatası', { error: err.message });
-    if (!started && !res.headersSent) {
-      res.status(502).json({ error: 'Stream bulunamadı' });
-    }
+    logger.warn('yt-dlp spawn hatası', { videoId, error: err.message });
+    if (!started && !res.headersSent) res.status(502).json({ error: 'Stream bulunamadı' });
   });
 
-  req.on('close', () => {
-    if (!yt.killed) yt.kill('SIGTERM');
-  });
+  req.on('close', kill);
+  req.on('aborted', kill);
 });
 
 app.get('/api/music/proxy-audio', async (req, res) => {
