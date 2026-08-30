@@ -9,9 +9,17 @@ const crypto = require('crypto');
 const logger = require('./utils/logger');
 const db = require('./utils/database');
 
-const app = express();
+// ═══════════════════════════════════════════════════════════
+// EXPRESS APP
+// ═══════════════════════════════════════════════════════════
 
-// --- SECURITY ---
+const app = express();
+const isProd = process.env.NODE_ENV === 'production';
+
+// ═══════════════════════════════════════════════════════════
+// 1. GÜVENLİK & MIDDLEWARE
+// ═══════════════════════════════════════════════════════════
+
 app.use(helmet({ contentSecurityPolicy: false }));
 
 const ALLOWED_ORIGINS = [
@@ -22,7 +30,6 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000'
 ];
-const isProd = process.env.NODE_ENV === 'production';
 
 app.use(cors({
   origin: (origin, cb) => {
@@ -33,17 +40,47 @@ app.use(cors({
   credentials: true
 }));
 
-// --- STRIPE ---
+app.use(express.json({ limit: '1mb' }));
+
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' } });
+app.use('/api/', apiLimiter);
+app.use('/api/vip/create-checkout', authLimiter);
+app.use('/api/vip/admin-grant', authLimiter);
+
+// ═══════════════════════════════════════════════════════════
+// 2. YARDIMCI FONKSİYONLAR
+// ═══════════════════════════════════════════════════════════
+
+function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>]/g, ''); }
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
+
+// ═══════════════════════════════════════════════════════════
+// 3. SAĞLIK & ANA SAYFA
+// ═══════════════════════════════════════════════════════════
+
+app.get('/', (req, res) => res.status(200).send('Couple Meeting Backend Active!'));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now(), db: 'sqlite' }));
+
+// ═══════════════════════════════════════════════════════════
+// 4. STRIPE ÖDEME SİSTEMİ
+// ═══════════════════════════════════════════════════════════
+
 let stripe = null;
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
 if (STRIPE_KEY && STRIPE_KEY !== 'sk_test_BURAYA_STRIPE_ANAHTARINI_YAZ') {
   stripe = require('stripe')(STRIPE_KEY);
-  logger.info('­şÆ│ Stripe entegrasyonu aktif.');
+  logger.info('Stripe entegrasyonu aktif.');
 } else {
-  logger.warn('ÔÜá´©Å  Stripe tan─▒ml─▒ de─şil. Test modu.');
+  logger.warn('Stripe tanimli degil. Test modu.');
 }
 
-// Stripe webhook - express.json() ├ûNCE
+const VIP_PLANS = {
+  monthly: { price: 29.90, duration: 30 * 24 * 60 * 60 * 1000, label: 'Aylik VIP' },
+  yearly: { price: 199.90, duration: 365 * 24 * 60 * 60 * 1000, label: 'Yillik VIP' }
+};
+
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) return res.status(200).send('Stripe pasif');
   const sig = req.headers['stripe-signature'];
@@ -52,7 +89,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
   let event;
   try { event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret); }
-  catch (err) { logger.error('Webhook imza hatas─▒', { error: err.message }); return res.status(400).send(`Webhook Error: ${err.message}`); }
+  catch (err) { logger.error('Webhook imza hatasi', { error: err.message }); return res.status(400).send(`Webhook Error: ${err.message}`); }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
@@ -66,51 +103,29 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         vip_plan: plan, vip_activated_at: now,
         stripe_customer_id: session.customer || '', stripe_subscription_id: session.subscription || ''
       });
-      logger.info(`­şææ [STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
+      logger.info(`[STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
       emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: startFrom + VIP_PLANS[plan].duration, plan });
     }
   }
+
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;
     const allUsers = db.getDb().prepare('SELECT username FROM users WHERE stripe_subscription_id = ?').all(sub.id);
     for (const u of allUsers) {
       db.updateUser(u.username, { is_vip: 0, vip_expiry: Date.now() });
-      logger.info(`ÔØî [STRIPE] VIP iptal: ${u.username}`);
+      logger.info(`[STRIPE] VIP iptal: ${u.username}`);
       emitToUser(u.username, 'vip_activated', { isVip: false, vipExpiry: Date.now(), plan: null });
     }
   }
+
   res.status(200).json({ received: true });
 });
 
-app.use(express.json({ limit: '1mb' }));
-
-// --- RATE LIMITING ---
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: '├çok fazla istek.' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: '├çok fazla deneme.' } });
-app.use('/api/', apiLimiter);
-app.use('/api/vip/create-checkout', authLimiter);
-app.use('/api/vip/admin-grant', authLimiter);
-
-// --- INPUT VALIDATION ---
-function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>]/g, ''); }
-function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
-
-// --- ROUTES ---
-app.get('/', (req, res) => res.status(200).send('­şÜÇ Couple Meeting Backend Active!'));
-app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now(), db: 'sqlite' }));
-
-// --- VIP ---
-const VIP_PLANS = {
-  monthly: { price: 29.90, duration: 30 * 24 * 60 * 60 * 1000, label: 'Ayl─▒k VIP' },
-  yearly: { price: 199.90, duration: 365 * 24 * 60 * 60 * 1000, label: 'Y─▒ll─▒k VIP' }
-};
-
 app.post('/api/vip/create-checkout', async (req, res) => {
   const { token, plan } = req.body;
-  if (!token || !plan || !VIP_PLANS[plan]) return res.json({ ok: false, message: 'Ge├ğersiz plan.' });
+  if (!token || !plan || !VIP_PLANS[plan]) return res.json({ ok: false, message: 'Gecersiz plan.' });
   const user = db.getUserByToken(token);
-  if (!user) return res.json({ ok: false, message: 'Giri┼ş yapmal─▒s─▒n.' });
+  if (!user) return res.json({ ok: false, message: 'Giris yapmalisin.' });
 
   if (!stripe) {
     const now = Date.now();
@@ -118,8 +133,8 @@ app.post('/api/vip/create-checkout', async (req, res) => {
     const newExpiry = startFrom + VIP_PLANS[plan].duration;
     db.updateUser(user.username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan, vip_activated_at: now });
     emitToUser(user.username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan });
-    logger.info(`­şææ VIP test aktif: ${user.username} (${VIP_PLANS[plan].label})`);
-    return res.json({ ok: true, testMode: true, message: 'Test modunda aktifle┼ştirildi.', vipExpiry: newExpiry, plan });
+    logger.info(`VIP test aktif: ${user.username} (${VIP_PLANS[plan].label})`);
+    return res.json({ ok: true, testMode: true, message: 'Test modunda aktifles tirildi.', vipExpiry: newExpiry, plan });
   }
 
   try {
@@ -133,12 +148,34 @@ app.post('/api/vip/create-checkout', async (req, res) => {
     });
     res.json({ ok: true, sessionId: session.id, url: session.url });
   } catch (err) {
-    logger.error('Stripe checkout hatas─▒', { error: err.message });
-    res.json({ ok: false, message: '├ûdeme ba┼şlat─▒lamad─▒.' });
+    logger.error('Stripe checkout hatasi', { error: err.message });
+    res.json({ ok: false, message: 'Odeme baslatilamadi.' });
   }
 });
 
-// --- YOUTUBE SEARCH (youtubei.js) ---
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+if (!ADMIN_SECRET) logger.warn('ADMIN_SECRET tanimli degil. Admin VIP ozellikleri pasif olacak.');
+
+app.post('/api/vip/admin-grant', (req, res) => {
+  const { secret, username, plan } = req.body;
+  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz erisim.' });
+  if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Gecersiz parametre.' });
+  const user = db.getUser(username);
+  if (!user) return res.json({ ok: false, message: 'Kullanici bulunamadi.' });
+
+  const now = Date.now();
+  const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+  const newExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
+  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now });
+  logger.info(`[ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
+  emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan: plan || 'yearly' });
+  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: newExpiry });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 5. YOUTUBE ARAMA (youtubei.js)
+// ═══════════════════════════════════════════════════════════
+
 let Innertube, UniversalCache;
 try {
   ({ Innertube, UniversalCache } = require('youtubei.js'));
@@ -158,26 +195,10 @@ async function getInnertube() {
   return innertube;
 }
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
-if (!ADMIN_SECRET) logger.warn('ÔÜá´©Å ADMIN_SECRET tan─▒ml─▒ de─şil. Admin VIP ├Âzellikleri pasif olacak.');
+// ═══════════════════════════════════════════════════════════
+// 6. SOCKET.IO SERVER
+// ═══════════════════════════════════════════════════════════
 
-app.post('/api/vip/admin-grant', (req, res) => {
-  const { secret, username, plan } = req.body;
-  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz eri┼şim.' });
-  if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Ge├ğersiz parametre.' });
-  const user = db.getUser(username);
-  if (!user) return res.json({ ok: false, message: 'Kullan─▒c─▒ bulunamad─▒.' });
-
-  const now = Date.now();
-  const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
-  const newExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
-  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now });
-  logger.info(`­şææ [ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
-  emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan: plan || 'yearly' });
-  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: newExpiry });
-});
-
-// --- SERVER ---
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true }
@@ -186,10 +207,12 @@ const io = new Server(server, {
 const rooms = {};
 const onlineUsers = {};
 
+// --- Yardimci Fonksiyonlar ---
+
 function publicUser(u) {
   if (!u) return null;
   return {
-    username: u.username, email: u.email, avatar: u.avatar || '­şÉ▒',
+    username: u.username, email: u.email, avatar: u.avatar || '🐱',
     bio: u.bio || '', status: u.status || '', createdAt: u.createdAt,
     isOnline: !!onlineUsers[u.username],
     lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null,
@@ -228,31 +251,10 @@ function setOffline(username, socketId) {
 }
 
 function broadcastOnlineStatus(username) {
-  for (const friendName of (db.getDb().prepare('SELECT user2 as f FROM friendships WHERE user1 = ?').all(username).map(r => r.f))) {
+  for (const friendName of db.getDb().prepare('SELECT user2 as f FROM friendships WHERE user1 = ?').all(username).map(r => r.f)) {
     emitToUser(friendName, 'friend_online_status', { username, isOnline: !!onlineUsers[username], lastSeen: onlineUsers[username]?.lastSeen || Date.now() });
   }
 }
-
-// Token cleanup
-const TOKEN_CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
-const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
-setInterval(() => {
-  const cleaned = db.cleanOldTokens(TOKEN_MAX_AGE);
-  if (cleaned > 0) logger.info(`­şğ╣ ${cleaned} eski token temizlendi.`);
-}, TOKEN_CLEANUP_INTERVAL);
-
-// Room cleanup
-const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000;
-const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000;
-setInterval(() => {
-  const now = Date.now(); let cleaned = 0;
-  for (const [id, room] of Object.entries(rooms)) {
-    if (room.users.length === 0 && !room.password && !room.isVip && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
-      delete rooms[id]; cleaned++;
-    }
-  }
-  if (cleaned > 0) { logger.info(`­şğ╣ ${cleaned} bo┼ş oda temizlendi.`); broadcastRooms(); }
-}, ROOM_CLEANUP_INTERVAL);
 
 function getPublicRoomsList() {
   return Object.entries(rooms).map(([id, room]) => ({
@@ -260,7 +262,9 @@ function getPublicRoomsList() {
     maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip
   }));
 }
+
 function broadcastRooms() { io.emit('public_rooms_update', getPublicRoomsList()); }
+
 function updateRoomUsers(roomId) {
   if (rooms[roomId]) {
     io.to(roomId).emit('room_user_count_update', {
@@ -271,56 +275,87 @@ function updateRoomUsers(roomId) {
   }
 }
 
-// --- SOCKET.IO ---
+// --- Periyodik Temizlik ---
+
+const TOKEN_CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+setInterval(() => {
+  const cleaned = db.cleanOldTokens(TOKEN_MAX_AGE);
+  if (cleaned > 0) logger.info(`${cleaned} eski token temizlendi.`);
+}, TOKEN_CLEANUP_INTERVAL);
+
+const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000;
+const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now(); let cleaned = 0;
+  for (const [id, room] of Object.entries(rooms)) {
+    if (room.users.length === 0 && !room.password && !room.isVip && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
+      delete rooms[id]; cleaned++;
+    }
+  }
+  if (cleaned > 0) { logger.info(`${cleaned} bos oda temizlendi.`); broadcastRooms(); }
+}, ROOM_CLEANUP_INTERVAL);
+
+// ═══════════════════════════════════════════════════════════
+// 7. SOCKET EVENT HANDLER'LARI
+// ═══════════════════════════════════════════════════════════
+
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
   socket.emit('global_chat_history', db.getGlobalMessages(100));
 
-  // AUTH
+  // ──────────────────────────────────────────────────────
+  // 7.1 KIMLIK DOGRULAMA
+  // ──────────────────────────────────────────────────────
+
   socket.on('auth_register', ({ username, email, password, bio, avatar }) => {
     const cleanUsername = sanitize(username, 20).toLowerCase();
     const cleanEmail = sanitize(email, 100).toLowerCase();
-    if (!cleanUsername || !cleanEmail || !password) return socket.emit('auth_result', { ok: false, message: 'Kullan─▒c─▒ ad─▒, e-posta ve ┼şifre gerekli.' });
-    if (!isValidUsername(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Kullan─▒c─▒ ad─▒ 3-20 karakter olmal─▒; sadece harf, say─▒ ve _ kullan.' });
-    if (!isValidEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Ge├ğerli bir e-posta gir.' });
-    if (typeof password !== 'string' || password.length < 6) return socket.emit('auth_result', { ok: false, message: '┼Şifre en az 6 karakter olmal─▒.' });
-    if (password.length > 128) return socket.emit('auth_result', { ok: false, message: '┼Şifre ├ğok uzun.' });
-    if (db.getUser(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Bu kullan─▒c─▒ ad─▒ zaten al─▒nm─▒┼ş.' });
-    if (db.getUserByEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Bu e-posta zaten kay─▒tl─▒.' });
+    if (!cleanUsername || !cleanEmail || !password) return socket.emit('auth_result', { ok: false, message: 'Kullanici adi, e-posta ve sifre gerekli.' });
+    if (!isValidUsername(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Kullanici adi 3-20 karakter olmali; sadece harf, sayi ve _ kullan.' });
+    if (!isValidEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Gecerli bir e-posta gir.' });
+    if (typeof password !== 'string' || password.length < 6) return socket.emit('auth_result', { ok: false, message: 'Sifre en az 6 karakter olmali.' });
+    if (password.length > 128) return socket.emit('auth_result', { ok: false, message: 'Sifre cok uzun.' });
+    if (db.getUser(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Bu kullanici adi zaten alinmis.' });
+    if (db.getUserByEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Bu e-posta zaten kayitli.' });
 
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-    db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '­şÉ▒', sanitize(bio, 120));
+    db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '🐱', sanitize(bio, 120));
     const token = db.createToken(cleanUsername);
     socket.socialUsername = cleanUsername;
     setOnline(cleanUsername, socket.id);
-    logger.info(`Ô£à Yeni kay─▒t: ${cleanUsername}`);
+    logger.info(`Yeni kayit: ${cleanUsername}`);
     socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
   });
 
   socket.on('auth_login', ({ email, password }) => {
     const cleanEmail = sanitize(email, 100).toLowerCase();
     const user = db.getUserByEmail(cleanEmail);
-    if (!user) return socket.emit('auth_result', { ok: false, message: 'E-posta veya ┼şifre hatal─▒.' });
+    if (!user) return socket.emit('auth_result', { ok: false, message: 'E-posta veya sifre hatali.' });
     try {
       const [salt, storedHash] = user.passwordHash.split(':');
       const check = crypto.scryptSync(password || '', salt, 64).toString('hex');
       if (!crypto.timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(check, 'hex'))) {
-        return socket.emit('auth_result', { ok: false, message: 'E-posta veya ┼şifre hatal─▒.' });
+        return socket.emit('auth_result', { ok: false, message: 'E-posta veya sifre hatali.' });
       }
-    } catch { return socket.emit('auth_result', { ok: false, message: 'E-posta veya ┼şifre hatal─▒.' }); }
+    } catch { return socket.emit('auth_result', { ok: false, message: 'E-posta veya sifre hatali.' }); }
 
     const token = db.createToken(user.username);
     socket.socialUsername = user.username;
     setOnline(user.username, socket.id);
     broadcastOnlineStatus(user.username);
-    logger.info(`­şöæ Giri┼ş: ${user.username}`);
+    logger.info(`Giris: ${user.username}`);
     socket.emit('auth_result', { ok: true, user: publicUser(user), token });
     socket.emit('friends_update', {
       friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
       requests: db.getPendingFriendRequests(user.username)
     });
   });
+
+  // ──────────────────────────────────────────────────────
+  // 7.2 PROFIL & SOSYAL
+  // ──────────────────────────────────────────────────────
 
   socket.on('social_sync', ({ token }) => {
     const user = db.getUserByToken(token);
@@ -338,31 +373,33 @@ io.on('connection', (socket) => {
   socket.on('update_profile', ({ token, bio, status, avatar }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
-    db.updateUser(user.username, { bio: sanitize(bio, 120), status: sanitize(status, 80), avatar: sanitize(avatar, 10) || user.avatar || '­şÉ▒' });
+    db.updateUser(user.username, { bio: sanitize(bio, 120), status: sanitize(status, 80), avatar: sanitize(avatar, 10) || user.avatar || '🐱' });
     socket.emit('social_profile', publicUser(db.getUser(user.username)));
   });
 
-  // ARKADA┼ŞLIK
+  // ──────────────────────────────────────────────────────
+  // 7.3 ARKADASLIK SISTEMI
+  // ──────────────────────────────────────────────────────
+
   socket.on('friend_search', ({ q, token }) => {
     const term = sanitize(q, 20).toLowerCase();
     const current = db.getUserByToken(token)?.username;
     if (!term || term.length < 1) return socket.emit('friend_search_results', []);
-    const results = db.searchUsers(term, current);
-    socket.emit('friend_search_results', results);
+    socket.emit('friend_search_results', db.searchUsers(term, current));
   });
 
   socket.on('friend_request', ({ targetUsername, token }) => {
     const from = db.getUserByToken(token);
     const target = db.getUser(sanitize(targetUsername, 20).toLowerCase());
-    if (!from) return socket.emit('friend_request_status', { message: 'Giri┼ş yapmal─▒s─▒n.' });
-    if (!target) return socket.emit('friend_request_status', { message: 'Kullan─▒c─▒ bulunamad─▒.' });
-    if (target.username === from.username) return socket.emit('friend_request_status', { message: 'Kendine istek g├Ânderemezsin.' });
-    if (db.areFriends(from.username, target.username)) return socket.emit('friend_request_status', { message: 'Zaten arkada┼şs─▒n─▒z.' });
-    if (db.hasPendingRequest(from.username, target.username)) return socket.emit('friend_request_status', { message: '─░stek zaten g├Ânderilmi┼ş.' });
-    if (db.hasPendingRequest(target.username, from.username)) return socket.emit('friend_request_status', { message: 'Bu kullan─▒c─▒ sana zaten istek g├Ândermi┼ş.' });
+    if (!from) return socket.emit('friend_request_status', { message: 'Giris yapmalisin.' });
+    if (!target) return socket.emit('friend_request_status', { message: 'Kullanici bulunamadi.' });
+    if (target.username === from.username) return socket.emit('friend_request_status', { message: 'Kendine istek gonderemezsin.' });
+    if (db.areFriends(from.username, target.username)) return socket.emit('friend_request_status', { message: 'Zaten arkadassiniz.' });
+    if (db.hasPendingRequest(from.username, target.username)) return socket.emit('friend_request_status', { message: 'Istek zaten gonderilmis.' });
+    if (db.hasPendingRequest(target.username, from.username)) return socket.emit('friend_request_status', { message: 'Bu kullanici sana zaten istek gondermis.' });
 
     const id = db.sendFriendRequest(from.username, from.avatar, target.username);
-    socket.emit('friend_request_status', { message: 'Arkada┼şl─▒k iste─şi g├Ânderildi Ô£à' });
+    socket.emit('friend_request_status', { message: 'Arkadaslik istegi gonderildi' });
     sendFriendsUpdate(target.username);
     emitToUser(target.username, 'friend_request_received', { id, fromUsername: from.username, avatar: from.avatar });
   });
@@ -372,12 +409,10 @@ io.on('connection', (socket) => {
     const req = db.getFriendRequest(requestId);
     if (!me || !req || req.to_username !== me.username || req.status !== 'pending') return;
     db.updateFriendRequest(requestId, action === 'accept' ? 'accepted' : 'rejected');
-    if (action === 'accept') {
-      db.addFriendship(me.username, req.from_username);
-    }
+    if (action === 'accept') db.addFriendship(me.username, req.from_username);
     sendFriendsUpdate(me.username);
     sendFriendsUpdate(req.from_username);
-    socket.emit('friend_request_status', { message: action === 'accept' ? 'Arkada┼şl─▒k kabul edildi Ô£à' : '─░stek silindi.' });
+    socket.emit('friend_request_status', { message: action === 'accept' ? 'Arkadaslik kabul edildi' : 'Istek silindi.' });
   });
 
   socket.on('unfriend', ({ targetUsername, token }) => {
@@ -386,10 +421,13 @@ io.on('connection', (socket) => {
     db.removeFriendship(me.username, targetUsername);
     sendFriendsUpdate(me.username);
     sendFriendsUpdate(targetUsername);
-    socket.emit('friend_request_status', { message: 'Arkada┼şl─▒k silindi.' });
+    socket.emit('friend_request_status', { message: 'Arkadaslik silindi.' });
   });
 
-  // GLOBAL CHAT
+  // ──────────────────────────────────────────────────────
+  // 7.4 GLOBAL SOHBET
+  // ──────────────────────────────────────────────────────
+
   socket.on('global_chat_message', ({ text, username, avatar, token }) => {
     const cleanText = sanitize(text, 500);
     if (!cleanText) return;
@@ -397,7 +435,7 @@ io.on('connection', (socket) => {
     const msg = {
       id: crypto.randomBytes(8).toString('hex'),
       username: accountUser?.username || sanitize(username, 24) || 'Misafir',
-      avatar: accountUser?.avatar || sanitize(avatar, 10) || '­şÉ▒',
+      avatar: accountUser?.avatar || sanitize(avatar, 10) || '🐱',
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now()
@@ -406,7 +444,10 @@ io.on('connection', (socket) => {
     io.emit('global_chat_message', msg);
   });
 
-  // ARAMA
+  // ──────────────────────────────────────────────────────
+  // 7.5 MÜZIK ARAMA
+  // ──────────────────────────────────────────────────────
+
   socket.on('search_music', async ({ query }) => {
     try {
       const q = sanitize(query, 200);
@@ -415,6 +456,7 @@ io.on('connection', (socket) => {
       const yt = await getInnertube().catch(() => null);
       if (!yt) { socket.emit('search_results', []); return; }
 
+      // Once music search dene
       try {
         const sr = await yt.music.search(q, { type: 'song' });
         const results = (sr.songs?.contents || []).map(s => ({
@@ -427,6 +469,7 @@ io.on('connection', (socket) => {
         return;
       } catch {}
 
+      // Fallback: video search
       try {
         const sr = await yt.search(q, { type: 'video' });
         const results = (sr.videos || []).slice(0, 8).map(v => ({
@@ -440,14 +483,18 @@ io.on('connection', (socket) => {
       } catch {}
 
       socket.emit('search_results', []);
-    } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
+    } catch (err) { logger.error('Arama hatasi', { error: err.message }); socket.emit('search_results', []); }
   });
 
-  // ODA
+  // ──────────────────────────────────────────────────────
+  // 7.6 ODA YÖNETIMI
+  // ──────────────────────────────────────────────────────
+
   socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip, roomType }) => {
     const cleanRoomId = sanitize(roomId, 50);
     const cleanRoomType = roomType === 'music' ? 'music' : 'video';
     let room = rooms[cleanRoomId];
+
     if (!room) {
       rooms[cleanRoomId] = {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
@@ -460,18 +507,20 @@ io.on('connection', (socket) => {
       };
       room = rooms[cleanRoomId];
     } else {
-      if (room.password && room.password !== (password || '')) { socket.emit('room_error', '­şöÆ Hatal─▒ Oda ┼Şifresi!'); return; }
-      if (!room.users.find(u => u.userId === userId) && room.users.length >= room.maxUsers) { socket.emit('room_error', `ÔÜá´©Å Oda Dolu! (${room.users.length}/${room.maxUsers})`); return; }
+      if (room.password && room.password !== (password || '')) { socket.emit('room_error', 'Hatali Sifre!'); return; }
+      if (!room.users.find(u => u.userId === userId) && room.users.length >= room.maxUsers) { socket.emit('room_error', `Oda Dolu! (${room.users.length}/${room.maxUsers})`); return; }
       if (!room.messages) room.messages = [];
     }
+
     const existingIndex = room.users.findIndex(u => u.userId === userId);
-    const userInfo = { socketId: socket.id, userId, username: sanitize(username, 24) || '─░zleyici', avatar: sanitize(avatar, 10) || '­şÉ▒', userCity };
+    const userInfo = { socketId: socket.id, userId, username: sanitize(username, 24) || 'Izleyici', avatar: sanitize(avatar, 10) || '🐱', userCity };
     if (existingIndex !== -1) room.users[existingIndex] = userInfo; else room.users.push(userInfo);
     room.lastActivityAt = Date.now();
     socket.currentRoom = cleanRoomId; socket.userId = userId; socket.join(cleanRoomId);
 
     let calcTime = room.currentMedia.time;
     if (room.currentMedia.isPlaying) calcTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
+
     socket.emit('room_joined', {
       roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
       roomType: room.roomType || 'video',
@@ -500,7 +549,7 @@ io.on('connection', (socket) => {
     if (room && room.hostUserId === socket.userId && targetUserId !== socket.userId) {
       const target = room.users.find(u => u.userId === targetUserId);
       if (target) {
-        io.to(target.socketId).emit('kicked_from_room', 'ÔÜá´©Å Odadan ├ğ─▒kar─▒ld─▒n─▒z.');
+        io.to(target.socketId).emit('kicked_from_room', 'Odadan atildiniz.');
         const targetSocket = io.sockets.sockets.get(target.socketId);
         if (targetSocket) targetSocket.leave(sanitize(roomId, 50));
         room.users = room.users.filter(u => u.userId !== targetUserId);
@@ -509,26 +558,46 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ──────────────────────────────────────────────────────
+  // 7.7 PLAYLIST & KATEGORI
+  // ──────────────────────────────────────────────────────
+
   socket.on('create_category', ({ roomId, categoryName }) => {
     const room = rooms[sanitize(roomId, 50)];
     const name = sanitize(categoryName, 50);
-    if (room && name && !room.categories.includes(name)) { room.categories.push(name); io.to(sanitize(roomId, 50)).emit('categories_updated', room.categories); }
+    if (room && name && !room.categories.includes(name)) {
+      room.categories.push(name);
+      io.to(sanitize(roomId, 50)).emit('categories_updated', room.categories);
+    }
   });
 
   socket.on('add_to_playlist', ({ roomId, item }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room && item) { room.playlist.push(item); io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
+    if (room && item) {
+      room.playlist.push(item);
+      io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
+    }
   });
 
   socket.on('remove_from_playlist', ({ roomId, itemId }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room) { room.playlist = room.playlist.filter(i => i.id !== itemId); io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
+    if (room) {
+      room.playlist = room.playlist.filter(i => i.id !== itemId);
+      io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
+    }
   });
 
   socket.on('change_play_mode', ({ roomId, mode }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room) { room.playMode = mode; io.to(sanitize(roomId, 50)).emit('play_mode_changed', mode); }
+    if (room) {
+      room.playMode = mode;
+      io.to(sanitize(roomId, 50)).emit('play_mode_changed', mode);
+    }
   });
+
+  // ──────────────────────────────────────────────────────
+  // 7.8 ODA AKSIYONLARI (MEDYA & SOHBET)
+  // ──────────────────────────────────────────────────────
 
   socket.on('room_action', ({ roomId, type, payload }) => {
     const cleanRoomId = sanitize(roomId, 50);
@@ -557,6 +626,10 @@ io.on('connection', (socket) => {
     socket.to(cleanRoomId).emit('room_action', { type, payload });
   });
 
+  // ──────────────────────────────────────────────────────
+  // 7.9 AYRILMA & BAGLANTI KESIMI
+  // ──────────────────────────────────────────────────────
+
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
@@ -577,12 +650,14 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- GRACEFUL SHUTDOWN ---
-process.on('SIGTERM', () => { logger.info('SIGTERM al─▒nd─▒, kapat─▒l─▒yor...'); db.closeDb(); process.exit(0); });
-process.on('SIGINT', () => { logger.info('SIGINT al─▒nd─▒, kapat─▒l─▒yor...'); db.closeDb(); process.exit(0); });
+// ═══════════════════════════════════════════════════════════
+// 8. SUNUCU BAŞLAMA
+// ═══════════════════════════════════════════════════════════
 
-// --- START ---
+process.on('SIGTERM', () => { logger.info('SIGTERM alindi, kapatiliyor...'); db.closeDb(); process.exit(0); });
+process.on('SIGINT', () => { logger.info('SIGINT alindi, kapatiliyor...'); db.closeDb(); process.exit(0); });
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
-  logger.info(`­şÜÇ Sunucu ${PORT} portunda aktif! (${isProd ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+  logger.info(`Sunucu ${PORT} portunda aktif! (${isProd ? 'PRODUCTION' : 'DEVELOPMENT'})`);
 });
