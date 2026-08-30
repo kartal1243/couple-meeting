@@ -158,6 +158,118 @@ async function getInnertube() {
   return innertube;
 }
 
+// --- AUDIOMACK SCRAPER API ---
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '';
+const AUDIOMACK_HOST = 'audiomack-scraper.p.rapidapi.com';
+
+async function audiomackSearch(query, limit = 8) {
+  if (!RAPIDAPI_KEY) return [];
+  try {
+    const url = `https://${AUDIOMACK_HOST}/v1/audiomack/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+    const r = await fetch(url, {
+      headers: { 'x-rapidapi-key': RAPIDAPI_KEY, 'x-rapidapi-host': AUDIOMACK_HOST },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const items = data.results || data.songs || data.data || [];
+    return items.slice(0, limit).map(s => ({
+      id: s.id || s.song_id || s.slug,
+      title: s.title || s.name || '',
+      artist: s.artist?.name || s.artist || s.uploader?.name || '',
+      duration: s.duration ? `${Math.floor(s.duration / 60)}:${String(s.duration % 60).padStart(2, '0')}` : '',
+      thumbnail: s.image || s.thumbnail || s.cover || '',
+      src: String(s.id || s.song_id || s.slug),
+      source: 'audiomack'
+    })).filter(s => s.id && s.title);
+  } catch (e) {
+    logger.warn('audiomack search hatasi', { error: e.message });
+    return [];
+  }
+}
+
+async function audiomackGetStreamUrl(songId) {
+  if (!RAPIDAPI_KEY) return null;
+  try {
+    const url = `https://${AUDIOMACK_HOST}/v1/audiomack/song/${songId}/play`;
+    const r = await fetch(url, {
+      headers: { 'x-rapidapi-key': RAPIDAPI_KEY, 'x-rapidapi-host': AUDIOMACK_HOST },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.url || data.stream_url || data.streamUrl || data.signedUrl || data.signed_url || null;
+  } catch (e) {
+    logger.warn('audiomack stream hatasi', { error: e.message });
+    return null;
+  }
+}
+
+app.get('/api/audiomack/stream/:songId', async (req, res) => {
+  const { songId } = req.params;
+  if (!songId) return res.status(400).json({ error: 'songId gerekli' });
+  if (!RAPIDAPI_KEY) return res.status(500).json({ error: 'RapidAPI key tanimli degil' });
+
+  const streamUrl = await audiomackGetStreamUrl(songId);
+  if (!streamUrl) return res.status(502).json({ error: 'Stream URL alinamadi' });
+
+  const proxyUrl = `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(streamUrl)}`;
+  res.json({ url: streamUrl, proxyUrl });
+});
+
+app.get('/api/music/proxy-audio', async (req, res) => {
+  const audioUrl = req.query.url;
+  if (!audioUrl) return res.status(400).end();
+  try {
+    const r = await fetch(audioUrl, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) return res.status(r.status).end();
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const reader = r.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) { res.end(); return; }
+      res.write(value);
+    }
+  } catch (e) { if (!res.headersSent) res.status(502).end(); }
+});
+
+// --- YT-AUDIO-API PROXY ---
+const YT_AUDIO_API_URL = process.env.YT_AUDIO_API_URL || 'http://localhost:5000';
+
+app.get('/api/yt-audio/token', async (req, res) => {
+  const videoUrl = req.query.url;
+  if (!videoUrl) return res.status(400).json({ error: 'url gerekli' });
+  try {
+    const r = await fetch(`${YT_AUDIO_API_URL}/?url=${encodeURIComponent(videoUrl)}`, { signal: AbortSignal.timeout(60000) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); return res.status(r.status).json(e); }
+    const data = await r.json();
+    const downloadUrl = `${req.protocol}://${req.get('host')}/api/yt-audio/download?token=${data.token}`;
+    res.json({ token: data.token, downloadUrl });
+  } catch (e) {
+    logger.error('yt-audio token hatasi', { error: e.message });
+    res.status(502).json({ error: 'Dönüşüm başarısız' });
+  }
+});
+
+app.get('/api/yt-audio/download', async (req, res) => {
+  const token = req.query.token;
+  if (!token) return res.status(400).end();
+  try {
+    const r = await fetch(`${YT_AUDIO_API_URL}/download?token=${token}`, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) return res.status(r.status).end();
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/mpeg');
+    res.setHeader('Content-Disposition', 'inline');
+    const reader = r.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) { res.end(); return; }
+      res.write(value);
+    }
+  } catch (e) { if (!res.headersSent) res.status(502).end(); }
+});
+
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 if (!ADMIN_SECRET) logger.warn('ÔÜá´©Å ADMIN_SECRET tan─▒ml─▒ de─şil. Admin VIP ├Âzellikleri pasif olacak.');
 
@@ -438,6 +550,10 @@ io.on('connection', (socket) => {
         socket.emit('search_results', results);
         return;
       } catch {}
+
+      // Audiomack fallback
+      const amResults = await audiomackSearch(q, 8);
+      if (amResults.length > 0) { socket.emit('search_results', amResults); return; }
 
       socket.emit('search_results', []);
     } catch (err) { logger.error('Arama hatası', { error: err.message }); socket.emit('search_results', []); }
