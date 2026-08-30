@@ -1,983 +1,701 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import io from 'socket.io-client';
-
-import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
-import { getStyles } from './styles';
-import { processUrl } from './utils/processUrl';
-import { playMessageSound } from './utils/notificationSound';
-
-import Hero from './Home/Hero';
-import Features from './Home/Features';
-import PublicRooms from './Home/PublicRooms';
-import SocialPreview from './Home/SocialPreview';
-import CreateJoin from './Home/CreateJoin';
-
-import Header from './Room/Header';
-import SearchBar from './Room/SearchBar';
-import Player from './Room/Player';
-import Controls from './Room/Controls';
-import Chat from './Room/Chat';
-import Playlist from './Room/Playlist';
-
-import AuthModal from './Modals/AuthModal';
-import SocialModal from './Modals/SocialModal';
-import FolderModal from './Modals/FolderModal';
-import SettingsModal from './Modals/SettingsModal';
-import VipModal from './Modals/VipModal';
-
-function App() {
-  const [userId] = useState(() => {
-    let savedId = localStorage.getItem('cm_user_id');
-    if (!savedId) { savedId = 'usr_' + Math.random().toString(36).substring(2, 9); localStorage.setItem('cm_user_id', savedId); }
-    return savedId;
-  });
-
-  const [inRoom, setInRoom] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return !!urlParams.get('room');
-  });
-
-  const [activeTab, setActiveTab] = useState('create');
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showFolderModal, setShowFolderModal] = useState(false);
-  const [pendingMediaItem, setPendingMediaItem] = useState(null);
-  const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
-  const [sidebarTab, setSidebarTab] = useState('chat');
-
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
-
-  const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
-  const [username] = useState(() => localStorage.getItem('cm_username') || 'İzleyici');
-  const [userCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
-  const [mySocketId, setMySocketId] = useState('');
-
-  const [roomId, setRoomId] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('room') || '';
-  });
-  const [roomName, setRoomName] = useState('');
-  const [hostUserId, setHostUserId] = useState('');
-  const [roomTheme, setRoomTheme] = useState('default');
-  const [roomType, setRoomType] = useState('video');
-  const [roomUsersList, setRoomUsersList] = useState([]);
-
-  const [roomPassword, setRoomPassword] = useState('');
-  const [maxUsers, setMaxUsers] = useState('2');
-  const [joinRoomInput, setJoinRoomInput] = useState('');
-  const [joinPassInput, setJoinPassInput] = useState('');
-
-  const [publicRooms, setPublicRooms] = useState([]);
-  const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
-
-  const [mediaType, setMediaType] = useState('none');
-  const [mediaSrc, setMediaSrc] = useState('');
-  const [mediaMeta, setMediaMeta] = useState(null);
-
-  const [playlist, setPlaylist] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
-  });
-  const [categories, setCategories] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cm_local_categories')) || ['Genel']; } catch { return ['Genel']; }
-  });
-
-  const [selectedCategory, setSelectedCategory] = useState('Genel');
-  const [newCategoryInput, setNewCategoryInput] = useState('');
-  const [playMode, setPlayMode] = useState('sequence');
-
-  const [searchInput, setSearchInput] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-
-  const [messages, setMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [reactions, setReactions] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [youtubeError, setYoutubeError] = useState(null);
-  const [fallbackUrl, setFallbackUrl] = useState('');
-
-  const [replyTo, setReplyTo] = useState(null);
-  const [friendOnlineStatuses, setFriendOnlineStatuses] = useState({});
-
-  const [authUser, setAuthUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
-  });
-  const [authToken, setAuthToken] = useState(() => localStorage.getItem('cm_auth_token') || '');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', bio: '', avatar: '🐱' });
-  const [friendSearch, setFriendSearch] = useState('');
-  const [friendSearchResults, setFriendSearchResults] = useState([]);
-  const [friends, setFriends] = useState([]);
-  const [friendRequests, setFriendRequests] = useState([]);
-  const [globalMessages, setGlobalMessages] = useState([]);
-  const [globalChatInput, setGlobalChatInput] = useState('');
-  const [socialTab, setSocialTab] = useState('global');
-  const [profileBioInput, setProfileBioInput] = useState('');
-  const [profileStatusInput, setProfileStatusInput] = useState('');
-  const [showSocialModal, setShowSocialModal] = useState(false);
-  const [showVipModal, setShowVipModal] = useState(false);
-  const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [quickRoomName, setQuickRoomName] = useState('');
-  const [quickRoomPass, setQuickRoomPass] = useState('');
-  const [quickMaxUsers, setQuickMaxUsers] = useState('2');
-  const [quickRoomType, setQuickRoomType] = useState('video');
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinRoomTarget, setJoinRoomTarget] = useState(null);
-  const [joinModalPass, setJoinModalPass] = useState('');
-
-  const [editRoomNameInput, setEditRoomNameInput] = useState('');
-
-  const ytPlayerRef = useRef(null);
-  const customVideoRef = useRef(null);
-  const socketRef = useRef(null);
-  const handleMediaEndRef = useRef(null);
-  const mySocketIdRef = useRef('');
-  const currentRoomIdRef = useRef(roomId);
-
-  if (!socketRef.current) {
-    socketRef.current = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
-  }
-  const socket = socketRef.current;
-
-  useEffect(() => { currentRoomIdRef.current = roomId; }, [roomId]);
-
-  const persistAuth = (user, token) => {
-    setAuthUser(user);
-    setAuthToken(token || '');
-    if (user) localStorage.setItem('cm_auth_user', JSON.stringify(user));
-    else localStorage.removeItem('cm_auth_user');
-    if (token) localStorage.setItem('cm_auth_token', token);
-    else localStorage.removeItem('cm_auth_token');
-  };
-
-  const currentTheme = THEMES[roomTheme] || THEMES.default;
-  const cssVars = { '--cm-primary': currentTheme.primary };
-  const styles = getStyles(currentTheme);
-
-  const showFloatingEmoji = (reaction) => {
-    setReactions((prev) => [...prev, reaction]);
-    setTimeout(() => setReactions((prev) => prev.filter((r) => r.id !== reaction.id)), 2000);
-  };
-
-  const sendAction = (type, payload) => {
-    if (socket) socket.emit('room_action', { roomId: currentRoomIdRef.current, type, payload: { ...payload, mediaType } });
-  };
-
-  const saveToRecentRooms = (targetRoomId) => {
-    if (!targetRoomId) return;
-    try {
-      const recent = JSON.parse(localStorage.getItem('cm_recent_rooms')) || [];
-      const updated = [targetRoomId, ...recent.filter(r => r !== targetRoomId)].slice(0, 5);
-      localStorage.setItem('cm_recent_rooms', JSON.stringify(updated));
-    } catch {}
-  };
-
-  const saveRoomMessages = useCallback((rid, msgs) => {
-    try { localStorage.setItem(`cm_room_msgs_${rid}`, JSON.stringify(msgs.slice(-200))); } catch {}
-  }, []);
-
-  const loadRoomMessages = useCallback((rid) => {
-    try { return JSON.parse(localStorage.getItem(`cm_room_msgs_${rid}`)) || []; } catch { return []; }
-  }, []);
-
-  const openAuth = (mode = 'login') => {
-    setAuthMode(mode);
-    setAuthForm((prev) => ({ ...prev, password: '' }));
-    setShowAuthModal(true);
-  };
-
-  const submitAuth = (e) => {
-    e.preventDefault();
-    if (authBusy) return;
-    setAuthBusy(true);
-    setErrorMessage('');
-    socket.emit(authMode === 'register' ? 'auth_register' : 'auth_login', authForm);
-  };
-
-  const handleLogout = () => {
-    persistAuth(null, '');
-    setFriends([]);
-    setFriendRequests([]);
-    setFriendSearchResults([]);
-    setShowSocialModal(false);
-  };
-
-  const sendGlobalMessage = (e) => {
-    e.preventDefault();
-    const text = globalChatInput.trim();
-    if (!text) return;
-    socket.emit('global_chat_message', {
-      text, username: authUser?.username || username || 'Misafir',
-      avatar: authUser?.avatar || myAvatar, token: authToken || ''
-    });
-    setGlobalChatInput('');
-  };
-
-  const searchFriends = () => {
-    const q = friendSearch.trim();
-    if (!q) return setFriendSearchResults([]);
-    socket.emit('friend_search', { q, token: authToken });
-  };
-
-  const sendFriendRequest = (targetUsername) => {
-    if (!authUser) return openAuth('register');
-    socket.emit('friend_request', { targetUsername, token: authToken });
-  };
-
-  const respondFriendRequest = (requestId, action) => {
-    socket.emit('friend_request_response', { requestId, action, token: authToken });
-  };
-
-  const unfriendUser = (targetUsername) => {
-    socket.emit('unfriend', { targetUsername, token: authToken });
-  };
-
-  const saveProfile = () => {
-    if (!authUser) return;
-    socket.emit('update_profile', {
-      token: authToken, bio: profileBioInput.trim().slice(0, 120),
-      status: profileStatusInput.trim().slice(0, 80), avatar: myAvatar
-    });
-  };
-
-  const handleQuickCreateRoom = () => {
-    setShowQuickCreate(true);
-  };
-
-  const handleQuickCreateSubmit = (e) => {
-    e.preventDefault();
-    const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
-    localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType };
-    const tryJoin = () => {
-      if (socket.connected) {
-        socket.emit('join_room', joinData);
-      } else {
-        socket.once('connect', () => socket.emit('join_room', joinData));
-        if (!socket.connected) socket.connect();
-      }
-    };
-    tryJoin();
-    setShowQuickCreate(false);
-    setQuickRoomName('');
-    setQuickRoomPass('');
-    setQuickMaxUsers('2');
-  };
-
-  const handleJoinRoomFromModal = (e) => {
-    e.preventDefault();
-    if (!joinRoomTarget) return;
-    localStorage.setItem('cm_saved_pass', joinModalPass.trim());
-    socket.emit('join_room', { roomId: joinRoomTarget.id, password: joinModalPass.trim(), userId, userCity, username, avatar: myAvatar, roomType: 'video' });
-    setShowJoinModal(false);
-    setJoinRoomTarget(null);
-    setJoinModalPass('');
-  };
-
-  const handleLeaveRoom = () => {
-    socket.emit('leave_room');
-    setInRoom(false);
-    setMediaType('none');
-    setMediaSrc('');
-    setMessages([]);
-    setReplyTo(null);
-    localStorage.removeItem('cm_saved_room');
-    localStorage.removeItem('cm_saved_pass');
-    window.history.replaceState({}, '', window.location.pathname);
-  };
-
-  const handleModeChange = (mode) => {
-    setPlayMode(mode);
-    socket.emit('change_play_mode', { roomId: currentRoomIdRef.current, mode });
-  };
-
-  const handleCreateCategory = (e) => {
-    e.preventDefault();
-    if (!newCategoryInput.trim()) return;
-    socket.emit('create_category', { roomId: currentRoomIdRef.current, categoryName: newCategoryInput.trim() });
-    setSelectedCategory(newCategoryInput.trim());
-    setNewCategoryInput('');
-  };
-
-  const playlistRef = useRef(playlist);
-  const playModeRef = useRef(playMode);
-  const mediaSrcRef = useRef(mediaSrc);
-  useEffect(() => { playlistRef.current = playlist; }, [playlist]);
-  useEffect(() => { playModeRef.current = playMode; }, [playMode]);
-  useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
-
-  const handleMediaEnd = useCallback(() => {
-    const pl = playlistRef.current;
-    const pm = playModeRef.current;
-    const ms = mediaSrcRef.current;
-    if (!pl || pl.length === 0) return;
-    let nextTrack;
-    if (pm === 'shuffle') {
-      nextTrack = pl[Math.floor(Math.random() * pl.length)];
-    } else {
-      const activeList = pm === 'alphabetical'
-        ? [...pl].sort((a, b) => a.title.localeCompare(b.title, 'tr'))
-        : pl;
-      const currentIndex = activeList.findIndex(item => item.src === ms);
-      nextTrack = activeList[(currentIndex + 1) % activeList.length];
-    }
-    if (nextTrack) {
-      setMediaType(nextTrack.type);
-      setMediaSrc(nextTrack.src);
-      sendAction('CHANGE_MEDIA', { type: nextTrack.type, src: nextTrack.src, title: nextTrack.title });
-    }
-  }, []);
-
-  const handleDirectPlay = () => {
-    if (!searchInput.trim()) return;
-    let media;
-    if (searchInput.includes('http://') || searchInput.includes('https://')) media = processUrl(searchInput);
-    else if (searchResults.length > 0) media = { type: 'youtube', src: searchResults[0].src };
-    else return;
-    setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
-    sendAction('CHANGE_MEDIA', media);
-  };
-
-  const handleOpenAddModal = (song = null) => {
-    let item;
-    if (song) {
-      item = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username };
-    } else if (searchInput.trim()) {
-      if (searchInput.includes('http://') || searchInput.includes('https://')) {
-        const media = processUrl(searchInput);
-        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya / Dizi Linki', type: media.type, src: media.src, addedBy: username };
-      } else if (searchResults.length > 0) {
-        const s = searchResults[0];
-        item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
-      }
-    }
-    if (item) { setPendingMediaItem(item); setModalTargetCategory(selectedCategory || 'Genel'); setShowFolderModal(true); }
-  };
-
-  const confirmAddToPlaylist = () => {
-    if (!pendingMediaItem) return;
-    socket.emit('add_to_playlist', { roomId: currentRoomIdRef.current, item: { ...pendingMediaItem, category: modalTargetCategory } });
-    setShowFolderModal(false);
-    setPendingMediaItem(null);
-  };
-
-  const handleSelectSearchResult = (song, playImmediately = true) => {
-    if (!song) return;
-    if (playImmediately) {
-      setYoutubeError(null);
-      if (roomType === 'music' && song.src) {
-        setMediaType('music');
-        setMediaSrc(song.src);
-        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: 'music', src: song.src, title: song.title });
-      } else if (song.src) {
-        setMediaType('youtube');
-        setMediaSrc(song.src);
-        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
-      } else if (song.youtubeQuery) {
-        setSearchInput(song.youtubeQuery);
-      }
-    } else { handleOpenAddModal(song); }
-  };
-
-  const handleSelectPlaylistItem = (item) => {
-    setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
-    sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
-  };
-
-  const handleRemovePlaylistItem = (itemId, e) => {
-    e.stopPropagation();
-    socket.emit('remove_from_playlist', { roomId: currentRoomIdRef.current, itemId });
-  };
-
-  const handlePlay = () => {
-    if (mediaType === 'youtube' && ytPlayerRef.current) {
-      try { ytPlayerRef.current.playVideo(); } catch {}
-    }
-    sendAction('PLAY', { time: 0 });
-  };
-
-  const handlePause = () => {
-    if (mediaType === 'youtube' && ytPlayerRef.current) {
-      try { ytPlayerRef.current.pauseVideo(); } catch {}
-    }
-    sendAction('PAUSE', {});
-  };
-
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    const newMsg = {
-      senderId: mySocketId, text: chatInput, sender: authUser?.username || username || 'İzleyici',
-      avatar: authUser?.avatar || myAvatar,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      replyTo: replyTo?.id || null, replyToText: replyTo?.text || null, replyToSender: replyTo?.sender || null
-    };
-    setMessages((prev) => {
-      const updated = [...prev, newMsg];
-      saveRoomMessages(currentRoomIdRef.current, updated);
-      return updated;
-    });
-    sendAction('CHAT_MESSAGE', newMsg);
-    setChatInput('');
-    setReplyTo(null);
-  };
-
-  const sendReaction = (emoji) => {
-    const reaction = { id: Date.now() + Math.random(), emoji, left: Math.floor(Math.random() * 80) + 10 };
-    showFloatingEmoji(reaction);
-    sendAction('REACTION', reaction);
-  };
-
-  const handleSaveSettings = () => {
-    socket.emit('update_room_settings', {
-      roomId: currentRoomIdRef.current, newName: editRoomNameInput.trim() || roomName, newTheme: roomTheme
-    });
-    setShowSettingsModal(false);
-  };
-
-  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId });
-  const handleTransferAdmin = (targetUserId) => {
-    socket.emit('update_room_settings', { roomId: currentRoomIdRef.current, newHostUserId: targetUserId });
-  };
-
-  const handleYouTubeError = (event) => {
-    const code = event?.data;
-    const msgs = {
-      2: 'YouTube bağlantısı geçersiz.', 5: 'Video HTML5 oynatıcı hatası verdi.',
-      100: 'Video bulunamadı veya kaldırıldı.',
-      101: 'Video sahibi bu videonun başka sitelerde oynatılmasına izin vermiyor.',
-      150: 'Video sahibi bu videonun başka sitelerde oynatılmasına izin vermiyor.'
-    };
-    setYoutubeError({ code, message: msgs[code] || 'YouTube videosu bu sitede oynatılamıyor.' });
-  };
-
-  const useFallbackSource = () => {
-    const url = fallbackUrl.trim();
-    if (!url) return;
-    const parsed = processUrl(url);
-    if (!parsed || !parsed.src) return;
-    setYoutubeError(null); setMediaType(parsed.type); setMediaSrc(parsed.src);
-    sendAction('CHANGE_MEDIA', { type: parsed.type, src: parsed.src }); setFallbackUrl('');
-  };
-
-  const openYouTubeExternally = () => {
-    if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
-  };
-
-  const filteredPlaylist = useMemo(() => {
-    if (!Array.isArray(playlist)) return [];
-    let filtered = playlist.filter(item => (item.category || 'Genel') === selectedCategory);
-    if (playMode === 'alphabetical') return [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
-    return filtered;
-  }, [playlist, selectedCategory, playMode]);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-
-    return () => { window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); socketRef.current?.disconnect(); socketRef.current = null; };
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (!deferredPrompt) { alert('Tarayıcınızın menüsünden "Ana Ekrana Ekle" seçeneğiyle uygulamayı cihazınıza yükleyebilirsiniz!'); return; }
-    deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBtn(false); setDeferredPrompt(null);
-  };
-
-  useEffect(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', handlePlay);
-      navigator.mediaSession.setActionHandler('pause', handlePause);
-      navigator.mediaSession.setActionHandler('nexttrack', () => handleMediaEndRef.current?.());
-    }
-  }, [mediaSrc, mediaType, playMode, playlist]);
-
-  useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
-  useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
-
-  useEffect(() => {
-    let wakeLock = null;
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator && mediaType !== 'none') {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => { wakeLock = null; });
-        }
-      } catch (e) {}
-    };
-    if (mediaType !== 'none') requestWakeLock();
-    return () => { if (wakeLock) wakeLock.release(); };
-  }, [mediaType]);
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetRoom = urlParams.get('room');
-    if (targetRoom && socket) {
-      socket.emit('join_room', { roomId: targetRoom, password: '', userId, userCity, username, avatar: myAvatar, roomType: 'video' });
-    }
-  }, [userId]);
-
-  // ANLIK VE KESİNTİSİZ ARAMA (SOCKET + HTTP FALLBACK)
-  useEffect(() => {
-    if (!searchInput.trim() || searchInput.trim().length < 2 || searchInput.includes('http://') || searchInput.includes('https://')) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    const timer = setTimeout(async () => {
-      if (socket && socket.connected) {
-        socket.emit('search_music', { query: searchInput.trim() });
-      } else {
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/music/search?q=${encodeURIComponent(searchInput.trim())}`);
-          const data = await res.json();
-          setSearchResults(data.results || []);
-        } catch (e) {
-          setSearchResults([]);
-        } finally {
-          setIsSearching(false);
-        }
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [searchInput, isConnected]);
-
-  useEffect(() => {
-    if (!socket) return;
-    socket.on('connect', () => {
-      setIsConnected(true);
-    });
-    socket.on('disconnect', () => setIsConnected(false));
-    socket.on('public_rooms_update', (roomsList) => setPublicRooms(Array.isArray(roomsList) ? roomsList : []));
-    socket.on('search_results', (results) => { setSearchResults(Array.isArray(results) ? results : []); setIsSearching(false); });
-
-    socket.on('room_joined', (data) => {
-      setInRoom(true); setErrorMessage('');
-      setRoomId(data.roomId); setRoomName(data.roomName || data.roomId);
-      setHostUserId(data.hostUserId); setRoomTheme(data.theme || 'default');
-      setRoomType(data.roomType || 'video');
-      setMySocketId(data.socketId);
-      if (data.users) setRoomUsersList(data.users);
-      setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
-
-      if (Array.isArray(data.playlist)) { setPlaylist(data.playlist); localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist)); }
-      if (Array.isArray(data.categories)) { setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
-      if (data.playMode) setPlayMode(data.playMode);
-
-      const serverMsgs = Array.isArray(data.messages) ? data.messages : [];
-      const localMsgs = loadRoomMessages(data.roomId);
-      const mergedMsgs = serverMsgs.length > 0 ? serverMsgs : localMsgs;
-      setMessages(mergedMsgs);
-      saveRoomMessages(data.roomId, mergedMsgs);
-
-      localStorage.setItem('cm_saved_room', data.roomId);
-      saveToRecentRooms(data.roomId);
-      window.history.replaceState({}, '', `?room=${data.roomId}`);
-      if (authToken) socket.emit('social_sync', { token: authToken });
-
-      if (data.currentMedia && data.currentMedia.type !== 'none') {
-        setYoutubeError(null); setMediaType(data.currentMedia.type); setMediaSrc(data.currentMedia.src);
-        setTimeout(() => {
-          if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
-            ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
-            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo(); else ytPlayerRef.current.pauseVideo();
-          } else if (data.currentMedia.type === 'custom_video' && customVideoRef.current) {
-            customVideoRef.current.currentTime = data.currentMedia.time || 0;
-            if (data.currentMedia.isPlaying) customVideoRef.current.play(); else customVideoRef.current.pause();
-          }
-        }, 800);
-      }
-    });
-
-    socket.on('room_user_count_update', (data) => {
-      setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
-      if (data.users) setRoomUsersList(data.users);
-      if (data.hostUserId) setHostUserId(data.hostUserId);
-      if (data.roomName) setRoomName(data.roomName);
-      if (data.theme) setRoomTheme(data.theme);
-    });
-
-    socket.on('room_settings_updated', (data) => {
-      if (data.roomName) setRoomName(data.roomName);
-      if (data.theme) setRoomTheme(data.theme);
-      if (data.hostUserId) setHostUserId(data.hostUserId);
-    });
-
-    socket.on('kicked_from_room', (msg) => { setErrorMessage(msg); handleLeaveRoom(); });
-
-    socket.on('categories_updated', (cats) => { setCategories(cats); localStorage.setItem('cm_local_categories', JSON.stringify(cats)); });
-    socket.on('playlist_updated', (data) => {
-      const newPlaylist = Array.isArray(data) ? data : (data.playlist || []);
-      setPlaylist(newPlaylist); localStorage.setItem('cm_local_playlist', JSON.stringify(newPlaylist));
-      if (data && data.playMode) setPlayMode(data.playMode);
-    });
-    socket.on('play_mode_changed', (mode) => setPlayMode(mode));
-    socket.on('room_error', (msg) => {
-      setErrorMessage(msg); setInRoom(false);
-      localStorage.removeItem('cm_saved_room'); localStorage.removeItem('cm_saved_pass');
-    });
-
-    socket.on('room_action', ({ type, payload }) => {
-      if (type === 'PLAY') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
-          try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {}
-        }
-      } else if (type === 'PAUSE') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
-          try { ytPlayerRef.current.pauseVideo(); } catch {}
-        }
-      } else if (type === 'SEEK') {
-        if (payload.mediaType === 'youtube' && ytPlayerRef.current) {
-          try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {}
-        }
-      } else if (type === 'CHANGE_MEDIA') {
-        setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
-      } else if (type === 'CHAT_MESSAGE') {
-        setMessages((prev) => {
-          const updated = [...prev, payload];
-          saveRoomMessages(currentRoomIdRef.current, updated);
-          return updated;
-        });
-        if (payload.senderId !== mySocketIdRef.current) {
-          playMessageSound();
-          if (document.hidden && Notification.permission === 'granted') {
-            try {
-              new Notification(`${payload.sender} mesaj gönderdi`, {
-                body: payload.text,
-                icon: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png',
-                sound: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png',
-                vibrate: [200, 100, 200]
-              });
-            } catch (e) {}
-          }
-        }
-      } else if (type === 'REACTION') {
-        showFloatingEmoji(payload);
-      }
-    });
-
-    socket.on('global_chat_history', (items) => setGlobalMessages(Array.isArray(items) ? items : []));
-    socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
-    socket.on('social_profile', (user) => {
-      setAuthUser(user); localStorage.setItem('cm_auth_user', JSON.stringify(user));
-      setProfileBioInput(user?.bio || ''); setProfileStatusInput(user?.status || '');
-    });
-    socket.on('auth_result', (data) => {
-      setAuthBusy(false);
-      if (data?.ok) {
-        persistAuth(data.user, data.token);
-        setProfileBioInput(data.user?.bio || ''); setProfileStatusInput(data.user?.status || '');
-        setAuthForm({ username: '', email: '', password: '', bio: '', avatar: data.user?.avatar || '🐱' });
-        setShowAuthModal(false); setShowSocialModal(true); setErrorMessage('');
-        socket.emit('social_sync', { token: data.token });
-      } else { setErrorMessage(data?.message || 'İşlem başarısız.'); }
-    });
-    socket.on('friends_update', (data) => {
-      setFriends(Array.isArray(data?.friends) ? data.friends : []);
-      setFriendRequests(Array.isArray(data?.requests) ? data.requests : []);
-    });
-    socket.on('friend_search_results', (items) => setFriendSearchResults(Array.isArray(items) ? items : []));
-    socket.on('friend_request_received', (data) => setFriendRequests((prev) => [data, ...prev.filter((x) => x.id !== data.id)]));
-    socket.on('friend_request_status', (data) => {
-      if (data?.message) setErrorMessage(data.message);
-      socket.emit('social_sync', { token: authToken });
-    });
-
-    socket.on('friend_online_status', (data) => {
-      setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
-    });
-
-    socket.on('vip_activated', (data) => {
-      setAuthUser((prev) => {
-        const updated = { ...prev, isVip: data.isVip, vipExpiry: data.vipExpiry };
-        localStorage.setItem('cm_auth_user', JSON.stringify(updated));
-        return updated;
-      });
-    });
-
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && socketRef.current) {
-        socketRef.current.connect();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
-      socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
-      socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
-      socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
-      socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
-      socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
-      socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('vip_activated');
-    };
-  }, []);
-
-  if (!inRoom) {
-    return (
-      <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
-        <style>{GLOBAL_CSS + HOME_CSS}</style>
-        <div className="cm-home">
-          <div className="cm-orb one" /><div className="cm-orb two" /><div className="cm-orb three" />
-
-          <header className="cm-home-nav">
-            <div className="cm-home-brand">
-              <div className="cm-nav-soundwave">
-                {[10,18,26,14,22,16,24,12,20].map((h, i) => (
-                  <div key={i} className="cm-nav-bar" style={{ height: `${h}px`, animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s` }} />
-                ))}
-              </div>
-              <div>
-                <div style={{ fontWeight: 950, color: '#fff', fontSize: 17, letterSpacing: '-0.5px' }}>Couple Meeting</div>
-                <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 800, letterSpacing: '0.5px' }}>LISTEN • CONNECT • SHARE</div>
-              </div>
-            </div>
-            <div className="cm-nav-actions">
-              {authUser ? (
-                <button onClick={() => setShowSocialModal(true)} className="cm-nav-btn cm-nav-btn-green">{authUser.avatar || myAvatar} {authUser.username}</button>
-              ) : (
-                <>
-                  <button onClick={() => openAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giriş Yap</button>
-                  <button onClick={() => openAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ücretsiz Katıl</button>
-                </>
-              )}
-            </div>
-          </header>
-
-          <main className="cm-home-main">
-            <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={handleQuickCreateRoom} />
-            <Features />
-            <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
-            <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
-            <div className="cm-footer">
-              <div className="cm-footer-text">
-                <span style={{ fontWeight: 900, color: '#fff' }}>couple</span>
-                <span style={{ fontWeight: 300, color: '#a78bfa' }}>meeting</span>
-              </div>
-              <div className="cm-footer-slogan">Uzaklığı biraz daha küçük yapan internet. ❤️</div>
-            </div>
-          </main>
-
-          {showAuthModal && (
-            <AuthModal
-              authMode={authMode} setAuthMode={setAuthMode} authForm={authForm}
-              setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth}
-              setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles}
-            />
-          )}
-          {showSocialModal && (
-            <SocialModal
-              authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab}
-              globalMessages={globalMessages} globalChatInput={globalChatInput}
-              setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage}
-              friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends}
-              friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest}
-              friendRequests={friendRequests} respondFriendRequest={respondFriendRequest}
-              friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser}
-              profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput}
-              profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput}
-              myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile}
-              openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal}
-              showVipModal={showVipModal} setShowVipModal={setShowVipModal}
-              styles={styles}
-            />
-          )}
-          {showVipModal && (
-            <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />
-          )}
-          {showQuickCreate && (
-            <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
-              <div style={{ width:'min(420px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
-                <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ color:'#a78bfa', fontSize:11, fontWeight:900 }}>🚀 YENİ ODA</div>
-                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>Oda Oluştur</div>
-                  </div>
-                  <button onClick={() => setShowQuickCreate(false)} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
-                </div>
-                <form onSubmit={handleQuickCreateSubmit} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adı</label>
-                    <input
-                      value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)}
-                      placeholder="ör: müzik gecesi"
-                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Şifre (isteğe bağlı)</label>
-                    <input
-                      type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)}
-                      placeholder="Şifre koymak istersen yaz"
-                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kişi</label>
-                    <select
-                      value={quickMaxUsers} onChange={(e) => setQuickMaxUsers(e.target.value)}
-                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                    >
-                      <option value="2">2 Kişi 💑</option>
-                      <option value="4">4 Kişi 👥</option>
-                      <option value="8">8 Kişi 🎉</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Tipi</label>
-                    <div style={{ display:'flex', gap:8 }}>
-                      <button type="button" onClick={() => setQuickRoomType('video')}
-                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        🎬 Video
-                      </button>
-                      <button type="button" onClick={() => setQuickRoomType('music')}
-                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        🎵 Müzik
-                      </button>
-                    </div>
-                  </div>
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
-                    🚀 Odayı Başlat
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-          {showJoinModal && joinRoomTarget && (
-            <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
-              <div style={{ width:'min(380px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
-                <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ color:'#2563eb', fontSize:11, fontWeight:900 }}>🚪 ODAYA KATIL</div>
-                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>{joinRoomTarget.name}</div>
-                  </div>
-                  <button onClick={() => { setShowJoinModal(false); setJoinRoomTarget(null); setJoinModalPass(''); }} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
-                </div>
-                <form onSubmit={handleJoinRoomFromModal} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)' }}>
-                    <div style={{ fontSize:24 }}>{joinRoomTarget.hasPassword ? '🔒' : '🎵'}</div>
-                    <div>
-                      <div style={{ color:'#fff', fontSize:14, fontWeight:900 }}>{joinRoomTarget.name}</div>
-                      <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kişi • {joinRoomTarget.hasPassword ? 'Şifreli' : 'Açık'}</div>
-                    </div>
-                  </div>
-                  {joinRoomTarget.hasPassword && (
-                    <div>
-                      <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Şifresi</label>
-                      <input
-                        type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)}
-                        placeholder="Şifreyi girin..."
-                        autoFocus
-                        style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                      />
-                    </div>
-                  )}
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>
-                    🚪 Odaya Gir
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `\n@keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n`}</style>
-
-      {showFolderModal && (
-        <FolderModal
-          pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory}
-          setModalTargetCategory={setModalTargetCategory} categories={categories}
-          confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal}
-          currentTheme={currentTheme} styles={styles}
-        />
-      )}
-
-      {showSettingsModal && (
-        <SettingsModal
-          hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput}
-          setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme}
-          setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings}
-          roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin}
-          handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal}
-          currentTheme={currentTheme} authUser={authUser} styles={styles}
-        />
-      )}
-
-      <Header
-        roomName={roomName} currentTheme={currentTheme} isConnected={isConnected}
-        currentRoomInfo={currentRoomInfo} showInstallBtn={showInstallBtn}
-        handleInstallApp={handleInstallApp} setShowSettingsModal={setShowSettingsModal}
-        authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveRoom}
-      />
-
-      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
-        <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
-          <SearchBar
-            searchInput={searchInput} setSearchInput={setSearchInput}
-            searchResults={searchResults} isSearching={isSearching}
-            currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
-            handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
-          />
-          <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta} roomType={roomType}
-            customVideoRef={customVideoRef} ytPlayerRef={ytPlayerRef}
-            reactions={reactions} fallbackUrl={fallbackUrl} setFallbackUrl={setFallbackUrl}
-            useFallbackSource={useFallbackSource} openYouTubeExternally={openYouTubeExternally}
-            setYoutubeError={setYoutubeError} setMediaType={setMediaType}
-            handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-          />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
-        </div>
-
-        <div className="cm-sidebar" style={{ width: '380px', maxWidth: '100%', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
-          </div>
-
-          {sidebarTab === 'chat' ? (
-            <Chat
-              messages={messages} mySocketId={mySocketId} username={authUser?.username || username}
-              chatInput={chatInput} setChatInput={setChatInput}
-              handleSendMessage={handleSendMessage} currentTheme={currentTheme}
-              replyTo={replyTo} setReplyTo={setReplyTo}
-            />
-          ) : (
-            <Playlist
-              categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-              newCategoryInput={newCategoryInput} setNewCategoryInput={setNewCategoryInput}
-              handleCreateCategory={handleCreateCategory} playMode={playMode}
-              handleModeChange={handleModeChange} filteredPlaylist={filteredPlaylist}
-              mediaSrc={mediaSrc} handleSelectPlaylistItem={handleSelectPlaylistItem}
-              handleRemovePlaylistItem={handleRemovePlaylistItem} currentTheme={currentTheme}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
+﻿require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const ytSearch = require('yt-search');
+const crypto = require('crypto');
+const logger = require('./utils/logger');
+const db = require('./utils/database');
+
+const app = express();
+
+// --- SECURITY ---
+app.use(helmet({ contentSecurityPolicy: false }));
+
+const ALLOWED_ORIGINS = [
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean),
+  'https://couple-meeting-flax.vercel.app',
+  'https://www.couplemeeting.com.tr',
+  'https://couplemeeting.com.tr',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+const isProd = process.env.NODE_ENV === 'production';
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.length === 0) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(null, false);
+  },
+  credentials: true
+}));
+
+// --- STRIPE ---
+let stripe = null;
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+if (STRIPE_KEY && STRIPE_KEY !== 'sk_test_BURAYA_STRIPE_ANAHTARINI_YAZ') {
+  stripe = require('stripe')(STRIPE_KEY);
+  logger.info('­şÆ│ Stripe entegrasyonu aktif.');
+} else {
+  logger.warn('ÔÜá´©Å  Stripe tan─▒ml─▒ de─şil. Test modu.');
 }
 
-export default App;
+// Stripe webhook - express.json() ├ûNCE
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe) return res.status(200).send('Stripe pasif');
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret || webhookSecret === 'whsec_BURAYA_WEBHOOK_SECRET_YAZ') return res.status(200).send('Webhook secret yok');
+
+  let event;
+  try { event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret); }
+  catch (err) { logger.error('Webhook imza hatas─▒', { error: err.message }); return res.status(400).send(`Webhook Error: ${err.message}`); }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const { username, plan } = session.metadata;
+    const user = db.getUser(username);
+    if (user && VIP_PLANS[plan]) {
+      const now = Date.now();
+      const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+      db.updateUser(username, {
+        is_vip: 1, vip_expiry: startFrom + VIP_PLANS[plan].duration,
+        vip_plan: plan, vip_activated_at: now,
+        stripe_customer_id: session.customer || '', stripe_subscription_id: session.subscription || ''
+      });
+      logger.info(`­şææ [STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
+      emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: startFrom + VIP_PLANS[plan].duration, plan });
+    }
+  }
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object;
+    const allUsers = db.getDb().prepare('SELECT username FROM users WHERE stripe_subscription_id = ?').all(sub.id);
+    for (const u of allUsers) {
+      db.updateUser(u.username, { is_vip: 0, vip_expiry: Date.now() });
+      logger.info(`ÔØî [STRIPE] VIP iptal: ${u.username}`);
+      emitToUser(u.username, 'vip_activated', { isVip: false, vipExpiry: Date.now(), plan: null });
+    }
+  }
+  res.status(200).json({ received: true });
+});
+
+app.use(express.json({ limit: '1mb' }));
+
+// --- RATE LIMITING ---
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: '├çok fazla istek.' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: '├çok fazla deneme.' } });
+app.use('/api/', apiLimiter);
+app.use('/api/vip/create-checkout', authLimiter);
+app.use('/api/vip/admin-grant', authLimiter);
+
+// --- INPUT VALIDATION ---
+function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>]/g, ''); }
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
+
+// --- ROUTES ---
+app.get('/', (req, res) => res.status(200).send('­şÜÇ Couple Meeting Backend Active!'));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now(), db: 'sqlite' }));
+
+// --- VIP ---
+const VIP_PLANS = {
+  monthly: { price: 29.90, duration: 30 * 24 * 60 * 60 * 1000, label: 'Ayl─▒k VIP' },
+  yearly: { price: 199.90, duration: 365 * 24 * 60 * 60 * 1000, label: 'Y─▒ll─▒k VIP' }
+};
+
+app.post('/api/vip/create-checkout', async (req, res) => {
+  const { token, plan } = req.body;
+  if (!token || !plan || !VIP_PLANS[plan]) return res.json({ ok: false, message: 'Ge├ğersiz plan.' });
+  const user = db.getUserByToken(token);
+  if (!user) return res.json({ ok: false, message: 'Giri┼ş yapmal─▒s─▒n.' });
+
+  if (!stripe) {
+    const now = Date.now();
+    const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+    const newExpiry = startFrom + VIP_PLANS[plan].duration;
+    db.updateUser(user.username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan, vip_activated_at: now });
+    emitToUser(user.username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan });
+    logger.info(`­şææ VIP test aktif: ${user.username} (${VIP_PLANS[plan].label})`);
+    return res.json({ ok: true, testMode: true, message: 'Test modunda aktifle┼ştirildi.', vipExpiry: newExpiry, plan });
+  }
+
+  try {
+    const priceId = plan === 'monthly' ? process.env.STRIPE_PRICE_MONTHLY : process.env.STRIPE_PRICE_YEARLY;
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription', payment_method_types: ['card'], customer_email: user.email,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${req.headers.origin || 'https://couple-meeting-flax.vercel.app'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || 'https://couple-meeting-flax.vercel.app'}/payment-cancel`,
+      metadata: { username: user.username, plan }
+    });
+    res.json({ ok: true, sessionId: session.id, url: session.url });
+  } catch (err) {
+    logger.error('Stripe checkout hatas─▒', { error: err.message });
+    res.json({ ok: false, message: '├ûdeme ba┼şlat─▒lamad─▒.' });
+  }
+});
+
+app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
+
+// --- MUSIC STREAMING ---
+let Innertube, UniversalCache;
+try {
+  ({ Innertube, UniversalCache } = require('youtubei.js'));
+  logger.info('Ô£à youtubei.js y├╝klendi');
+} catch (e) { logger.warn('ÔÜá´©Å youtubei.js y├╝klenemedi', { error: e.message }); }
+
+let innertube = null;
+async function getInnertube() {
+  if (!innertube && Innertube) {
+    innertube = await Innertube.create({
+      cache: new UniversalCache(false),
+      generate_session_locally: true,
+      retrieve_player: true,
+      fetch: fetch.bind(globalThis)
+    });
+  }
+  return innertube;
+}
+
+let mk = null;
+try {
+  const { MusicKit } = require('musicstream-sdk');
+  mk = new MusicKit({ logLevel: 'warn' });
+  logger.info('Ô£à musicstream-sdk y├╝klendi');
+} catch (e) { logger.warn('ÔÜá´©Å musicstream-sdk y├╝klenemedi', { error: e.message }); }
+
+app.get('/api/music/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json({ results: [] });
+
+  const yt = await getInnertube().catch(() => null);
+  if (yt) {
+    try {
+      const results = await yt.music.search(q, { type: 'song' });
+      const songs = (results.songs?.contents || [])
+        .map(s => {
+          const id = s.id;
+          const title = s.title?.text || s.title?.toString() || '';
+          const artist = s.artists?.[0]?.name || s.artist?.name || '';
+          const duration = s.duration?.text || '';
+          const thumb = s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+          return { id, title, artist, duration, thumbnail: thumb, src: id };
+        })
+        .filter(s => s.id && s.title);
+      if (songs.length > 0) return res.json({ results: songs.slice(0, 10) });
+    } catch (e) { logger.warn('yt.music.search hatas─▒', { error: e.message }); }
+
+    try {
+      const results = await yt.search(q, { type: 'video' });
+      const songs = (results.videos || [])
+        .slice(0, 10)
+        .map(v => ({
+          id: v.id,
+          title: v.title?.text || v.title?.toString() || '',
+          artist: v.author?.name || '',
+          duration: v.duration?.text || '',
+          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+          src: v.id
+        }))
+        .filter(s => s.id && s.title);
+      if (songs.length > 0) return res.json({ results: songs });
+    } catch (e) { logger.warn('yt.search fallback hatas─▒', { error: e.message }); }
+  }
+
+  if (mk) {
+    try {
+      const songs = await mk.search(q, { filter: 'songs', limit: 10 });
+      return res.json({ results: songs.map(s => ({
+        id: s.videoId, title: s.title, artist: s.artist || '',
+        duration: s.duration || 0,
+        thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
+        src: s.videoId
+      }))});
+    } catch (e) { logger.warn('musicstream-sdk arama hatas─▒', { error: e.message }); }
+  }
+
+  try {
+    const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=10`);
+    const data = await r.json();
+    res.json({ results: (data.data || []).map(t => ({
+      id: t.id, title: t.title, artist: t.artist?.name || '', album: t.album?.title || '',
+      duration: t.duration, thumbnail: t.album?.cover_medium || '',
+      youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim(), src: ''
+    }))});
+  } catch (e) { res.json({ results: [], error: e.message }); }
+});
+
+app.get('/api/music/stream/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+
+  const INVIDIOUS_INSTANCES = [
+    'https://yt.omada.cafe',
+    'https://invidious.schenkel.eti.br',
+    'https://invidious.kemonomimi.nl',
+    'https://invidious.privacyredirect.com',
+    'https://vid.puffyan.us',
+  ];
+
+  for (const instance of INVIDIOUS_INSTANCES) {
+    try {
+      const r = await fetch(`${instance}/api/v1/videos/${videoId}`, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (!data?.adaptiveFormats) continue;
+      const audio = data.adaptiveFormats
+        .filter(f => f.type?.startsWith('audio/'))
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (audio?.url) {
+        logger.info(`Stream bulundu: ${videoId} via ${instance}`);
+        return res.json({ url: audio.url, title: data.title, thumbnail: data.thumbnailUrl });
+      }
+    } catch (e) { logger.warn(`Invidious ${instance} ba┼şar─▒s─▒z`, { videoId, error: e.message }); }
+  }
+
+  if (mk) {
+    try {
+      const stream = await Promise.race([
+        mk.getStream(videoId),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+      ]);
+      if (stream?.url) return res.json({ url: stream.url });
+    } catch {}
+  }
+
+  res.status(502).json({ error: 'Stream bulunamad─▒' });
+});
+
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+if (!ADMIN_SECRET) logger.warn('ÔÜá´©Å ADMIN_SECRET tan─▒ml─▒ de─şil. Admin VIP ├Âzellikleri pasif olacak.');
+
+app.post('/api/vip/admin-grant', (req, res) => {
+  const { secret, username, plan } = req.body;
+  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz eri┼şim.' });
+  if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Ge├ğersiz parametre.' });
+  const user = db.getUser(username);
+  if (!user) return res.json({ ok: false, message: 'Kullan─▒c─▒ bulunamad─▒.' });
+
+  const now = Date.now();
+  const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
+  const newExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
+  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now });
+  logger.info(`­şææ [ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
+  emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan: plan || 'yearly' });
+  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: newExpiry });
+});
+
+// --- SERVER ---
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true }
+});
+
+const rooms = {};
+const onlineUsers = {};
+
+function publicUser(u) {
+  if (!u) return null;
+  return {
+    username: u.username, email: u.email, avatar: u.avatar || '­şÉ▒',
+    bio: u.bio || '', status: u.status || '', createdAt: u.createdAt,
+    isOnline: !!onlineUsers[u.username],
+    lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null,
+    isVip: u.isVip && u.vipExpiry && u.vipExpiry > Date.now(),
+    vipExpiry: u.vipExpiry || null
+  };
+}
+
+function emitToUser(username, event, data) {
+  for (const [, s] of io.sockets.sockets) {
+    if (s.socialUsername === username) s.emit(event, data);
+  }
+}
+
+function sendFriendsUpdate(targetUsername) {
+  emitToUser(targetUsername, 'friends_update', {
+    friends: db.getFriends(targetUsername).map(publicUser).filter(Boolean),
+    requests: db.getPendingFriendRequests(targetUsername)
+  });
+}
+
+function setOnline(username, socketId) {
+  if (!onlineUsers[username]) onlineUsers[username] = { lastSeen: Date.now(), socketIds: new Set() };
+  onlineUsers[username].socketIds.add(socketId);
+  onlineUsers[username].lastSeen = Date.now();
+}
+
+function setOffline(username, socketId) {
+  if (onlineUsers[username]) {
+    onlineUsers[username].socketIds.delete(socketId);
+    if (onlineUsers[username].socketIds.size === 0) {
+      onlineUsers[username].lastSeen = Date.now();
+      db.updateLastSeen(username);
+    }
+  }
+}
+
+function broadcastOnlineStatus(username) {
+  for (const friendName of (db.getDb().prepare('SELECT user2 as f FROM friendships WHERE user1 = ?').all(username).map(r => r.f))) {
+    emitToUser(friendName, 'friend_online_status', { username, isOnline: !!onlineUsers[username], lastSeen: onlineUsers[username]?.lastSeen || Date.now() });
+  }
+}
+
+// Token cleanup
+const TOKEN_CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+setInterval(() => {
+  const cleaned = db.cleanOldTokens(TOKEN_MAX_AGE);
+  if (cleaned > 0) logger.info(`­şğ╣ ${cleaned} eski token temizlendi.`);
+}, TOKEN_CLEANUP_INTERVAL);
+
+// Room cleanup
+const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000;
+const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now(); let cleaned = 0;
+  for (const [id, room] of Object.entries(rooms)) {
+    if (room.users.length === 0 && !room.password && !room.isVip && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
+      delete rooms[id]; cleaned++;
+    }
+  }
+  if (cleaned > 0) { logger.info(`­şğ╣ ${cleaned} bo┼ş oda temizlendi.`); broadcastRooms(); }
+}, ROOM_CLEANUP_INTERVAL);
+
+function getPublicRoomsList() {
+  return Object.entries(rooms).map(([id, room]) => ({
+    id, name: room.name || id, userCount: room.users.length,
+    maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip
+  }));
+}
+function broadcastRooms() { io.emit('public_rooms_update', getPublicRoomsList()); }
+function updateRoomUsers(roomId) {
+  if (rooms[roomId]) {
+    io.to(roomId).emit('room_user_count_update', {
+      userCount: rooms[roomId].users.length, maxUsers: rooms[roomId].maxUsers,
+      users: rooms[roomId].users, hostUserId: rooms[roomId].hostUserId,
+      roomName: rooms[roomId].name, theme: rooms[roomId].theme || 'default'
+    });
+  }
+}
+
+// --- SOCKET.IO ---
+io.on('connection', (socket) => {
+  socket.emit('public_rooms_update', getPublicRoomsList());
+  socket.emit('global_chat_history', db.getGlobalMessages(100));
+
+  // AUTH
+  socket.on('auth_register', ({ username, email, password, bio, avatar }) => {
+    const cleanUsername = sanitize(username, 20).toLowerCase();
+    const cleanEmail = sanitize(email, 100).toLowerCase();
+    if (!cleanUsername || !cleanEmail || !password) return socket.emit('auth_result', { ok: false, message: 'Kullan─▒c─▒ ad─▒, e-posta ve ┼şifre gerekli.' });
+    if (!isValidUsername(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Kullan─▒c─▒ ad─▒ 3-20 karakter olmal─▒; sadece harf, say─▒ ve _ kullan.' });
+    if (!isValidEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Ge├ğerli bir e-posta gir.' });
+    if (typeof password !== 'string' || password.length < 6) return socket.emit('auth_result', { ok: false, message: '┼Şifre en az 6 karakter olmal─▒.' });
+    if (password.length > 128) return socket.emit('auth_result', { ok: false, message: '┼Şifre ├ğok uzun.' });
+    if (db.getUser(cleanUsername)) return socket.emit('auth_result', { ok: false, message: 'Bu kullan─▒c─▒ ad─▒ zaten al─▒nm─▒┼ş.' });
+    if (db.getUserByEmail(cleanEmail)) return socket.emit('auth_result', { ok: false, message: 'Bu e-posta zaten kay─▒tl─▒.' });
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '­şÉ▒', sanitize(bio, 120));
+    const token = db.createToken(cleanUsername);
+    socket.socialUsername = cleanUsername;
+    setOnline(cleanUsername, socket.id);
+    logger.info(`Ô£à Yeni kay─▒t: ${cleanUsername}`);
+    socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
+  });
+
+  socket.on('auth_login', ({ email, password }) => {
+    const cleanEmail = sanitize(email, 100).toLowerCase();
+    const user = db.getUserByEmail(cleanEmail);
+    if (!user) return socket.emit('auth_result', { ok: false, message: 'E-posta veya ┼şifre hatal─▒.' });
+    try {
+      const [salt, storedHash] = user.passwordHash.split(':');
+      const check = crypto.scryptSync(password || '', salt, 64).toString('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(check, 'hex'))) {
+        return socket.emit('auth_result', { ok: false, message: 'E-posta veya ┼şifre hatal─▒.' });
+      }
+    } catch { return socket.emit('auth_result', { ok: false, message: 'E-posta veya ┼şifre hatal─▒.' }); }
+
+    const token = db.createToken(user.username);
+    socket.socialUsername = user.username;
+    setOnline(user.username, socket.id);
+    broadcastOnlineStatus(user.username);
+    logger.info(`­şöæ Giri┼ş: ${user.username}`);
+    socket.emit('auth_result', { ok: true, user: publicUser(user), token });
+    socket.emit('friends_update', {
+      friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
+      requests: db.getPendingFriendRequests(user.username)
+    });
+  });
+
+  socket.on('social_sync', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    socket.socialUsername = user.username;
+    setOnline(user.username, socket.id);
+    broadcastOnlineStatus(user.username);
+    socket.emit('social_profile', publicUser(user));
+    socket.emit('friends_update', {
+      friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
+      requests: db.getPendingFriendRequests(user.username)
+    });
+  });
+
+  socket.on('update_profile', ({ token, bio, status, avatar }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.updateUser(user.username, { bio: sanitize(bio, 120), status: sanitize(status, 80), avatar: sanitize(avatar, 10) || user.avatar || '­şÉ▒' });
+    socket.emit('social_profile', publicUser(db.getUser(user.username)));
+  });
+
+  // ARKADA┼ŞLIK
+  socket.on('friend_search', ({ q, token }) => {
+    const term = sanitize(q, 20).toLowerCase();
+    const current = db.getUserByToken(token)?.username;
+    if (!term || term.length < 1) return socket.emit('friend_search_results', []);
+    const results = db.searchUsers(term, current);
+    socket.emit('friend_search_results', results);
+  });
+
+  socket.on('friend_request', ({ targetUsername, token }) => {
+    const from = db.getUserByToken(token);
+    const target = db.getUser(sanitize(targetUsername, 20).toLowerCase());
+    if (!from) return socket.emit('friend_request_status', { message: 'Giri┼ş yapmal─▒s─▒n.' });
+    if (!target) return socket.emit('friend_request_status', { message: 'Kullan─▒c─▒ bulunamad─▒.' });
+    if (target.username === from.username) return socket.emit('friend_request_status', { message: 'Kendine istek g├Ânderemezsin.' });
+    if (db.areFriends(from.username, target.username)) return socket.emit('friend_request_status', { message: 'Zaten arkada┼şs─▒n─▒z.' });
+    if (db.hasPendingRequest(from.username, target.username)) return socket.emit('friend_request_status', { message: '─░stek zaten g├Ânderilmi┼ş.' });
+    if (db.hasPendingRequest(target.username, from.username)) return socket.emit('friend_request_status', { message: 'Bu kullan─▒c─▒ sana zaten istek g├Ândermi┼ş.' });
+
+    const id = db.sendFriendRequest(from.username, from.avatar, target.username);
+    socket.emit('friend_request_status', { message: 'Arkada┼şl─▒k iste─şi g├Ânderildi Ô£à' });
+    sendFriendsUpdate(target.username);
+    emitToUser(target.username, 'friend_request_received', { id, fromUsername: from.username, avatar: from.avatar });
+  });
+
+  socket.on('friend_request_response', ({ requestId, action, token }) => {
+    const me = db.getUserByToken(token);
+    const req = db.getFriendRequest(requestId);
+    if (!me || !req || req.to_username !== me.username || req.status !== 'pending') return;
+    db.updateFriendRequest(requestId, action === 'accept' ? 'accepted' : 'rejected');
+    if (action === 'accept') {
+      db.addFriendship(me.username, req.from_username);
+    }
+    sendFriendsUpdate(me.username);
+    sendFriendsUpdate(req.from_username);
+    socket.emit('friend_request_status', { message: action === 'accept' ? 'Arkada┼şl─▒k kabul edildi Ô£à' : '─░stek silindi.' });
+  });
+
+  socket.on('unfriend', ({ targetUsername, token }) => {
+    const me = db.getUserByToken(token);
+    if (!me) return;
+    db.removeFriendship(me.username, targetUsername);
+    sendFriendsUpdate(me.username);
+    sendFriendsUpdate(targetUsername);
+    socket.emit('friend_request_status', { message: 'Arkada┼şl─▒k silindi.' });
+  });
+
+  // GLOBAL CHAT
+  socket.on('global_chat_message', ({ text, username, avatar, token }) => {
+    const cleanText = sanitize(text, 500);
+    if (!cleanText) return;
+    const accountUser = db.getUserByToken(token);
+    const msg = {
+      id: crypto.randomBytes(8).toString('hex'),
+      username: accountUser?.username || sanitize(username, 24) || 'Misafir',
+      avatar: accountUser?.avatar || sanitize(avatar, 10) || '­şÉ▒',
+      text: cleanText,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now()
+    };
+    db.addGlobalMessage(msg);
+    io.emit('global_chat_message', msg);
+  });
+
+  // ARAMA
+  socket.on('search_music', async ({ query }) => {
+    try {
+      const q = sanitize(query, 200);
+      if (!q || q.length < 2) { socket.emit('search_results', []); return; }
+      let results = [];
+      if (mk) {
+        try {
+          const songs = await mk.search(q, { filter: 'songs', limit: 8 });
+          results = songs.map(s => ({
+            id: s.videoId, title: s.title, artist: s.artist || '',
+            duration: s.duration || 0,
+            thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
+            src: s.videoId
+          }));
+        } catch {}
+      }
+      if (results.length === 0) {
+        try {
+          const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=8`);
+          const data = await r.json();
+          results = (data.data || []).map(t => ({
+            id: t.id, title: t.title, artist: t.artist?.name || '',
+            duration: t.duration, thumbnail: t.album?.cover_medium || '',
+            youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim(), src: ''
+          }));
+        } catch {}
+      }
+      socket.emit('search_results', results);
+    } catch (err) { logger.error('Arama hatas─▒', { error: err.message }); socket.emit('search_results', []); }
+  });
+
+  // ODA
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip, roomType }) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    const cleanRoomType = roomType === 'music' ? 'music' : 'video';
+    let room = rooms[cleanRoomId];
+    if (!room) {
+      rooms[cleanRoomId] = {
+        name: cleanRoomId, password: typeof password === 'string' ? password : '',
+        maxUsers: Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8),
+        hostUserId: userId, theme: 'default', users: [],
+        roomType: cleanRoomType,
+        playlist: [], categories: ['Genel'], playMode: 'sequence',
+        currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
+        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
+      };
+      room = rooms[cleanRoomId];
+    } else {
+      if (room.password && room.password !== (password || '')) { socket.emit('room_error', '­şöÆ Hatal─▒ Oda ┼Şifresi!'); return; }
+      if (!room.users.find(u => u.userId === userId) && room.users.length >= room.maxUsers) { socket.emit('room_error', `ÔÜá´©Å Oda Dolu! (${room.users.length}/${room.maxUsers})`); return; }
+      if (!room.messages) room.messages = [];
+    }
+    const existingIndex = room.users.findIndex(u => u.userId === userId);
+    const userInfo = { socketId: socket.id, userId, username: sanitize(username, 24) || '─░zleyici', avatar: sanitize(avatar, 10) || '­şÉ▒', userCity };
+    if (existingIndex !== -1) room.users[existingIndex] = userInfo; else room.users.push(userInfo);
+    room.lastActivityAt = Date.now();
+    socket.currentRoom = cleanRoomId; socket.userId = userId; socket.join(cleanRoomId);
+
+    let calcTime = room.currentMedia.time;
+    if (room.currentMedia.isPlaying) calcTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
+    socket.emit('room_joined', {
+      roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
+      roomType: room.roomType || 'video',
+      userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
+      users: room.users, playlist: room.playlist, categories: room.categories,
+      playMode: room.playMode, messages: (room.messages || []).slice(-100),
+      isVip: !!room.isVip,
+      currentMedia: { ...room.currentMedia, time: calcTime }
+    });
+    updateRoomUsers(cleanRoomId); broadcastRooms();
+  });
+
+  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (room && room.hostUserId === socket.userId) {
+      if (newName && newName.trim()) room.name = sanitize(newName, 50);
+      if (newTheme) room.theme = newTheme;
+      if (newHostUserId) room.hostUserId = newHostUserId;
+      io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId });
+      broadcastRooms();
+    }
+  });
+
+  socket.on('kick_user', ({ roomId, targetUserId }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (room && room.hostUserId === socket.userId && targetUserId !== socket.userId) {
+      const target = room.users.find(u => u.userId === targetUserId);
+      if (target) {
+        io.to(target.socketId).emit('kicked_from_room', 'ÔÜá´©Å Odadan ├ğ─▒kar─▒ld─▒n─▒z.');
+        const targetSocket = io.sockets.sockets.get(target.socketId);
+        if (targetSocket) targetSocket.leave(sanitize(roomId, 50));
+        room.users = room.users.filter(u => u.userId !== targetUserId);
+        updateRoomUsers(sanitize(roomId, 50)); broadcastRooms();
+      }
+    }
+  });
+
+  socket.on('create_category', ({ roomId, categoryName }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    const name = sanitize(categoryName, 50);
+    if (room && name && !room.categories.includes(name)) { room.categories.push(name); io.to(sanitize(roomId, 50)).emit('categories_updated', room.categories); }
+  });
+
+  socket.on('add_to_playlist', ({ roomId, item }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (room && item) { room.playlist.push(item); io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
+  });
+
+  socket.on('remove_from_playlist', ({ roomId, itemId }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (room) { room.playlist = room.playlist.filter(i => i.id !== itemId); io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode }); }
+  });
+
+  socket.on('change_play_mode', ({ roomId, mode }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (room) { room.playMode = mode; io.to(sanitize(roomId, 50)).emit('play_mode_changed', mode); }
+  });
+
+  socket.on('room_action', ({ roomId, type, payload }) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    const room = rooms[cleanRoomId];
+    if (room) {
+      if (type === 'CHANGE_MEDIA') {
+        room.currentMedia = { type: payload.type, src: payload.src, title: sanitize(payload.title, 200) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
+      } else if (type === 'PLAY') {
+        room.currentMedia.isPlaying = true; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
+      } else if (type === 'PAUSE') {
+        room.currentMedia.isPlaying = false; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
+      } else if (type === 'CHAT_MESSAGE') {
+        const msg = {
+          id: payload.id || crypto.randomBytes(8).toString('hex'),
+          senderId: payload.senderId, text: sanitize(payload.text, 500), sender: sanitize(payload.sender, 24),
+          avatar: sanitize(payload.avatar, 10), time: payload.time,
+          replyTo: payload.replyTo || null, replyToText: sanitize(payload.replyToText, 500), replyToSender: sanitize(payload.replyToSender, 24),
+          createdAt: Date.now()
+        };
+        if (!room.messages) room.messages = [];
+        room.messages.push(msg);
+        room.messages = room.messages.slice(-200);
+      }
+      room.lastActivityAt = Date.now();
+    }
+    socket.to(cleanRoomId).emit('room_action', { type, payload });
+    if (type === 'CHANGE_MEDIA') {
+      io.to(cleanRoomId).emit('media_source_changed', { type: payload.type, src: payload.src, source: payload.source || payload.type, title: sanitize(payload.title, 200) || '' });
+    }
+  });
+
+  socket.on('leave_room', () => {
+    if (socket.currentRoom && rooms[socket.currentRoom]) {
+      const rId = socket.currentRoom;
+      rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
+      rooms[rId].lastActivityAt = Date.now();
+      socket.leave(rId); updateRoomUsers(rId); socket.currentRoom = null; broadcastRooms();
+    }
+  });
+
+  socket.on('disconnect', () => {
+    if (socket.currentRoom && rooms[socket.currentRoom]) {
+      const rId = socket.currentRoom; const sid = socket.id;
+      setTimeout(() => {
+        if (rooms[rId]) { rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid); rooms[rId].lastActivityAt = Date.now(); updateRoomUsers(rId); broadcastRooms(); }
+      }, 3000);
+    }
+    if (socket.socialUsername) { setOffline(socket.socialUsername, socket.id); broadcastOnlineStatus(socket.socialUsername); }
+  });
+});
+
+// --- GRACEFUL SHUTDOWN ---
+process.on('SIGTERM', () => { logger.info('SIGTERM al─▒nd─▒, kapat─▒l─▒yor...'); db.closeDb(); process.exit(0); });
+process.on('SIGINT', () => { logger.info('SIGINT al─▒nd─▒, kapat─▒l─▒yor...'); db.closeDb(); process.exit(0); });
+
+// --- START ---
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, '0.0.0.0', () => {
+  logger.info(`­şÜÇ Sunucu ${PORT} portunda aktif! (${isProd ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+});
