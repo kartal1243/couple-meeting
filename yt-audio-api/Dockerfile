@@ -10,4 +10,4 @@ COPY . .
 RUN mkdir -p downloads
 
 EXPOSE 5000
-CMD ["python", "main.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "main:app"]
