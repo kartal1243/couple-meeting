@@ -201,6 +201,63 @@ app.get('/api/music/search', async (req, res) => {
   res.json({ results: [] });
 });
 
+app.get('/api/music/stream/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+
+  const yt = await getInnertube().catch(() => null);
+  if (!yt) return res.status(500).json({ error: 'InnerTube yüklenemedi' });
+
+  try {
+    const info = await yt.getBasicInfo(videoId);
+    const formats = info?.streaming_data?.adaptive_formats || [];
+    const audio = formats
+      .filter(f => f.mime_type?.startsWith('audio/'))
+      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+
+    if (audio?.decipher) {
+      audio.decipher(yt.session.player);
+    }
+
+    if (audio?.url) {
+      const proxyUrl = `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(audio.url)}`;
+      logger.info(`Stream bulundu: ${videoId}`);
+      return res.json({ url: audio.url, proxyUrl });
+    }
+
+    if (audio?.signature_cipher) {
+      const decoded = yt.session.player.decipher(undefined, audio.signature_cipher);
+      if (decoded) {
+        const proxyUrl = `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(decoded)}`;
+        logger.info(`Stream bulundu (cipher): ${videoId}`);
+        return res.json({ url: decoded, proxyUrl });
+      }
+    }
+  } catch (e) {
+    logger.warn('stream hatasi', { videoId, error: e.message });
+  }
+
+  res.status(502).json({ error: 'Stream bulunamadı' });
+});
+
+app.get('/api/music/proxy-audio', async (req, res) => {
+  const audioUrl = req.query.url;
+  if (!audioUrl) return res.status(400).end();
+  try {
+    const r = await fetch(audioUrl, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) return res.status(r.status).end();
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/webm');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const reader = r.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) { res.end(); return; }
+      res.write(value);
+    }
+  } catch (e) { if (!res.headersSent) res.status(502).end(); }
+});
+
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 if (!ADMIN_SECRET) logger.warn('ÔÜá´©Å ADMIN_SECRET tan─▒ml─▒ de─şil. Admin VIP ├Âzellikleri pasif olacak.');
 
