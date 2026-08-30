@@ -1,6 +1,5 @@
 import YouTube from 'react-youtube';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { BACKEND_URL } from '../constants';
+import { useCallback, useRef } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -15,10 +14,6 @@ export default function Player({
   openYouTubeExternally, setYoutubeError, setMediaType, handleMediaEnd, handleYouTubeError
 }) {
   const videoId = extractVideoId(mediaSrc);
-  const audioRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [musicLoading, setMusicLoading] = useState(false);
-  const [musicError, setMusicError] = useState(false);
 
   const ytOpts = {
     height: '100%',
@@ -37,86 +32,11 @@ export default function Player({
     ytPlayerRef.current = e.target;
   }, [ytPlayerRef]);
 
-  // Telefonun kilit ekranında bildirim gösterme ve arka planda çalma
-  const setupMediaSession = useCallback(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: mediaMeta?.title || 'Couple Meeting Şarkı',
-        artist: mediaMeta?.artist || 'Couple Meeting',
-        album: 'Müzik Odası',
-        artwork: [
-          {
-            src: mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-            sizes: '512x512',
-            type: 'image/jpeg'
-          }
-        ]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        audioRef.current?.play();
-        setIsPlaying(true);
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        audioRef.current?.pause();
-        setIsPlaying(false);
-      });
-      navigator.mediaSession.setActionHandler('stop', () => {
-        audioRef.current?.pause();
-        setIsPlaying(false);
-      });
-    }
-  }, [mediaMeta, videoId]);
-
-  // Kendi sunucumuzun IP'si üzerinden saf ses akışı
-  useEffect(() => {
-    if (mediaType === 'music' && videoId && audioRef.current) {
-      setMusicLoading(true);
-      setMusicError(false);
-      setIsPlaying(false);
-
-      const audio = audioRef.current;
-      audio.src = `${BACKEND_URL}/api/music/stream/${videoId}`;
-
-      audio.oncanplay = () => {
-        setMusicLoading(false);
-        audio.play().then(() => {
-          setIsPlaying(true);
-          setupMediaSession();
-          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        }).catch(() => setIsPlaying(false));
-      };
-
-      audio.onerror = () => { setMusicLoading(false); setMusicError(true); };
-    }
-  }, [mediaType, videoId, setupMediaSession]);
-
-  const togglePlayPause = () => {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) {
-      audioRef.current.play();
-      setIsPlaying(true);
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-    } else {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-    }
-  };
-
   return (
     <div className="cm-video-wrap" style={{
       flex: 1, position: 'relative', width: '100%', height: '100%',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
-      {/* HTML5 Saf Ses Oynatıcı - Kilit Ekranında Çalan Motor */}
-      <audio
-        ref={audioRef}
-        playsInline
-        preload="auto"
-        onEnded={() => { setIsPlaying(false); handleMediaEnd?.(); }}
-      />
-
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
           <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
@@ -140,46 +60,48 @@ export default function Player({
         </div>
       )}
 
-      {/* MÜZİK MODU (Kendi Sunucumuzdan Canlı Akış) */}
-      {mediaType === 'music' && videoId && (
-        <div style={{ textAlign: 'center', color: '#fff', padding: '20px', zIndex: 2 }}>
-          <img
-            src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
-            alt=""
-            style={{
-              width: '240px',
-              height: '240px',
-              borderRadius: '20px',
-              objectFit: 'cover',
-              boxShadow: isPlaying ? '0 15px 50px rgba(0, 168, 132, 0.4)' : '0 10px 40px rgba(0,0,0,.6)',
-              marginBottom: '18px',
-              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-              transform: isPlaying ? 'scale(1.03)' : 'scale(1)'
+      {/* MÜZİK MODU - Aynı YouTube iframe, arka planda çalıyor */}
+      {mediaType === 'music' && videoId && !youtubeError && (
+        <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
+          <YouTube
+            videoId={videoId}
+            opts={{
+              ...ytOpts,
+              playerVars: {
+                ...ytOpts.playerVars,
+                autoplay: 1,
+                controls: 0,
+                disablekb: 1,
+                fs: 0,
+                iv_load_policy: 3,
+                modestbranding: 1,
+                playsinline: 1
+              }
             }}
+            style={{ width: '100%', height: '100%', maxWidth: '100%', opacity: 0.15, position: 'absolute', top: 0, left: 0 }}
+            onReady={handleYTReady}
+            onError={handleYouTubeError}
+            onEnd={handleMediaEnd}
           />
-          <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '6px' }}>{mediaMeta?.title || 'Şarkı Çalıyor'}</div>
-          <div style={{ fontSize: '14px', color: '#8696a0', marginBottom: '16px' }}>{mediaMeta?.artist || 'Couple Meeting Müzik'}</div>
-
-          {musicLoading && <div style={{ fontSize: '13px', color: '#00a884', marginBottom: '12px' }}>⏳ Şarkı sunucudan yükleniyor...</div>}
-          {musicError && <div style={{ fontSize: '13px', color: '#ea4335', marginBottom: '12px' }}>❌ Şarkı yüklenemedi. Tekrar deneyin.</div>}
-
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button
-              onClick={togglePlayPause}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+            zIndex: 2, pointerEvents: 'none'
+          }}>
+            <img
+              src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+              alt=""
               style={{
-                background: isPlaying ? '#ea4335' : '#00a884',
-                color: '#fff',
-                border: 'none',
-                padding: '12px 32px',
-                borderRadius: '14px',
-                fontWeight: '800',
-                cursor: 'pointer',
-                fontSize: '15px',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                transition: '0.2s all'
-              }}>
-              {isPlaying ? '⏸ Durdur' : '▶ Çal'}
-            </button>
+                width: '220px', height: '220px', borderRadius: '20px', objectFit: 'cover',
+                boxShadow: '0 15px 50px rgba(0, 168, 132, 0.4)', marginBottom: '18px'
+              }}
+            />
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff', marginBottom: '6px', textShadow: '0 2px 8px rgba(0,0,0,.7)' }}>
+              {mediaMeta?.title || 'Şarkı Çalıyor'}
+            </div>
+            <div style={{ fontSize: '14px', color: '#a0aec0', textShadow: '0 2px 6px rgba(0,0,0,.7)' }}>
+              {mediaMeta?.artist || 'Couple Meeting Müzik'}
+            </div>
           </div>
         </div>
       )}

@@ -6,7 +6,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
-const { execFile } = require('child_process');
 const logger = require('./utils/logger');
 const db = require('./utils/database');
 
@@ -141,12 +140,12 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
 app.get('/api/vip/plans', (req, res) => res.json({ plans: VIP_PLANS }));
 
-// --- MUSIC STREAMING ---
+// --- MUSIC SEARCH ---
 let Innertube, UniversalCache;
 try {
   ({ Innertube, UniversalCache } = require('youtubei.js'));
-  logger.info('Ô£à youtubei.js y├╝klendi');
-} catch (e) { logger.warn('ÔÜá´©Å youtubei.js y├╝klenemedi', { error: e.message }); }
+  logger.info('youtubei.js yuklendi');
+} catch (e) { logger.warn('youtubei.js yuklenemedi', { error: e.message }); }
 
 let innertube = null;
 async function getInnertube() {
@@ -160,13 +159,6 @@ async function getInnertube() {
   }
   return innertube;
 }
-
-let mk = null;
-try {
-  const { MusicKit } = require('musicstream-sdk');
-  mk = new MusicKit({ logLevel: 'warn' });
-  logger.info('Ô£à musicstream-sdk y├╝klendi');
-} catch (e) { logger.warn('ÔÜá´©Å musicstream-sdk y├╝klenemedi', { error: e.message }); }
 
 app.get('/api/music/search', async (req, res) => {
   const q = (req.query.q || '').trim();
@@ -187,7 +179,7 @@ app.get('/api/music/search', async (req, res) => {
         })
         .filter(s => s.id && s.title);
       if (songs.length > 0) return res.json({ results: songs.slice(0, 10) });
-    } catch (e) { logger.warn('yt.music.search hatas─▒', { error: e.message }); }
+    } catch (e) { logger.warn('yt.music.search hatasi', { error: e.message }); }
 
     try {
       const results = await yt.search(q, { type: 'video' });
@@ -203,120 +195,10 @@ app.get('/api/music/search', async (req, res) => {
         }))
         .filter(s => s.id && s.title);
       if (songs.length > 0) return res.json({ results: songs });
-    } catch (e) { logger.warn('yt.search fallback hatas─▒', { error: e.message }); }
+    } catch (e) { logger.warn('yt.search fallback hatasi', { error: e.message }); }
   }
 
-  if (mk) {
-    try {
-      const songs = await mk.search(q, { filter: 'songs', limit: 10 });
-      return res.json({ results: songs.map(s => ({
-        id: s.videoId, title: s.title, artist: s.artist || '',
-        duration: s.duration || 0,
-        thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
-        src: s.videoId
-      }))});
-    } catch (e) { logger.warn('musicstream-sdk arama hatas─▒', { error: e.message }); }
-  }
-
-  try {
-    const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=10`);
-    const data = await r.json();
-    res.json({ results: (data.data || []).map(t => ({
-      id: t.id, title: t.title, artist: t.artist?.name || '', album: t.album?.title || '',
-      duration: t.duration, thumbnail: t.album?.cover_medium || '',
-      youtubeQuery: `${t.artist?.name || ''} ${t.title}`.trim(), src: ''
-    }))});
-  } catch (e) { res.json({ results: [], error: e.message }); }
-});
-
-app.get('/api/debug', (req, res) => {
-  const { execSync } = require('child_process');
-  const info = { node: process.version, uptime: process.uptime() };
-  try { info.ytVersion = execSync('yt-dlp --version', { timeout: 5000 }).toString().trim(); } catch { info.ytVersion = 'BULUNAMADI'; }
-  try { info.python = execSync('python3 --version', { timeout: 5000 }).toString().trim(); } catch { info.python = 'BULUNAMADI'; }
-  res.json(info);
-});
-
-app.get('/api/music/stream/:videoId', async (req, res) => {
-  const { videoId } = req.params;
-  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
-
-  const { spawn } = require('child_process');
-
-  try {
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Transfer-Encoding', 'chunked');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-
-    let started = false;
-    let killed = false;
-
-    const kill = () => {
-      if (!killed) { killed = true; try { yt.kill('SIGTERM'); } catch {} }
-    };
-
-    const yt = spawn('yt-dlp', [
-      '-f', 'bestaudio[ext=m4a]/bestaudio/best',
-      '--no-playlist',
-      '--no-check-certificates',
-      '-x', '--audio-format', 'mp3',
-      '-o', '-',
-      `https://www.youtube.com/watch?v=${videoId}`
-    ], { timeout: 120000 });
-
-    yt.stdout.on('data', (chunk) => {
-      if (!started) {
-        started = true;
-      }
-      if (!res.writableEnded) res.write(chunk);
-    });
-
-    yt.stderr.on('data', (data) => {
-      const msg = data.toString().trim();
-      if (msg) logger.warn('yt-dlp', { videoId, msg: msg.slice(0, 200) });
-    });
-
-    yt.on('close', (code) => {
-      if (!started) {
-        if (!res.headersSent) res.status(502).json({ error: 'Stream bulunamadı' });
-      } else if (!res.writableEnded) {
-        res.end();
-      }
-    });
-
-    yt.on('error', (err) => {
-      logger.warn('yt-dlp spawn hatası', { videoId, error: err.message });
-      if (!started && !res.headersSent) res.status(502).json({ error: 'yt-dlp bulunamadı' });
-    });
-
-    req.on('close', kill);
-    req.on('aborted', kill);
-  } catch (e) {
-    logger.error('stream endpoint crash', { error: e.message });
-    if (!res.headersSent) res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/music/proxy-audio', async (req, res) => {
-  const audioUrl = req.query.url;
-  if (!audioUrl) return res.status(400).end();
-  try {
-    const r = await fetch(audioUrl, { signal: AbortSignal.timeout(30000) });
-    if (!r.ok) return res.status(r.status).end();
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/webm');
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    const reader = r.body.getReader();
-    const pump = async () => {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) { res.end(); return; }
-        res.write(value);
-      }
-    };
-    await pump();
-  } catch (e) { res.status(502).end(); }
+  res.json({ results: [] });
 });
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
