@@ -233,24 +233,23 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
 
-  if (!mk) return res.status(500).json({ error: 'musicstream-sdk yüklenmedi' });
+  const yt = await getInnertube().catch(() => null);
+  if (!yt) return res.status(500).json({ error: 'InnerTube yüklenemedi' });
 
   try {
-    const stream = await Promise.race([
-      mk.getStream(videoId),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
-    ]);
-    if (stream?.url) {
-      logger.info(`Stream bulundu: ${videoId} via musicstream-sdk`);
+    const format = await yt.getStreamingData(videoId, { type: 'audio', quality: 'best' });
+
+    if (format?.url) {
+      logger.info(`Stream bulundu: ${videoId} via youtubei.js`);
       return res.json({
-        url: stream.url,
-        proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(stream.url)}`,
-        title: stream.title,
-        thumbnail: stream.thumbnailUrl
+        url: format.url,
+        proxyUrl: `${req.protocol}://${req.get('host')}/api/music/proxy-audio?url=${encodeURIComponent(format.url)}`,
+        title: format.title || format.video_title,
+        thumbnail: format.thumbnail?.[0]?.url
       });
     }
   } catch (e) {
-    logger.warn('musicstream-sdk stream hatası', { videoId, error: e.message });
+    logger.warn('youtubei.js stream hatası', { videoId, error: e.message });
   }
 
   res.status(502).json({ error: 'Stream bulunamadı' });
