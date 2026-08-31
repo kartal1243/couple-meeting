@@ -1,16 +1,22 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import io from 'socket.io-client';
 
+// ═══════════════════════════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════════════════════════
+
 import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
 
+// Home Components
 import Hero from './Home/Hero';
 import Features from './Home/Features';
 import PublicRooms from './Home/PublicRooms';
 import SocialPreview from './Home/SocialPreview';
 
+// Room Components
 import Header from './Room/Header';
 import SearchBar from './Room/SearchBar';
 import Player from './Room/Player';
@@ -18,115 +24,137 @@ import Controls from './Room/Controls';
 import Chat from './Room/Chat';
 import Playlist from './Room/Playlist';
 
+// Modals
 import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
 import FolderModal from './Modals/FolderModal';
 import SettingsModal from './Modals/SettingsModal';
 import VipModal from './Modals/VipModal';
 
+// ═══════════════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════════════
+
 function App() {
+
+  // ──────────────────────────────────────────────────────
+  // 1. STATE TANIMLARI
+  // ──────────────────────────────────────────────────────
+
+  // Kullanici bilgileri
   const [userId] = useState(() => {
-    let savedId = localStorage.getItem('cm_user_id');
-    if (!savedId) { savedId = 'usr_' + Math.random().toString(36).substring(2, 9); localStorage.setItem('cm_user_id', savedId); }
-    return savedId;
+    let id = localStorage.getItem('cm_user_id');
+    if (!id) { id = 'usr_' + Math.random().toString(36).substring(2, 9); localStorage.setItem('cm_user_id', id); }
+    return id;
   });
-
-  const [inRoom, setInRoom] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return !!urlParams.get('room');
-  });
-
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showFolderModal, setShowFolderModal] = useState(false);
-  const [pendingMediaItem, setPendingMediaItem] = useState(null);
-  const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
-  const [sidebarTab, setSidebarTab] = useState('chat');
-
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
-
-  const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
-  const [username] = useState(() => localStorage.getItem('cm_username') || 'İzleyici');
+  const [username] = useState(() => localStorage.getItem('cm_username') || 'Izleyici');
   const [userCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
+  const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [mySocketId, setMySocketId] = useState('');
 
-  const [roomId, setRoomId] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('room') || '';
-  });
+  // Oda durumu
+  const [inRoom, setInRoom] = useState(() => !!new URLSearchParams(window.location.search).get('room'));
+  const [roomId, setRoomId] = useState(() => new URLSearchParams(window.location.search).get('room') || '');
   const [roomName, setRoomName] = useState('');
   const [hostUserId, setHostUserId] = useState('');
   const [roomTheme, setRoomTheme] = useState('default');
   const [roomType, setRoomType] = useState('video');
   const [roomUsersList, setRoomUsersList] = useState([]);
-
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
+  // Medya durumu
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
   const [mediaMeta, setMediaMeta] = useState(null);
 
+  // Playlist & kategoriler
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
   });
   const [categories, setCategories] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_categories')) || ['Genel']; } catch { return ['Genel']; }
   });
-
   const [selectedCategory, setSelectedCategory] = useState('Genel');
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [playMode, setPlayMode] = useState('sequence');
 
+  // Arama
   const [searchInput, setSearchInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Sohbet
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [reactions, setReactions] = useState([]);
+  const [replyTo, setReplyTo] = useState(null);
+
+  // Uygulama
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [youtubeError, setYoutubeError] = useState(null);
+  const [sidebarTab, setSidebarTab] = useState('chat');
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
 
-  const [replyTo, setReplyTo] = useState(null);
-  const [friendOnlineStatuses, setFriendOnlineStatuses] = useState({});
+  // Modallar
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
 
+  // Oda olusturma
+  const [quickRoomName, setQuickRoomName] = useState('');
+  const [quickRoomPass, setQuickRoomPass] = useState('');
+  const [quickMaxUsers, setQuickMaxUsers] = useState('2');
+  const [quickRoomType, setQuickRoomType] = useState('video');
+  const [editRoomNameInput, setEditRoomNameInput] = useState('');
+
+  // Odaya katilma
+  const [joinRoomTarget, setJoinRoomTarget] = useState(null);
+  const [joinModalPass, setJoinModalPass] = useState('');
+
+  // Playlist modal
+  const [pendingMediaItem, setPendingMediaItem] = useState(null);
+  const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
+
+  // Kimlik dogrulama
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
   });
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('cm_auth_token') || '');
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [authBusy, setAuthBusy] = useState(false);
   const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', bio: '', avatar: '🐱' });
+
+  // Sosyal
   const [friendSearch, setFriendSearch] = useState('');
   const [friendSearchResults, setFriendSearchResults] = useState([]);
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
+  const [friendOnlineStatuses, setFriendOnlineStatuses] = useState({});
   const [globalMessages, setGlobalMessages] = useState([]);
   const [globalChatInput, setGlobalChatInput] = useState('');
   const [socialTab, setSocialTab] = useState('global');
   const [profileBioInput, setProfileBioInput] = useState('');
   const [profileStatusInput, setProfileStatusInput] = useState('');
-  const [showSocialModal, setShowSocialModal] = useState(false);
-  const [showVipModal, setShowVipModal] = useState(false);
-  const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [quickRoomName, setQuickRoomName] = useState('');
-  const [quickRoomPass, setQuickRoomPass] = useState('');
-  const [quickMaxUsers, setQuickMaxUsers] = useState('2');
-  const [quickRoomType, setQuickRoomType] = useState('video');
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinRoomTarget, setJoinRoomTarget] = useState(null);
-  const [joinModalPass, setJoinModalPass] = useState('');
 
-  const [editRoomNameInput, setEditRoomNameInput] = useState('');
+  // ──────────────────────────────────────────────────────
+  // 2. SOCKET & REFS
+  // ──────────────────────────────────────────────────────
 
   const ytPlayerRef = useRef(null);
   const socketRef = useRef(null);
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
   const currentRoomIdRef = useRef(roomId);
+  const playlistRef = useRef(playlist);
+  const playModeRef = useRef(playMode);
+  const mediaSrcRef = useRef(mediaSrc);
 
   if (!socketRef.current) {
     socketRef.current = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
@@ -134,6 +162,19 @@ function App() {
   const socket = socketRef.current;
 
   useEffect(() => { currentRoomIdRef.current = roomId; }, [roomId]);
+  useEffect(() => { playlistRef.current = playlist; }, [playlist]);
+  useEffect(() => { playModeRef.current = playMode; }, [playMode]);
+  useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
+  useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
+  useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
+
+  // ──────────────────────────────────────────────────────
+  // 3. YARDIMCI FONKSIYONLAR
+  // ──────────────────────────────────────────────────────
+
+  const currentTheme = THEMES[roomTheme] || THEMES.default;
+  const cssVars = { '--cm-primary': currentTheme.primary };
+  const styles = getStyles(currentTheme);
 
   const persistAuth = (user, token) => {
     setAuthUser(user);
@@ -143,10 +184,6 @@ function App() {
     if (token) localStorage.setItem('cm_auth_token', token);
     else localStorage.removeItem('cm_auth_token');
   };
-
-  const currentTheme = THEMES[roomTheme] || THEMES.default;
-  const cssVars = { '--cm-primary': currentTheme.primary };
-  const styles = getStyles(currentTheme);
 
   const showFloatingEmoji = (reaction) => {
     setReactions((prev) => [...prev, reaction]);
@@ -161,8 +198,7 @@ function App() {
     if (!targetRoomId) return;
     try {
       const recent = JSON.parse(localStorage.getItem('cm_recent_rooms')) || [];
-      const updated = [targetRoomId, ...recent.filter(r => r !== targetRoomId)].slice(0, 5);
-      localStorage.setItem('cm_recent_rooms', JSON.stringify(updated));
+      localStorage.setItem('cm_recent_rooms', JSON.stringify([targetRoomId, ...recent.filter(r => r !== targetRoomId)].slice(0, 5)));
     } catch {}
   };
 
@@ -173,6 +209,10 @@ function App() {
   const loadRoomMessages = useCallback((rid) => {
     try { return JSON.parse(localStorage.getItem(`cm_room_msgs_${rid}`)) || []; } catch { return []; }
   }, []);
+
+  // ──────────────────────────────────────────────────────
+  // 4. KIMLIK DOGRULAMA FONKSIYONLARI
+  // ──────────────────────────────────────────────────────
 
   const openAuth = (mode = 'login') => {
     setAuthMode(mode);
@@ -196,13 +236,19 @@ function App() {
     setShowSocialModal(false);
   };
 
+  // ──────────────────────────────────────────────────────
+  // 5. SOSYAL FONKSIYONLAR
+  // ──────────────────────────────────────────────────────
+
   const sendGlobalMessage = (e) => {
     e.preventDefault();
     const text = globalChatInput.trim();
     if (!text) return;
     socket.emit('global_chat_message', {
-      text, username: authUser?.username || username || 'Misafir',
-      avatar: authUser?.avatar || myAvatar, token: authToken || ''
+      text,
+      username: authUser?.username || username || 'Misafir',
+      avatar: authUser?.avatar || myAvatar,
+      token: authToken || ''
     });
     setGlobalChatInput('');
   };
@@ -229,29 +275,32 @@ function App() {
   const saveProfile = () => {
     if (!authUser) return;
     socket.emit('update_profile', {
-      token: authToken, bio: profileBioInput.trim().slice(0, 120),
-      status: profileStatusInput.trim().slice(0, 80), avatar: myAvatar
+      token: authToken,
+      bio: profileBioInput.trim().slice(0, 120),
+      status: profileStatusInput.trim().slice(0, 80),
+      avatar: myAvatar
     });
   };
 
-  const handleQuickCreateRoom = () => {
-    setShowQuickCreate(true);
-  };
+  // ──────────────────────────────────────────────────────
+  // 6. ODA YONETIM FONKSIYONLARI
+  // ──────────────────────────────────────────────────────
+
+  const handleQuickCreateRoom = () => setShowQuickCreate(true);
 
   const handleQuickCreateSubmit = (e) => {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
     const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType };
-    const tryJoin = () => {
-      if (socket.connected) {
-        socket.emit('join_room', joinData);
-      } else {
-        socket.once('connect', () => socket.emit('join_room', joinData));
-        if (!socket.connected) socket.connect();
-      }
-    };
-    tryJoin();
+
+    if (socket.connected) {
+      socket.emit('join_room', joinData);
+    } else {
+      socket.once('connect', () => socket.emit('join_room', joinData));
+      if (!socket.connected) socket.connect();
+    }
+
     setShowQuickCreate(false);
     setQuickRoomName('');
     setQuickRoomPass('');
@@ -262,7 +311,10 @@ function App() {
     e.preventDefault();
     if (!joinRoomTarget) return;
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
-    socket.emit('join_room', { roomId: joinRoomTarget.id, password: joinModalPass.trim(), userId, userCity, username, avatar: myAvatar, roomType: 'video' });
+    socket.emit('join_room', {
+      roomId: joinRoomTarget.id, password: joinModalPass.trim(),
+      userId, userCity, username, avatar: myAvatar, roomType: 'video'
+    });
     setShowJoinModal(false);
     setJoinRoomTarget(null);
     setJoinModalPass('');
@@ -280,40 +332,45 @@ function App() {
     window.history.replaceState({}, '', window.location.pathname);
   };
 
-  const handleModeChange = (mode) => {
-    setPlayMode(mode);
-    socket.emit('change_play_mode', { roomId: currentRoomIdRef.current, mode });
+  const handleSaveSettings = () => {
+    socket.emit('update_room_settings', {
+      roomId: currentRoomIdRef.current,
+      newName: editRoomNameInput.trim() || roomName,
+      newTheme: roomTheme
+    });
+    setShowSettingsModal(false);
   };
 
-  const handleCreateCategory = (e) => {
-    e.preventDefault();
-    if (!newCategoryInput.trim()) return;
-    socket.emit('create_category', { roomId: currentRoomIdRef.current, categoryName: newCategoryInput.trim() });
-    setSelectedCategory(newCategoryInput.trim());
-    setNewCategoryInput('');
+  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId });
+  const handleTransferAdmin = (targetUserId) => socket.emit('update_room_settings', { roomId: currentRoomIdRef.current, newHostUserId: targetUserId });
+
+  // ──────────────────────────────────────────────────────
+  // 7. MEDYA & PLAYLIST FONKSIYONLARI
+  // ──────────────────────────────────────────────────────
+
+  const handlePlay = () => {
+    if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
+    sendAction('PLAY', { time: 0 });
   };
 
-  const playlistRef = useRef(playlist);
-  const playModeRef = useRef(playMode);
-  const mediaSrcRef = useRef(mediaSrc);
-  useEffect(() => { playlistRef.current = playlist; }, [playlist]);
-  useEffect(() => { playModeRef.current = playMode; }, [playMode]);
-  useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
+  const handlePause = () => {
+    if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
+    sendAction('PAUSE', {});
+  };
 
   const handleMediaEnd = useCallback(() => {
     const pl = playlistRef.current;
     const pm = playModeRef.current;
     const ms = mediaSrcRef.current;
     if (!pl || pl.length === 0) return;
+
     let nextTrack;
     if (pm === 'shuffle') {
       nextTrack = pl[Math.floor(Math.random() * pl.length)];
     } else {
-      const activeList = pm === 'alphabetical'
-        ? [...pl].sort((a, b) => a.title.localeCompare(b.title, 'tr'))
-        : pl;
-      const currentIndex = activeList.findIndex(item => item.src === ms);
-      nextTrack = activeList[(currentIndex + 1) % activeList.length];
+      const activeList = pm === 'alphabetical' ? [...pl].sort((a, b) => a.title.localeCompare(b.title, 'tr')) : pl;
+      const idx = activeList.findIndex(item => item.src === ms);
+      nextTrack = activeList[(idx + 1) % activeList.length];
     }
     if (nextTrack) {
       setMediaType(nextTrack.type);
@@ -328,8 +385,28 @@ function App() {
     if (searchInput.includes('http://') || searchInput.includes('https://')) media = processUrl(searchInput);
     else if (searchResults.length > 0) media = { type: 'youtube', src: searchResults[0].src };
     else return;
-    setYoutubeError(null); setMediaType(media.type); setMediaSrc(media.src);
+    setYoutubeError(null);
+    setMediaType(media.type);
+    setMediaSrc(media.src);
     sendAction('CHANGE_MEDIA', media);
+  };
+
+  const handleSelectSearchResult = (song, playImmediately = true) => {
+    if (!song) return;
+    if (playImmediately) {
+      setYoutubeError(null);
+      if (song.src) {
+        const type = roomType === 'music' ? 'music' : 'youtube';
+        setMediaType(type);
+        setMediaSrc(song.src);
+        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
+        sendAction('CHANGE_MEDIA', { type, src: song.src, title: song.title });
+      } else if (song.youtubeQuery) {
+        setSearchInput(song.youtubeQuery);
+      }
+    } else {
+      handleOpenAddModal(song);
+    }
   };
 
   const handleOpenAddModal = (song = null) => {
@@ -339,44 +416,33 @@ function App() {
     } else if (searchInput.trim()) {
       if (searchInput.includes('http://') || searchInput.includes('https://')) {
         const media = processUrl(searchInput);
-        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya / Dizi Linki', type: media.type, src: media.src, addedBy: username };
+        item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya', type: media.type, src: media.src, addedBy: username };
       } else if (searchResults.length > 0) {
         const s = searchResults[0];
         item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
       }
     }
-    if (item) { setPendingMediaItem(item); setModalTargetCategory(selectedCategory || 'Genel'); setShowFolderModal(true); }
+    if (item) {
+      setPendingMediaItem(item);
+      setModalTargetCategory(selectedCategory || 'Genel');
+      setShowFolderModal(true);
+    }
   };
 
   const confirmAddToPlaylist = () => {
     if (!pendingMediaItem) return;
-    socket.emit('add_to_playlist', { roomId: currentRoomIdRef.current, item: { ...pendingMediaItem, category: modalTargetCategory } });
+    socket.emit('add_to_playlist', {
+      roomId: currentRoomIdRef.current,
+      item: { ...pendingMediaItem, category: modalTargetCategory }
+    });
     setShowFolderModal(false);
     setPendingMediaItem(null);
   };
 
-  const handleSelectSearchResult = (song, playImmediately = true) => {
-    if (!song) return;
-    if (playImmediately) {
-      setYoutubeError(null);
-      if (roomType === 'music' && song.src) {
-        setMediaType('music');
-        setMediaSrc(song.src);
-        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: 'music', src: song.src, title: song.title });
-      } else if (song.src) {
-        setMediaType('youtube');
-        setMediaSrc(song.src);
-        setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
-      } else if (song.youtubeQuery) {
-        setSearchInput(song.youtubeQuery);
-      }
-    } else { handleOpenAddModal(song); }
-  };
-
   const handleSelectPlaylistItem = (item) => {
-    setYoutubeError(null); setMediaType(item.type); setMediaSrc(item.src);
+    setYoutubeError(null);
+    setMediaType(item.type);
+    setMediaSrc(item.src);
     sendAction('CHANGE_MEDIA', { type: item.type, src: item.src, title: item.title });
   };
 
@@ -385,25 +451,25 @@ function App() {
     socket.emit('remove_from_playlist', { roomId: currentRoomIdRef.current, itemId });
   };
 
-  const handlePlay = () => {
-    if (ytPlayerRef.current) {
-      try { ytPlayerRef.current.playVideo(); } catch {}
-    }
-    sendAction('PLAY', { time: 0 });
+  const handleModeChange = (mode) => {
+    setPlayMode(mode);
+    socket.emit('change_play_mode', { roomId: currentRoomIdRef.current, mode });
   };
 
-  const handlePause = () => {
-    if (ytPlayerRef.current) {
-      try { ytPlayerRef.current.pauseVideo(); } catch {}
-    }
-    sendAction('PAUSE', {});
+  const handleCreateCategory = (e) => {
+    e.preventDefault();
+    if (!newCategoryInput.trim()) return;
+    socket.emit('create_category', { roomId: currentRoomIdRef.current, categoryName: newCategoryInput.trim() });
+    setSelectedCategory(newCategoryInput.trim());
+    setNewCategoryInput('');
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const newMsg = {
-      senderId: mySocketId, text: chatInput, sender: authUser?.username || username || 'İzleyici',
+      senderId: mySocketId, text: chatInput,
+      sender: authUser?.username || username || 'Izleyici',
       avatar: authUser?.avatar || myAvatar,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       replyTo: replyTo?.id || null, replyToText: replyTo?.text || null, replyToSender: replyTo?.sender || null
@@ -424,31 +490,30 @@ function App() {
     sendAction('REACTION', reaction);
   };
 
-  const handleSaveSettings = () => {
-    socket.emit('update_room_settings', {
-      roomId: currentRoomIdRef.current, newName: editRoomNameInput.trim() || roomName, newTheme: roomTheme
-    });
-    setShowSettingsModal(false);
-  };
-
-  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId });
-  const handleTransferAdmin = (targetUserId) => {
-    socket.emit('update_room_settings', { roomId: currentRoomIdRef.current, newHostUserId: targetUserId });
-  };
-
   const handleYouTubeError = (event) => {
     const code = event?.data;
     const msgs = {
-      2: 'YouTube bağlantısı geçersiz.', 5: 'Video HTML5 oynatıcı hatası verdi.',
-      100: 'Video bulunamadı veya kaldırıldı.',
-      101: 'Video sahibi bu videonun başka sitelerde oynatılmasına izin vermiyor.',
-      150: 'Video sahibi bu videonun başka sitelerde oynatılmasına izin vermiyor.'
+      2: 'YouTube baglantisi gecersiz.', 5: 'Video HTML5 oynatici hatasi.',
+      100: 'Video bulunamadi veya kaldirildi.',
+      101: 'Video sahibi bu videonun baska sitelerde oynatilmasina izin vermiyor.',
+      150: 'Video sahibi bu videonun baska sitelerde oynatilmasina izin vermiyor.'
     };
-    setYoutubeError({ code, message: msgs[code] || 'YouTube videosu bu sitede oynatılamıyor.' });
+    setYoutubeError({ code, message: msgs[code] || 'YouTube videosu bu sitede oynatilamiyor.' });
   };
 
   const openYouTubeExternally = () => {
     if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+      alert('Tarayicinizin menusunden "Ana Ekrana Ekle" secenegiyle uygulamayi cihaziniza yukleyebilirsiniz!');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setShowInstallBtn(false);
+    setDeferredPrompt(null);
   };
 
   const filteredPlaylist = useMemo(() => {
@@ -458,23 +523,19 @@ function App() {
     return filtered;
   }, [playlist, selectedCategory, playMode]);
 
+  // ──────────────────────────────────────────────────────
+  // 8. EFFECTS
+  // ──────────────────────────────────────────────────────
+
+  // PWA install
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-
-    return () => { window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); socketRef.current?.disconnect(); socketRef.current = null; };
+    const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    return () => { window.removeEventListener('beforeinstallprompt', handler); socketRef.current?.disconnect(); socketRef.current = null; };
   }, []);
 
-  const handleInstallApp = async () => {
-    if (!deferredPrompt) { alert('Tarayıcınızın menüsünden "Ana Ekrana Ekle" seçeneğiyle uygulamayı cihazınıza yükleyebilirsiniz!'); return; }
-    deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBtn(false); setDeferredPrompt(null);
-  };
-
+  // MediaSession
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', handlePlay);
@@ -483,9 +544,7 @@ function App() {
     }
   }, [mediaType]);
 
-  useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
-  useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
-
+  // WakeLock
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
@@ -494,20 +553,21 @@ function App() {
           wakeLock = await navigator.wakeLock.request('screen');
           wakeLock.addEventListener('release', () => { wakeLock = null; });
         }
-      } catch (e) {}
+      } catch {}
     };
     if (mediaType !== 'none') requestWakeLock();
     return () => { if (wakeLock) wakeLock.release(); };
   }, [mediaType]);
 
+  // URL'den odaya otomatik katil
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetRoom = urlParams.get('room');
+    const targetRoom = new URLSearchParams(window.location.search).get('room');
     if (targetRoom && socket) {
       socket.emit('join_room', { roomId: targetRoom, password: '', userId, userCity, username, avatar: myAvatar, roomType: 'video' });
     }
   }, [userId]);
 
+  // Arama debounce
   useEffect(() => {
     if (!searchInput.trim() || searchInput.trim().length < 2 || searchInput.includes('http://') || searchInput.includes('https://')) {
       setSearchResults([]); setIsSearching(false); return;
@@ -517,19 +577,29 @@ function App() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // ──────────────────────────────────────────────────────
+  // 9. SOCKET EVENT HANDLER'LARI
+  // ──────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!socket) return;
-    socket.on('connect', () => {
-      setIsConnected(true);
-    });
+
+    // Baglanti
+    socket.on('connect', () => setIsConnected(true));
     socket.on('disconnect', () => setIsConnected(false));
+
+    // Genel
     socket.on('public_rooms_update', (roomsList) => setPublicRooms(Array.isArray(roomsList) ? roomsList : []));
     socket.on('search_results', (results) => { setSearchResults(Array.isArray(results) ? results : []); setIsSearching(false); });
 
+    // Oda
     socket.on('room_joined', (data) => {
-      setInRoom(true); setErrorMessage('');
-      setRoomId(data.roomId); setRoomName(data.roomName || data.roomId);
-      setHostUserId(data.hostUserId); setRoomTheme(data.theme || 'default');
+      setInRoom(true);
+      setErrorMessage('');
+      setRoomId(data.roomId);
+      setRoomName(data.roomName || data.roomId);
+      setHostUserId(data.hostUserId);
+      setRoomTheme(data.theme || 'default');
       setRoomType(data.roomType || 'video');
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
@@ -551,7 +621,9 @@ function App() {
       if (authToken) socket.emit('social_sync', { token: authToken });
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
-        setYoutubeError(null); setMediaType(data.currentMedia.type); setMediaSrc(data.currentMedia.src);
+        setYoutubeError(null);
+        setMediaType(data.currentMedia.type);
+        setMediaSrc(data.currentMedia.src);
         setTimeout(() => {
           if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
             ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
@@ -580,30 +652,30 @@ function App() {
     socket.on('categories_updated', (cats) => { setCategories(cats); localStorage.setItem('cm_local_categories', JSON.stringify(cats)); });
     socket.on('playlist_updated', (data) => {
       const newPlaylist = Array.isArray(data) ? data : (data.playlist || []);
-      setPlaylist(newPlaylist); localStorage.setItem('cm_local_playlist', JSON.stringify(newPlaylist));
+      setPlaylist(newPlaylist);
+      localStorage.setItem('cm_local_playlist', JSON.stringify(newPlaylist));
       if (data && data.playMode) setPlayMode(data.playMode);
     });
     socket.on('play_mode_changed', (mode) => setPlayMode(mode));
     socket.on('room_error', (msg) => {
-      setErrorMessage(msg); setInRoom(false);
-      localStorage.removeItem('cm_saved_room'); localStorage.removeItem('cm_saved_pass');
+      setErrorMessage(msg);
+      setInRoom(false);
+      localStorage.removeItem('cm_saved_room');
+      localStorage.removeItem('cm_saved_pass');
     });
 
+    // Oda aksiyonlari
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
-        if (ytPlayerRef.current) {
-          try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {}
-        }
+        if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {} }
       } else if (type === 'PAUSE') {
-        if (ytPlayerRef.current) {
-          try { ytPlayerRef.current.pauseVideo(); } catch {}
-        }
+        if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
       } else if (type === 'SEEK') {
-        if (ytPlayerRef.current) {
-          try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {}
-        }
+        if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {} }
       } else if (type === 'CHANGE_MEDIA') {
-        setYoutubeError(null); setMediaType(payload.type); setMediaSrc(payload.src);
+        setYoutubeError(null);
+        setMediaType(payload.type);
+        setMediaSrc(payload.src);
       } else if (type === 'CHAT_MESSAGE') {
         setMessages((prev) => {
           const updated = [...prev, payload];
@@ -614,13 +686,12 @@ function App() {
           playMessageSound();
           if (document.hidden && Notification.permission === 'granted') {
             try {
-              new Notification(`${payload.sender} mesaj gönderdi`, {
+              new Notification(`${payload.sender} mesaj gonderdi`, {
                 body: payload.text,
                 icon: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png',
-                sound: 'https://cdn-icons-png.flaticon.com/512/3076/3076753.png',
                 vibrate: [200, 100, 200]
               });
-            } catch (e) {}
+            } catch {}
           }
         }
       } else if (type === 'REACTION') {
@@ -628,22 +699,35 @@ function App() {
       }
     });
 
+    // Global sohbet
     socket.on('global_chat_history', (items) => setGlobalMessages(Array.isArray(items) ? items : []));
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
+
+    // Kimlik dogrulama
     socket.on('social_profile', (user) => {
-      setAuthUser(user); localStorage.setItem('cm_auth_user', JSON.stringify(user));
-      setProfileBioInput(user?.bio || ''); setProfileStatusInput(user?.status || '');
+      setAuthUser(user);
+      localStorage.setItem('cm_auth_user', JSON.stringify(user));
+      setProfileBioInput(user?.bio || '');
+      setProfileStatusInput(user?.status || '');
     });
+
     socket.on('auth_result', (data) => {
       setAuthBusy(false);
       if (data?.ok) {
         persistAuth(data.user, data.token);
-        setProfileBioInput(data.user?.bio || ''); setProfileStatusInput(data.user?.status || '');
+        setProfileBioInput(data.user?.bio || '');
+        setProfileStatusInput(data.user?.status || '');
         setAuthForm({ username: '', email: '', password: '', bio: '', avatar: data.user?.avatar || '🐱' });
-        setShowAuthModal(false); setShowSocialModal(true); setErrorMessage('');
+        setShowAuthModal(false);
+        setShowSocialModal(true);
+        setErrorMessage('');
         socket.emit('social_sync', { token: data.token });
-      } else { setErrorMessage(data?.message || 'İşlem başarısız.'); }
+      } else {
+        setErrorMessage(data?.message || 'Islem basarisiz.');
+      }
     });
+
+    // Sosyal
     socket.on('friends_update', (data) => {
       setFriends(Array.isArray(data?.friends) ? data.friends : []);
       setFriendRequests(Array.isArray(data?.requests) ? data.requests : []);
@@ -654,11 +738,11 @@ function App() {
       if (data?.message) setErrorMessage(data.message);
       socket.emit('social_sync', { token: authToken });
     });
-
     socket.on('friend_online_status', (data) => {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
     });
 
+    // VIP
     socket.on('vip_activated', (data) => {
       setAuthUser((prev) => {
         const updated = { ...prev, isVip: data.isVip, vipExpiry: data.vipExpiry };
@@ -667,14 +751,12 @@ function App() {
       });
     });
 
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    // Bildirim izni
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
+    // Visibility degisikligi
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && socketRef.current) {
-        socketRef.current.connect();
-      }
+      if (document.visibilityState === 'visible' && socketRef.current) socketRef.current.connect();
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -689,6 +771,10 @@ function App() {
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('vip_activated');
     };
   }, []);
+
+  // ──────────────────────────────────────────────────────
+  // 10. RENDER: ANA SAYFA
+  // ──────────────────────────────────────────────────────
 
   if (!inRoom) {
     return (
@@ -714,8 +800,8 @@ function App() {
                 <button onClick={() => setShowSocialModal(true)} className="cm-nav-btn cm-nav-btn-green">{authUser.avatar || myAvatar} {authUser.username}</button>
               ) : (
                 <>
-                  <button onClick={() => openAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giriş Yap</button>
-                  <button onClick={() => openAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ücretsiz Katıl</button>
+                  <button onClick={() => openAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giris Yap</button>
+                  <button onClick={() => openAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ucretsiz Katil</button>
                 </>
               )}
             </div>
@@ -731,95 +817,58 @@ function App() {
                 <span style={{ fontWeight: 900, color: '#fff' }}>couple</span>
                 <span style={{ fontWeight: 300, color: '#a78bfa' }}>meeting</span>
               </div>
-              <div className="cm-footer-slogan">Uzaklığı biraz daha küçük yapan internet. ❤️</div>
+              <div className="cm-footer-slogan">Uzakligi biraz daha kuculten internet. ❤️</div>
             </div>
           </main>
 
           {showAuthModal && (
-            <AuthModal
-              authMode={authMode} setAuthMode={setAuthMode} authForm={authForm}
-              setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth}
-              setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles}
-            />
+            <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} />
           )}
           {showSocialModal && (
-            <SocialModal
-              authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab}
-              globalMessages={globalMessages} globalChatInput={globalChatInput}
-              setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage}
-              friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends}
-              friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest}
-              friendRequests={friendRequests} respondFriendRequest={respondFriendRequest}
-              friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser}
-              profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput}
-              profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput}
-              myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile}
-              openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal}
-              showVipModal={showVipModal} setShowVipModal={setShowVipModal}
-              styles={styles}
-            />
+            <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles} />
           )}
-          {showVipModal && (
-            <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />
-          )}
+          {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
+
           {showQuickCreate && (
             <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
               <div style={{ width:'min(420px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
                 <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div>
-                    <div style={{ color:'#a78bfa', fontSize:11, fontWeight:900 }}>🚀 YENİ ODA</div>
-                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>Oda Oluştur</div>
+                    <div style={{ color:'#a78bfa', fontSize:11, fontWeight:900 }}>🚀 YENI ODA</div>
+                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>Oda Olustur</div>
                   </div>
                   <button onClick={() => setShowQuickCreate(false)} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
                 </div>
                 <form onSubmit={handleQuickCreateSubmit} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
                   <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adı</label>
-                    <input
-                      value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)}
-                      placeholder="ör: müzik gecesi"
-                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                    />
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adi</label>
+                    <input value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)} placeholder="orn: muzik gecesi" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Şifre (isteğe bağlı)</label>
-                    <input
-                      type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)}
-                      placeholder="Şifre koymak istersen yaz"
-                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                    />
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Sifre (istege bagli)</label>
+                    <input type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)} placeholder="Sifre koymak istersen yaz" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kişi</label>
-                    <select
-                      value={quickMaxUsers} onChange={(e) => setQuickMaxUsers(e.target.value)}
-                      style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                    >
-                      <option value="2">2 Kişi 💑</option>
-                      <option value="4">4 Kişi 👥</option>
-                      <option value="8">8 Kişi 🎉</option>
+                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kisi</label>
+                    <select value={quickMaxUsers} onChange={(e) => setQuickMaxUsers(e.target.value)} style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}>
+                      <option value="2">2 Kisi 💑</option>
+                      <option value="4">4 Kisi 👥</option>
+                      <option value="8">8 Kisi 🎉</option>
                     </select>
                   </div>
                   <div>
                     <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Tipi</label>
                     <div style={{ display:'flex', gap:8 }}>
-                      <button type="button" onClick={() => setQuickRoomType('video')}
-                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        🎬 Video
-                      </button>
-                      <button type="button" onClick={() => setQuickRoomType('music')}
-                        style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        🎵 Müzik
-                      </button>
+                      <button type="button" onClick={() => setQuickRoomType('video')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎬 Video</button>
+                      <button type="button" onClick={() => setQuickRoomType('music')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎵 Muzik</button>
                     </div>
                   </div>
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>
-                    🚀 Odayı Başlat
-                  </button>
+                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>🚀 Odayi Baslat</button>
                 </form>
               </div>
             </div>
           )}
+
           {showJoinModal && joinRoomTarget && (
             <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
               <div style={{ width:'min(380px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
@@ -835,23 +884,16 @@ function App() {
                     <div style={{ fontSize:24 }}>{joinRoomTarget.hasPassword ? '🔒' : '🎵'}</div>
                     <div>
                       <div style={{ color:'#fff', fontSize:14, fontWeight:900 }}>{joinRoomTarget.name}</div>
-                      <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kişi • {joinRoomTarget.hasPassword ? 'Şifreli' : 'Açık'}</div>
+                      <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kisi • {joinRoomTarget.hasPassword ? 'Sifreli' : 'Acik'}</div>
                     </div>
                   </div>
                   {joinRoomTarget.hasPassword && (
                     <div>
-                      <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Şifresi</label>
-                      <input
-                        type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)}
-                        placeholder="Şifreyi girin..."
-                        autoFocus
-                        style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}
-                      />
+                      <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Sifresi</label>
+                      <input type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)} placeholder="Sifreyi girin..." autoFocus style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
                     </div>
                   )}
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>
-                    🚪 Odaya Gir
-                  </button>
+                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>🚪 Odaya Gir</button>
                 </form>
               </div>
             </div>
@@ -861,28 +903,20 @@ function App() {
     );
   }
 
+  // ──────────────────────────────────────────────────────
+  // 11. RENDER: ODA
+  // ──────────────────────────────────────────────────────
+
   return (
     <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
       <style>{GLOBAL_CSS + `\n@keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n`}</style>
 
       {showFolderModal && (
-        <FolderModal
-          pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory}
-          setModalTargetCategory={setModalTargetCategory} categories={categories}
-          confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal}
-          currentTheme={currentTheme} styles={styles}
-        />
+        <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
       )}
 
       {showSettingsModal && (
-        <SettingsModal
-          hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput}
-          setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme}
-          setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings}
-          roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin}
-          handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal}
-          currentTheme={currentTheme} authUser={authUser} styles={styles}
-        />
+        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} />
       )}
 
       <Header
@@ -902,8 +936,7 @@ function App() {
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
-            ytPlayerRef={ytPlayerRef}
-            reactions={reactions}
+            ytPlayerRef={ytPlayerRef} reactions={reactions}
             openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
           />
@@ -913,16 +946,11 @@ function App() {
         <div className="cm-sidebar" style={{ width: '380px', maxWidth: '100%', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
             <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplık ({playlist ? playlist.length : 0})</button>
+            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplik ({playlist ? playlist.length : 0})</button>
           </div>
 
           {sidebarTab === 'chat' ? (
-            <Chat
-              messages={messages} mySocketId={mySocketId} username={authUser?.username || username}
-              chatInput={chatInput} setChatInput={setChatInput}
-              handleSendMessage={handleSendMessage} currentTheme={currentTheme}
-              replyTo={replyTo} setReplyTo={setReplyTo}
-            />
+            <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={currentTheme} replyTo={replyTo} setReplyTo={setReplyTo} />
           ) : (
             <Playlist
               categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}

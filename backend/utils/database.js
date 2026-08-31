@@ -84,7 +84,9 @@ function initTables() {
   `);
 }
 
-// --- USER ---
+// ═══════════════════════════════════════════════════════════
+// USER FONKSIYONLARI
+// ═══════════════════════════════════════════════════════════
 function getUser(username) {
   if (getDb()) {
     const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
@@ -149,7 +151,9 @@ function updateLastSeen(username) {
   }
 }
 
-// --- TOKEN ---
+// ═══════════════════════════════════════════════════════════
+// TOKEN FONKSIYONLARI
+// ═══════════════════════════════════════════════════════════
 function createToken(username) {
   const token = crypto.randomBytes(32).toString('hex');
   if (getDb()) {
@@ -176,7 +180,9 @@ function cleanOldTokens(maxAge) {
   return cleaned;
 }
 
-// --- FRIENDS ---
+// ═══════════════════════════════════════════════════════════
+// ARKADASLIK FONKSIYONLARI
+// ═══════════════════════════════════════════════════════════
 function sendFriendRequest(fromUsername, fromAvatar, toUsername) {
   const id = crypto.randomBytes(10).toString('hex');
   if (getDb()) {
@@ -263,7 +269,9 @@ function searchUsers(query, exclude) {
   return Object.values(jsonFallback.users).filter(u => u.username.includes(query) && u.username !== exclude).slice(0, 20);
 }
 
-// --- GLOBAL MESSAGES ---
+// ═══════════════════════════════════════════════════════════
+// GLOBAL MESAJLAR
+// ═══════════════════════════════════════════════════════════
 function addGlobalMessage(msg) {
   if (getDb()) {
     db.prepare('INSERT INTO global_messages (id, username, avatar, text, time, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(msg.id, msg.username, msg.avatar, msg.text, msg.time, msg.createdAt);
