@@ -267,7 +267,9 @@ function broadcastOnlineStatus(username) {
 function getPublicRoomsList() {
   return Object.entries(rooms).map(([id, room]) => ({
     id, name: room.name || id, userCount: room.users.length,
-    maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip
+    maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip,
+    roomType: room.roomType || 'video',
+    users: room.users.map(u => ({ username: u.username, avatar: u.avatar })).slice(0, 5)
   }));
 }
 
