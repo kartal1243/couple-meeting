@@ -65,7 +65,18 @@ export default function Player({
         </div>
       )}
 
-      {reactions}
+      {Array.isArray(reactions) && reactions.map((r) => (
+        <div
+          key={r.id}
+          style={{
+            position: 'absolute', bottom: 20, left: `${r.left}%`,
+            fontSize: '36px', pointerEvents: 'none', zIndex: 100,
+            animation: 'floatUp 2s ease-out forwards'
+          }}
+        >
+          {r.emoji}
+        </div>
+      ))}
     </div>
   );
 }
