@@ -26,8 +26,9 @@ function extractVideoId(src) {
   return m ? m[1] : src;
 }
 
-function AudioPlayer({ videoId, onEnded, onReady }) {
-  const audioRef = useRef(null);
+function AudioPlayer({ videoId, onEnded, onReady, audioRef: externalRef }) {
+  const internalRef = useRef(null);
+  const audioRef = externalRef || internalRef;
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState(null);
   const retryRef = useRef(0);
@@ -106,7 +107,7 @@ function AudioPlayer({ videoId, onEnded, onReady }) {
 
 export default function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, mediaMeta,
-  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError
+  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError, musicAudioRef
 }) {
   const videoId = extractVideoId(mediaSrc);
 
@@ -169,7 +170,7 @@ export default function Player({
               {mediaMeta?.artist || 'Bilinmeyen Sanatci'}
             </div>
           </div>
-          <AudioPlayer videoId={videoId} onEnded={handleMediaEnd} />
+          <AudioPlayer videoId={videoId} onEnded={handleMediaEnd} audioRef={musicAudioRef} />
         </div>
       )}
 

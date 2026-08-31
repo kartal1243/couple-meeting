@@ -148,6 +148,7 @@ function App() {
   // ──────────────────────────────────────────────────────
 
   const ytPlayerRef = useRef(null);
+  const musicAudioRef = useRef(null);
   const socketRef = useRef(null);
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
@@ -349,11 +350,13 @@ function App() {
   // ──────────────────────────────────────────────────────
 
   const handlePlay = () => {
+    if (musicAudioRef.current) { try { musicAudioRef.current.play(); } catch {} }
     if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
     sendAction('PLAY', { time: 0 });
   };
 
   const handlePause = () => {
+    if (musicAudioRef.current) { try { musicAudioRef.current.pause(); } catch {} }
     if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
     sendAction('PAUSE', {});
   };
@@ -667,8 +670,10 @@ function App() {
     // Oda aksiyonlari
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
+        if (musicAudioRef.current) { try { musicAudioRef.current.play(); } catch {} }
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {} }
       } else if (type === 'PAUSE') {
+        if (musicAudioRef.current) { try { musicAudioRef.current.pause(); } catch {} }
         if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
       } else if (type === 'SEEK') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {} }
@@ -936,7 +941,7 @@ function App() {
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
-            ytPlayerRef={ytPlayerRef} reactions={reactions}
+            ytPlayerRef={ytPlayerRef} reactions={reactions} musicAudioRef={musicAudioRef}
             openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
           />
