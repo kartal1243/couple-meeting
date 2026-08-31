@@ -2,6 +2,23 @@ import YouTube from 'react-youtube';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '../constants';
 
+function setupMediaSession(audio, videoId) {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: document.title || 'Couple Meeting',
+    artist: 'Couple Meeting',
+    artwork: [{ src: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
+  });
+  navigator.mediaSession.setActionHandler('play', () => { audio.play().catch(() => {}); });
+  navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
+  navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; });
+  navigator.mediaSession.playbackState = 'playing';
+}
+
+async function requestWakeLock() {
+  try { await navigator.wakeLock?.request('screen'); } catch {}
+}
+
 function extractVideoId(src) {
   if (!src) return null;
   if (src.length === 11 && /^[a-zA-Z0-9_-]{11}$/.test(src)) return src;
@@ -13,11 +30,13 @@ function AudioPlayer({ videoId, onEnded, onReady }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState(null);
+  const retryRef = useRef(0);
 
   useEffect(() => {
     if (!videoId || !audioRef.current) return;
     const audio = audioRef.current;
     setError(null);
+    retryRef.current = 0;
 
     const streamUrl = `${BACKEND_URL}/api/stream/${videoId}`;
     audio.src = streamUrl;
@@ -27,16 +46,8 @@ function AudioPlayer({ videoId, onEnded, onReady }) {
     if (playPromise) {
       playPromise.then(() => {
         setIsPlaying(true);
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: document.title || 'Couple Meeting',
-            artist: 'Couple Meeting',
-            artwork: [{ src: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
-          });
-          navigator.mediaSession.setActionHandler('play', () => { audio.play(); setIsPlaying(true); });
-          navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); setIsPlaying(false); });
-          navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; setIsPlaying(false); });
-        }
+        setupMediaSession(audio, videoId);
+        requestWakeLock();
         onReady?.();
       }).catch(() => {
         setIsPlaying(false);
@@ -53,20 +64,37 @@ function AudioPlayer({ videoId, onEnded, onReady }) {
   }, [videoId]);
 
   useEffect(() => {
-    const handleVis = () => {
+    let wakeLock = null;
+    const handleVis = async () => {
       const audio = audioRef.current;
       if (!audio) return;
-      if (document.hidden && isPlaying) {
+      if (document.hidden) {
+        audio.play().catch(() => {});
+        try {
+          wakeLock = await navigator.wakeLock?.request('screen');
+        } catch {}
+      } else {
+        if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+      }
+    };
+    const handleFreeze = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
         audio.play().catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', handleVis);
-    return () => document.removeEventListener('visibilitychange', handleVis);
+    document.addEventListener('freeze', handleFreeze);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVis);
+      document.removeEventListener('freeze', handleFreeze);
+      if (wakeLock) wakeLock.release().catch(() => {});
+    };
   }, [isPlaying]);
 
   return (
     <>
-      <audio ref={audioRef} preload="auto" playsInline />
+      <audio ref={audioRef} preload="auto" playsInline muted={false} />
       {error && (
         <div style={{ position:'absolute', bottom:60, left:'50%', transform:'translateX(-50%)', padding:'8px 16px', borderRadius:10, background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)', color:'#ef4444', fontSize:12, fontWeight:700, zIndex:50 }}>
           ⚠️ {error}

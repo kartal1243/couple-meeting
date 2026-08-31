@@ -1,0 +1,9 @@
+{
+  "name": "Couple Meeting",
+  "short_name": "CoupleMeeting",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b141a",
+  "theme_color": "#0b141a",
+  "orientation": "portrait"
+}
