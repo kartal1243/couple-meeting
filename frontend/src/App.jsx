@@ -809,9 +809,9 @@ function App() {
 
           <main className="cm-home-main">
             <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={handleQuickCreateRoom} />
-            <Features />
             <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
             <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
+            <Features />
             <div className="cm-footer">
               <div className="cm-footer-text">
                 <span style={{ fontWeight: 900, color: '#fff' }}>couple</span>
