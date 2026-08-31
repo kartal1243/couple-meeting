@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const logger = require('./utils/logger');
@@ -23,10 +24,10 @@ if (isProd) app.set('trust proxy', 1);
 // ═══════════════════════════════════════════════════════════
 
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
 
 const ALLOWED_ORIGINS = [
   ...(process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean),
-  'https://couple-meeting-flax.vercel.app',
   'https://www.couplemeeting.com.tr',
   'https://couplemeeting.com.tr',
   'http://localhost:5173',
@@ -203,7 +204,12 @@ async function getInnertube() {
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true }
+  cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true },
+  pingTimeout: 30000,
+  pingInterval: 10000,
+  transports: ['websocket', 'polling'],
+  maxHttpBufferSize: 1e6,
+  connectionStateRecovery: { maxDisconnectionDuration: 120000, skipMiddlewares: true }
 });
 
 const rooms = {};
