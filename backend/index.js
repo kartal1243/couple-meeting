@@ -215,13 +215,15 @@ app.get('/api/stream/:videoId', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.setHeader('Accept-Ranges', 'bytes');
 
+  const childEnv = { ...process.env, PATH: `/root/.deno/bin:${process.env.PATH || ''}` };
+
   const ytDlp = execFile('yt-dlp', [
     '-f', 'bestaudio[ext=mp3]/bestaudio',
     '--no-playlist',
     '-o', '-',
     '--no-warnings',
     url
-  ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (err) => {
+  ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000, env: childEnv }, (err) => {
     if (err && !res.headersSent) {
       logger.error(`[STREAM] hata: ${videoId} - ${err.message}`);
       res.status(500).json({ ok: false, message: 'Stream hatasi' });
@@ -247,7 +249,7 @@ app.get('/api/stream-info/:videoId', async (req, res) => {
       execFile('yt-dlp', [
         '--no-playlist', '--no-warnings', '--print', '%(title)s|||%(duration)s|||%(thumbnail)s',
         `https://www.youtube.com/watch?v=${videoId}`
-      ], { timeout: 15000 }, (err, stdout) => {
+      ], { timeout: 15000, env: childEnv }, (err, stdout) => {
         if (err) reject(err);
         else resolve(stdout.toString().trim());
       });
