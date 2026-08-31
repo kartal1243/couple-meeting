@@ -1,4 +1,4 @@
-export const BACKEND_URL = 'https://couple-meeting.onrender.com';
+export const BACKEND_URL = window.location.origin;
 
 export const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
 
