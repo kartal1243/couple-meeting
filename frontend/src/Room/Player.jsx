@@ -31,36 +31,49 @@ function AudioPlayer({ videoId, onEnded, onReady, audioRef: externalRef }) {
   const audioRef = externalRef || internalRef;
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState(null);
-  const retryRef = useRef(0);
 
   useEffect(() => {
     if (!videoId || !audioRef.current) return;
     const audio = audioRef.current;
     setError(null);
-    retryRef.current = 0;
 
     const streamUrl = `${BACKEND_URL}/api/stream/${videoId}`;
     audio.src = streamUrl;
     audio.load();
 
-    const playPromise = audio.play();
-    if (playPromise) {
-      playPromise.then(() => {
-        setIsPlaying(true);
-        setupMediaSession(audio, videoId);
-        requestWakeLock();
-        onReady?.();
-      }).catch(() => {
-        setIsPlaying(false);
-      });
-    }
+    const tryPlay = () => {
+      const playPromise = audio.play();
+      if (playPromise) {
+        playPromise.then(() => {
+          setIsPlaying(true);
+          setupMediaSession(audio, videoId);
+          requestWakeLock();
+          onReady?.();
+        }).catch(() => {
+          setIsPlaying(false);
+          const btn = document.createElement('button');
+          btn.textContent = 'Sesi Dinle';
+          btn.id = 'cm-mobile-play';
+          btn.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:9999;padding:16px 32px;border-radius:16px;background:#00a884;color:#fff;border:none;font-size:18px;font-weight:800;box-shadow:0 8px 30px rgba(0,0,0,.5);cursor:pointer;';
+          btn.onclick = () => { audio.play().then(() => { setIsPlaying(true); btn.remove(); }).catch(() => {}); };
+          document.body.appendChild(btn);
+          setTimeout(() => btn.remove(), 15000);
+        });
+      }
+    };
 
+    audio.oncanplay = () => tryPlay();
     audio.onended = () => { setIsPlaying(false); onEnded?.(); };
     audio.onerror = () => { setError('Ses yuklenemedi'); };
 
     return () => {
       audio.pause();
+      audio.oncanplay = null;
+      audio.onended = null;
+      audio.onerror = null;
       audio.src = '';
+      const oldBtn = document.getElementById('cm-mobile-play');
+      if (oldBtn) oldBtn.remove();
     };
   }, [videoId]);
 
@@ -71,9 +84,7 @@ function AudioPlayer({ videoId, onEnded, onReady, audioRef: externalRef }) {
       if (!audio) return;
       if (document.hidden) {
         audio.play().catch(() => {});
-        try {
-          wakeLock = await navigator.wakeLock?.request('screen');
-        } catch {}
+        try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
       } else {
         if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
       }
