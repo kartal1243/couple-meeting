@@ -199,29 +199,19 @@ async function getInnertube() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 6. MP3 STREAMING ENDPOINT (Piped API)
+// 6. MP3 STREAMING ENDPOINT (yt-dlp python)
 // ═══════════════════════════════════════════════════════════
 
-const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.adminforge.de',
-  'https://api.piped.yt',
-  'https://piped-api.lunar.icu'
-];
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 
-async function getPipedStreams(videoId) {
-  for (const base of PIPED_INSTANCES) {
-    try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 8000);
-      const r = await fetch(`${base}/streams/${videoId}`, { signal: ctrl.signal });
-      clearTimeout(t);
-      if (!r.ok) continue;
-      const data = await r.json();
-      if (data.audioStreams && data.audioStreams.length > 0) return data;
-    } catch {}
-  }
-  return null;
+async function getYtDlpUrl(videoId) {
+  const { stdout } = await execAsync(
+    `python3 -m yt_dlp --get-url --no-playlist -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`,
+    { timeout: 20000, maxBuffer: 1024 * 1024 }
+  );
+  return stdout.trim();
 }
 
 app.get('/api/stream/:videoId', async (req, res) => {
@@ -230,18 +220,15 @@ app.get('/api/stream/:videoId', async (req, res) => {
 
   try {
     logger.info(`[STREAM] istek: ${videoId}`);
-    const data = await getPipedStreams(videoId);
-    if (!data || !data.audioStreams.length) throw new Error('ses stream bulunamadi');
+    const streamUrl = await getYtDlpUrl(videoId);
+    if (!streamUrl) throw new Error('url alinamadi');
 
-    const audio = data.audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-    if (!audio.url) throw new Error('stream url yok');
+    logger.info(`[STREAM] ${videoId} -> url alindi`);
 
-    logger.info(`[STREAM] ${videoId} -> ${audio.mimeType} ${audio.bitrate}bps`);
-
-    const upstream = await fetch(audio.url);
+    const upstream = await fetch(streamUrl);
     if (!upstream.ok) throw new Error(`upstream ${upstream.status}`);
 
-    res.setHeader('Content-Type', audio.mimeType || 'audio/webm');
+    res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
     const reader = upstream.body.getReader();
@@ -260,15 +247,12 @@ app.get('/api/stream-info/:videoId', async (req, res) => {
   const videoId = sanitize(req.params.videoId, 20);
   if (!videoId) return res.json({ ok: false });
   try {
-    const data = await getPipedStreams(videoId);
-    if (!data) throw new Error('bulunamadi');
-    res.json({
-      ok: true,
-      title: data.title || '',
-      duration: data.duration || 0,
-      thumbnail: data.thumbnailUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      hasStream: (data.audioStreams || []).length > 0
-    });
+    const { stdout } = await execAsync(
+      `python3 -m yt_dlp --no-playlist --no-warnings --print "%(title)s|||%(duration)s" "https://www.youtube.com/watch?v=${videoId}"`,
+      { timeout: 15000, maxBuffer: 1024 * 1024 }
+    );
+    const [title, duration] = stdout.trim().split('|||');
+    res.json({ ok: true, title: title || '', duration: parseInt(duration) || 0, thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` });
   } catch (e) {
     logger.error(`[STREAM-INFO] hata: ${videoId} - ${e.message}`);
     res.json({ ok: false });
