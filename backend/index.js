@@ -208,11 +208,13 @@ app.get('/api/stream/:videoId', async (req, res) => {
 
   try {
     logger.info(`[STREAM] istek: ${videoId}`);
-    const info = await yt.getBasicInfo(videoId);
+    const innertube = await getInnertube();
+    if (!innertube) throw new Error('innertube yuklenemedi');
+    const info = await innertube.getBasicInfo(videoId);
     const format = info.chooseFormat({ type: 'audio', quality: 'best' });
     if (!format || !format.url) throw new Error('format bulunamadi');
 
-    const streamUrl = format.decipher(yt.session.player);
+    const streamUrl = format.decipher(innertube.session.player);
 
     const audioResponse = await fetch(streamUrl);
     if (!audioResponse.ok) throw new Error(`upstream ${audioResponse.status}`);
@@ -239,7 +241,9 @@ app.get('/api/stream-info/:videoId', async (req, res) => {
   const videoId = sanitize(req.params.videoId, 20);
   if (!videoId) return res.json({ ok: false });
   try {
-    const info = await yt.getBasicInfo(videoId);
+    const innertube = await getInnertube();
+    if (!innertube) throw new Error('innertube yuklenemedi');
+    const info = await innertube.getBasicInfo(videoId);
     const format = info.chooseFormat({ type: 'audio', quality: 'best' });
     res.json({
       ok: true,
