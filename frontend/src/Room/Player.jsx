@@ -1,5 +1,5 @@
 import YouTube from 'react-youtube';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -22,6 +22,25 @@ export default function Player({
   const handleYTReady = useCallback((e) => {
     ytPlayerRef.current = e.target;
   }, [ytPlayerRef]);
+
+  const endedRef = useRef(false);
+
+  useEffect(() => {
+    endedRef.current = false;
+    if (!videoId || mediaType === 'none') return;
+    const interval = setInterval(() => {
+      const player = ytPlayerRef.current;
+      if (!player || endedRef.current) return;
+      try {
+        const state = player.getPlayerState?.();
+        if (state === 0) {
+          endedRef.current = true;
+          handleMediaEnd();
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [videoId, mediaType]);
 
   return (
     <div className="cm-video-wrap" style={{

@@ -475,8 +475,7 @@ io.on('connection', (socket) => {
           thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
           src: s.id
         })).filter(s => s.id && s.title).slice(0, 8);
-        socket.emit('search_results', results);
-        return;
+        if (results.length > 0) { socket.emit('search_results', results); return; }
       } catch {}
 
       // Fallback: video search
