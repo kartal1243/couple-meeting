@@ -211,10 +211,15 @@ app.get('/api/stream/:videoId', async (req, res) => {
     const innertube = await getInnertube();
     if (!innertube) throw new Error('innertube yuklenemedi');
     const info = await innertube.getBasicInfo(videoId);
-    const format = info.chooseFormat({ type: 'audio', quality: 'best' });
-    if (!format || !format.url) throw new Error('format bulunamadi');
+    const formats = info.streaming_data?.adaptive_formats || [];
+    const audioFormats = formats.filter(f => f.mime_type?.startsWith('audio/'));
+    if (audioFormats.length === 0) throw new Error('audio format bulunamadi');
 
-    const streamUrl = format.decipher(innertube.session.player);
+    const best = audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+    const streamUrl = best.decipher ? best.decipher(innertube.session.player) : best.url;
+    if (!streamUrl) throw new Error('stream url alinamadi');
+
+    logger.info(`[STREAM] ${videoId} -> ${best.mime_type}`);
 
     const audioResponse = await fetch(streamUrl);
     if (!audioResponse.ok) throw new Error(`upstream ${audioResponse.status}`);
@@ -244,13 +249,14 @@ app.get('/api/stream-info/:videoId', async (req, res) => {
     const innertube = await getInnertube();
     if (!innertube) throw new Error('innertube yuklenemedi');
     const info = await innertube.getBasicInfo(videoId);
-    const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+    const formats = info.streaming_data?.adaptive_formats || [];
+    const audioFormats = formats.filter(f => f.mime_type?.startsWith('audio/'));
     res.json({
       ok: true,
       title: info.basic_info?.title || '',
       duration: info.basic_info?.duration || 0,
       thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      hasStream: !!(format && format.url)
+      hasStream: audioFormats.length > 0
     });
   } catch (e) {
     logger.error(`[STREAM-INFO] hata: ${videoId} - ${e.message}`);
