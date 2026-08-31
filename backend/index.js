@@ -198,8 +198,67 @@ async function getInnertube() {
   return innertube;
 }
 
+const { execFile } = require('child_process');
+
 // ═══════════════════════════════════════════════════════════
-// 6. SOCKET.IO SERVER
+// 6. MP3 STREAMING ENDPOINT
+// ═══════════════════════════════════════════════════════════
+
+app.get('/api/stream/:videoId', (req, res) => {
+  const videoId = sanitize(req.params.videoId, 20);
+  if (!videoId) return res.status(400).json({ ok: false, message: 'Invalid video ID' });
+
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  logger.info(`[STREAM] istek: ${videoId}`);
+
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Accept-Ranges', 'bytes');
+
+  const ytDlp = execFile('yt-dlp', [
+    '-f', 'bestaudio[ext=mp3]/bestaudio',
+    '--no-playlist',
+    '-o', '-',
+    '--no-warnings',
+    url
+  ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (err) => {
+    if (err && !res.headersSent) {
+      logger.error(`[STREAM] hata: ${videoId} - ${err.message}`);
+      res.status(500).json({ ok: false, message: 'Stream hatasi' });
+    }
+  });
+
+  ytDlp.stdout.pipe(res);
+
+  ytDlp.stderr.on('data', (data) => {
+    logger.debug(`[STREAM] yt-dlp: ${data.toString().trim()}`);
+  });
+
+  req.on('close', () => {
+    if (ytDlp.pid) { try { ytDlp.kill('SIGTERM'); } catch {} }
+  });
+});
+
+app.get('/api/stream-info/:videoId', async (req, res) => {
+  const videoId = sanitize(req.params.videoId, 20);
+  if (!videoId) return res.json({ ok: false });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      execFile('yt-dlp', [
+        '--no-playlist', '--no-warnings', '--print', '%(title)s|||%(duration)s|||%(thumbnail)s',
+        `https://www.youtube.com/watch?v=${videoId}`
+      ], { timeout: 15000 }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout.toString().trim());
+      });
+    });
+    const [title, duration, thumbnail] = result.split('|||');
+    res.json({ ok: true, title: title || '', duration: parseInt(duration) || 0, thumbnail: thumbnail || '' });
+  } catch { res.json({ ok: false }); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// 7. SOCKET.IO SERVER
 // ═══════════════════════════════════════════════════════════
 
 const server = http.createServer(app);
