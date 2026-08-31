@@ -199,8 +199,30 @@ async function getInnertube() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 6. MP3 STREAMING ENDPOINT (youtubei.js InnerTube)
+// 6. MP3 STREAMING ENDPOINT (Piped API)
 // ═══════════════════════════════════════════════════════════
+
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.adminforge.de',
+  'https://api.piped.yt',
+  'https://piped-api.lunar.icu'
+];
+
+async function getPipedStreams(videoId) {
+  for (const base of PIPED_INSTANCES) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(`${base}/streams/${videoId}`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (data.audioStreams && data.audioStreams.length > 0) return data;
+    } catch {}
+  }
+  return null;
+}
 
 app.get('/api/stream/:videoId', async (req, res) => {
   const videoId = sanitize(req.params.videoId, 20);
@@ -208,34 +230,26 @@ app.get('/api/stream/:videoId', async (req, res) => {
 
   try {
     logger.info(`[STREAM] istek: ${videoId}`);
-    const innertube = await getInnertube();
-    if (!innertube) throw new Error('innertube yuklenemedi');
-    const info = await innertube.getBasicInfo(videoId);
-    const formats = info.streaming_data?.adaptive_formats || [];
-    const audioFormats = formats.filter(f => f.mime_type?.startsWith('audio/'));
-    if (audioFormats.length === 0) throw new Error('audio format bulunamadi');
+    const data = await getPipedStreams(videoId);
+    if (!data || !data.audioStreams.length) throw new Error('ses stream bulunamadi');
 
-    const best = audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-    const streamUrl = best.decipher ? best.decipher(innertube.session.player) : best.url;
-    if (!streamUrl) throw new Error('stream url alinamadi');
+    const audio = data.audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+    if (!audio.url) throw new Error('stream url yok');
 
-    logger.info(`[STREAM] ${videoId} -> ${best.mime_type}`);
+    logger.info(`[STREAM] ${videoId} -> ${audio.mimeType} ${audio.bitrate}bps`);
 
-    const audioResponse = await fetch(streamUrl);
-    if (!audioResponse.ok) throw new Error(`upstream ${audioResponse.status}`);
+    const upstream = await fetch(audio.url);
+    if (!upstream.ok) throw new Error(`upstream ${upstream.status}`);
 
-    res.setHeader('Content-Type', format.mimeType || 'audio/webm');
+    res.setHeader('Content-Type', audio.mimeType || 'audio/webm');
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
-    const reader = audioResponse.body.getReader();
-    const pump = async () => {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) { res.end(); return; }
-        res.write(value);
-      }
-    };
-    pump().catch(() => {});
+    const reader = upstream.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) { res.end(); return; }
+      res.write(value);
+    }
   } catch (e) {
     logger.error(`[STREAM] hata: ${videoId} - ${e.message}`);
     if (!res.headersSent) res.status(500).json({ ok: false, message: 'Stream hatasi' });
@@ -246,17 +260,14 @@ app.get('/api/stream-info/:videoId', async (req, res) => {
   const videoId = sanitize(req.params.videoId, 20);
   if (!videoId) return res.json({ ok: false });
   try {
-    const innertube = await getInnertube();
-    if (!innertube) throw new Error('innertube yuklenemedi');
-    const info = await innertube.getBasicInfo(videoId);
-    const formats = info.streaming_data?.adaptive_formats || [];
-    const audioFormats = formats.filter(f => f.mime_type?.startsWith('audio/'));
+    const data = await getPipedStreams(videoId);
+    if (!data) throw new Error('bulunamadi');
     res.json({
       ok: true,
-      title: info.basic_info?.title || '',
-      duration: info.basic_info?.duration || 0,
-      thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      hasStream: audioFormats.length > 0
+      title: data.title || '',
+      duration: data.duration || 0,
+      thumbnail: data.thumbnailUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      hasStream: (data.audioStreams || []).length > 0
     });
   } catch (e) {
     logger.error(`[STREAM-INFO] hata: ${videoId} - ${e.message}`);
