@@ -198,65 +198,85 @@ async function getInnertube() {
   return innertube;
 }
 
-const { execFile } = require('child_process');
-
 // ═══════════════════════════════════════════════════════════
-// 6. MP3 STREAMING ENDPOINT
+// 6. MP3 STREAMING ENDPOINT (Invidious Proxy)
 // ═══════════════════════════════════════════════════════════
 
-app.get('/api/stream/:videoId', (req, res) => {
+const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.fdn.fr',
+  'https://yt.artemislena.eu',
+  'https://invidious.privacyredirect.com',
+  'https://vid.puffyan.us'
+];
+
+app.get('/api/stream/:videoId', async (req, res) => {
   const videoId = sanitize(req.params.videoId, 20);
-  if (!videoId) return res.status(400).json({ ok: false, message: 'Invalid video ID' });
+  if (!videoId) return res.status(400).json({ ok: false });
 
-  const url = `https://www.youtube.com/watch?v=${videoId}`;
-  logger.info(`[STREAM] istek: ${videoId}`);
+  for (const instance of INVIDIOUS_INSTANCES) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(`${instance}/api/v1/videos/${videoId}`, { signal: controller.signal });
+      clearTimeout(timeout);
 
-  res.setHeader('Content-Type', 'audio/mpeg');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  res.setHeader('Accept-Ranges', 'bytes');
+      if (!response.ok) continue;
+      const data = await response.json();
 
-  const childEnv = { ...process.env, PATH: `/root/.deno/bin:${process.env.PATH || ''}` };
+      const audioFormats = (data.adaptiveFormats || []).filter(f => f.type && f.type.startsWith('audio/'));
+      if (audioFormats.length === 0) continue;
 
-  const ytDlp = execFile('yt-dlp', [
-    '-f', 'bestaudio[ext=mp3]/bestaudio',
-    '--no-playlist',
-    '-o', '-',
-    '--no-warnings',
-    url
-  ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000, env: childEnv }, (err) => {
-    if (err && !res.headersSent) {
-      logger.error(`[STREAM] hata: ${videoId} - ${err.message}`);
-      res.status(500).json({ ok: false, message: 'Stream hatasi' });
+      const bestAudio = audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (!bestAudio.url) continue;
+
+      logger.info(`[STREAM] ${videoId} -> ${instance}`);
+
+      const audioResponse = await fetch(bestAudio.url);
+      if (!audioResponse.ok) continue;
+
+      res.setHeader('Content-Type', bestAudio.type || 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Accept-Ranges', 'bytes');
+
+      const reader = audioResponse.body.getReader();
+      const pump = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) { res.end(); return; }
+          res.write(value);
+        }
+      };
+      pump().catch(() => {});
+      return;
+    } catch (e) {
+      logger.debug(`[STREAM] ${instance} basarisiz: ${e.message}`);
     }
-  });
+  }
 
-  ytDlp.stdout.pipe(res);
-
-  ytDlp.stderr.on('data', (data) => {
-    logger.debug(`[STREAM] yt-dlp: ${data.toString().trim()}`);
-  });
-
-  req.on('close', () => {
-    if (ytDlp.pid) { try { ytDlp.kill('SIGTERM'); } catch {} }
-  });
+  logger.error(`[STREAM] tum instance'lar basarisiz: ${videoId}`);
+  if (!res.headersSent) res.status(500).json({ ok: false, message: 'Stream bulunamadi' });
 });
 
 app.get('/api/stream-info/:videoId', async (req, res) => {
   const videoId = sanitize(req.params.videoId, 20);
   if (!videoId) return res.json({ ok: false });
-  try {
-    const result = await new Promise((resolve, reject) => {
-      execFile('yt-dlp', [
-        '--no-playlist', '--no-warnings', '--print', '%(title)s|||%(duration)s|||%(thumbnail)s',
-        `https://www.youtube.com/watch?v=${videoId}`
-      ], { timeout: 15000, env: childEnv }, (err, stdout) => {
-        if (err) reject(err);
-        else resolve(stdout.toString().trim());
-      });
-    });
-    const [title, duration, thumbnail] = result.split('|||');
-    res.json({ ok: true, title: title || '', duration: parseInt(duration) || 0, thumbnail: thumbnail || '' });
-  } catch { res.json({ ok: false }); }
+
+  for (const instance of INVIDIOUS_INSTANCES) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(`${instance}/api/v1/videos/${videoId}`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!response.ok) continue;
+      const data = await response.json();
+      const audioFormats = (data.adaptiveFormats || []).filter(f => f.type && f.type.startsWith('audio/'));
+      if (audioFormats.length === 0) continue;
+      res.json({ ok: true, title: data.title || '', duration: data.lengthSeconds || 0, thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` });
+      return;
+    } catch {}
+  }
+  res.json({ ok: false });
 });
 
 // ═══════════════════════════════════════════════════════════
