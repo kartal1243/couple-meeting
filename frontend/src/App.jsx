@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 
 import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
@@ -20,6 +20,7 @@ import VipModal from './Modals/VipModal';
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ── 1. STATE ──
   const [userId] = useState(() => {
@@ -499,6 +500,16 @@ function App() {
     return () => { if (wakeLock) wakeLock.release(); };
   }, [mediaType]);
 
+  // URL'den odaya otomatik katil (/room/:roomId)
+  useEffect(() => {
+    const match = location.pathname.match(/^\/room\/(.+)$/);
+    if (match && match[1] && socket && !inRoom) {
+      const targetRoomId = match[1];
+      const savedPass = localStorage.getItem('cm_saved_pass') || '';
+      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username, avatar: myAvatar, roomType: 'video' });
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!searchInput.trim() || searchInput.trim().length < 2 || searchInput.includes('http://') || searchInput.includes('https://')) {
       setSearchResults([]); setIsSearching(false); return;
@@ -541,8 +552,9 @@ function App() {
 
       localStorage.setItem('cm_saved_room', data.roomId);
       saveToRecentRooms(data.roomId);
-      navigate(`/room/${data.roomId}`);
       if (authToken) socket.emit('social_sync', { token: authToken });
+
+      setTimeout(() => navigate(`/room/${data.roomId}`), 50);
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
         setYoutubeError(null);
