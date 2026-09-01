@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
+const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
+function getAvatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < (name || '').length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
 export default function Chat({
   messages, mySocketId, username, chatInput, setChatInput,
   handleSendMessage, currentTheme, replyTo, setReplyTo
@@ -15,90 +22,146 @@ export default function Chat({
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Messages */}
       <div style={{
-        flex: 1, overflowY: 'auto', padding: '10px 10px',
-        display: 'flex', flexDirection: 'column', gap: 6,
-        scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,.1) transparent'
+        flex: 1, overflowY: 'auto', padding: '12px 10px',
+        display: 'flex', flexDirection: 'column', gap: 8,
+        scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,.08) transparent'
       }}>
         {messages.length === 0 && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 8,
+            alignItems: 'center', justifyContent: 'center', gap: 12,
             color: '#475569', padding: 40
           }}>
-            <span style={{ fontSize: 36 }}>💬</span>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>Henüz mesaj yok</span>
-            <span style={{ fontSize: 11, textAlign: 'center' }}>Sohbete ilk sen başla!</span>
+            <div style={{
+              width: 64, height: 64, borderRadius: 20,
+              background: 'linear-gradient(135deg, rgba(124,58,237,.15), rgba(236,72,153,.1))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
+              border: '1px solid rgba(124,58,237,.15)'
+            }}>💬</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#64748b' }}>Henüz mesaj yok</div>
+            <div style={{ fontSize: 12, textAlign: 'center', lineHeight: 1.5 }}>
+              Sohbete ilk sen başla!<br />Mesajlar burada görünecek.
+            </div>
           </div>
         )}
+
         {messages.map((msg, idx) => {
           const isMe = msg.senderId === mySocketId || msg.sender === username;
+          const senderName = msg.sender || 'Bilinmeyen';
+          const avatarColor = getAvatarColor(senderName);
+          const showAvatar = idx === 0 || messages[idx - 1]?.sender !== msg.sender;
+
           return (
             <div
               key={idx}
               onMouseEnter={() => setHoveredMsg(idx)}
               onMouseLeave={() => setHoveredMsg(null)}
               style={{
-                display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row',
-                alignItems: 'flex-end', gap: 6, maxWidth: '88%',
+                display: 'flex',
+                flexDirection: isMe ? 'row-reverse' : 'row',
+                alignItems: 'flex-end', gap: 8,
+                maxWidth: '90%',
                 alignSelf: isMe ? 'flex-end' : 'flex-start',
                 position: 'relative'
               }}
             >
-              {!isMe && (
-                <span style={{
-                  fontSize: 14, paddingBottom: 1,
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,.3))'
-                }}>{msg.avatar || '🐱'}</span>
-              )}
-              <div style={{
-                background: isMe
-                  ? 'linear-gradient(135deg, #005c4b, #004d40)'
-                  : 'linear-gradient(135deg, #1e293b, #1a2332)',
-                color: '#e9edef',
-                padding: '6px 10px',
-                borderRadius: isMe ? '10px 10px 2px 10px' : '10px 10px 10px 2px',
-                boxShadow: '0 2px 8px rgba(0,0,0,.2)',
-                border: isMe ? '1px solid rgba(0,168,132,.15)' : '1px solid rgba(255,255,255,.04)',
-                minWidth: 50
-              }}>
-                {msg.replyTo && (
+              {/* Avatar */}
+              {!isMe ? (
+                showAvatar ? (
                   <div style={{
-                    borderLeft: `2px solid ${isMe ? '#53bdeb' : '#25d366'}`,
-                    paddingLeft: 6, marginBottom: 4, opacity: .75,
-                    fontSize: 10, color: '#8696a0', lineHeight: 1.3
+                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${avatarColor}, ${avatarColor}bb)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 15, boxShadow: `0 4px 12px ${avatarColor}33`,
+                    border: `1px solid ${avatarColor}44`
                   }}>
-                    <div style={{ fontWeight: 800, color: isMe ? '#53bdeb' : '#25d366', fontSize: 9 }}>
-                      ↩ {msg.replyToSender || 'Bilinmeyen'}
-                    </div>
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
-                      {msg.replyToText}
-                    </div>
+                    {msg.avatar || '🐱'}
+                  </div>
+                ) : (
+                  <div style={{ width: 32, flexShrink: 0 }} />
+                )
+              ) : null}
+
+              {/* Bubble */}
+              <div style={{ maxWidth: 'calc(100% - 44px)' }}>
+                {/* Sender name */}
+                {!isMe && showAvatar && (
+                  <div style={{
+                    fontSize: 10, fontWeight: 800, color: avatarColor,
+                    marginBottom: 3, paddingLeft: 4,
+                    display: 'flex', alignItems: 'center', gap: 4
+                  }}>
+                    {senderName}
+                    <span style={{
+                      fontSize: 8, color: '#475569', fontWeight: 600
+                    }}>{msg.time}</span>
                   </div>
                 )}
+
                 <div style={{
-                  fontSize: 10, fontWeight: 800,
-                  color: isMe ? '#53bdeb' : '#25d366',
-                  marginBottom: 1
+                  background: isMe
+                    ? 'linear-gradient(135deg, #00a884, #008f6f)'
+                    : 'rgba(255,255,255,.06)',
+                  color: isMe ? '#fff' : '#e2e8f0',
+                  padding: '8px 12px',
+                  borderRadius: isMe ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
+                  boxShadow: isMe
+                    ? `0 2px 12px rgba(0,168,132,.25)`
+                    : '0 2px 8px rgba(0,0,0,.15)',
+                  border: isMe ? 'none' : '1px solid rgba(255,255,255,.04)',
+                  fontSize: 12.5, lineHeight: 1.4, wordBreak: 'break-word',
+                  position: 'relative', transition: 'all 0.15s'
                 }}>
-                  {msg.sender}
-                </div>
-                <div style={{ fontSize: 12, wordBreak: 'break-word', lineHeight: 1.35 }}>
+                  {/* Reply quote */}
+                  {msg.replyTo && (
+                    <div style={{
+                      borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,.4)' : currentTheme.primary}`,
+                      paddingLeft: 8, marginBottom: 6, opacity: .8,
+                      background: isMe ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.03)',
+                      borderRadius: 6, padding: '5px 8px',
+                      fontSize: 10.5, lineHeight: 1.3
+                    }}>
+                      <div style={{
+                        fontWeight: 800, color: isMe ? '#fff' : currentTheme.primary,
+                        fontSize: 10, marginBottom: 1
+                      }}>
+                        ↩ {msg.replyToSender || 'Bilinmeyen'}
+                      </div>
+                      <div style={{
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        maxWidth: 200, color: isMe ? 'rgba(255,255,255,.7)' : '#94a3b8'
+                      }}>
+                        {msg.replyToText}
+                      </div>
+                    </div>
+                  )}
+
                   {msg.text}
                 </div>
-                <div style={{ fontSize: 8, color: '#64748b', textAlign: 'right', marginTop: 2 }}>
-                  {msg.time}
-                </div>
+
+                {/* Time for own messages */}
+                {isMe && showAvatar && (
+                  <div style={{
+                    fontSize: 8, color: '#475569', textAlign: 'right',
+                    marginTop: 2, paddingRight: 4
+                  }}>
+                    {msg.time}
+                  </div>
+                )}
               </div>
 
+              {/* Reply button on hover */}
               {hoveredMsg === idx && (
                 <button
                   onClick={() => setReplyTo(msg)}
                   style={{
-                    position: 'absolute', top: -6, [isMe ? 'left' : 'right']: 0,
-                    background: currentTheme.primary, color: '#fff', border: 'none',
-                    borderRadius: 6, padding: '2px 8px', fontSize: 9, fontWeight: 800,
+                    position: 'absolute', top: showAvatar ? 2 : -4,
+                    [isMe ? 'left' : 'right']: isMe ? -4 : -4,
+                    background: 'rgba(124,58,237,.9)', color: '#fff', border: 'none',
+                    borderRadius: 8, padding: '3px 8px', fontSize: 9, fontWeight: 800,
                     cursor: 'pointer', whiteSpace: 'nowrap', zIndex: 10,
-                    boxShadow: '0 4px 12px rgba(0,0,0,.3)'
+                    boxShadow: '0 4px 12px rgba(124,58,237,.4)',
+                    backdropFilter: 'blur(8px)'
                   }}
                 >
                   ↩ Yanıtla
@@ -113,21 +176,27 @@ export default function Chat({
       {/* Reply preview */}
       {replyTo && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
-          background: 'linear-gradient(135deg, rgba(124,58,237,.08), rgba(0,168,132,.05))',
-          borderTop: '1px solid rgba(255,255,255,.06)', fontSize: 11,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+          background: 'linear-gradient(135deg, rgba(124,58,237,.1), rgba(0,168,132,.05))',
+          borderTop: '1px solid rgba(255,255,255,.06)',
           borderLeft: `3px solid ${currentTheme.primary}`
         }}>
-          <span style={{ color: currentTheme.primary, fontWeight: 900 }}>↩ Yanıt:</span>
-          <span style={{ color: '#94a3b8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {replyTo.sender}: {replyTo.text}
-          </span>
+          <span style={{ color: currentTheme.primary, fontWeight: 900, fontSize: 12 }}>↩</span>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: currentTheme.primary }}>{replyTo.sender}</div>
+            <div style={{
+              fontSize: 11, color: '#94a3b8',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+            }}>
+              {replyTo.text}
+            </div>
+          </div>
           <button
             onClick={() => setReplyTo(null)}
             style={{
-              background: 'rgba(239,68,68,.1)', border: 'none', color: '#ef4444',
-              fontWeight: 900, cursor: 'pointer', fontSize: 12,
-              width: 20, height: 20, borderRadius: 6,
+              background: 'rgba(239,68,68,.15)', border: 'none', color: '#ef4444',
+              fontWeight: 900, cursor: 'pointer', fontSize: 11,
+              width: 22, height: 22, borderRadius: 6,
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >✕</button>
@@ -138,31 +207,35 @@ export default function Chat({
       <form
         onSubmit={handleSendMessage}
         style={{
-          padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,.06)',
-          display: 'flex', gap: 6,
+          padding: '10px 10px', borderTop: '1px solid rgba(255,255,255,.06)',
+          display: 'flex', gap: 8,
           background: 'rgba(0,0,0,.3)'
         }}
       >
         <input
           type="text"
-          placeholder={replyTo ? 'Yanıtınızı yazın...' : 'Mesaj yaz...'}
+          placeholder={replyTo ? `${replyTo.sender} yanıtla...` : 'Mesaj yaz...'}
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           style={{
             flex: 1, borderRadius: 14,
-            background: 'rgba(255,255,255,.05)',
-            border: '1px solid rgba(255,255,255,.06)',
-            color: '#e9edef', padding: '8px 14px', fontSize: 12, outline: 'none'
+            background: 'rgba(255,255,255,.06)',
+            border: '1px solid rgba(255,255,255,.08)',
+            color: '#e9edef', padding: '10px 14px', fontSize: 12.5, outline: 'none',
+            transition: 'all 0.2s'
           }}
+          onFocus={(e) => { e.target.style.borderColor = `${currentTheme.primary}44`; e.target.style.background = 'rgba(255,255,255,.08)'; }}
+          onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,.08)'; e.target.style.background = 'rgba(255,255,255,.06)'; }}
         />
         <button
           type="submit"
           style={{
             background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-            color: '#fff', border: 'none', borderRadius: 12, width: 36, height: 36,
+            color: '#fff', border: 'none', borderRadius: 12, width: 40, height: 40,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(124,58,237,.3)'
+            fontSize: 16, cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(124,58,237,.35)',
+            transition: 'all 0.2s', flexShrink: 0
           }}
         >
           ➤
