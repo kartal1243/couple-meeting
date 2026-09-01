@@ -1,47 +1,27 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import io from 'socket.io-client';
-
-// ═══════════════════════════════════════════════════════════
-// IMPORTS
-// ═══════════════════════════════════════════════════════════
 
 import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
+import AppContext from './contexts/AppContext';
 
-// Home Components
-import Hero from './Home/Hero';
-import Features from './Home/Features';
-import PublicRooms from './Home/PublicRooms';
-import SocialPreview from './Home/SocialPreview';
+import HomePage from './pages/HomePage';
+import RoomPage from './pages/RoomPage';
+import NotFoundPage from './pages/NotFoundPage';
 
-// Room Components
-import Header from './Room/Header';
-import SearchBar from './Room/SearchBar';
-import Player from './Room/Player';
-import Controls from './Room/Controls';
-import Chat from './Room/Chat';
-import Playlist from './Room/Playlist';
-
-// Modals
 import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
 import FolderModal from './Modals/FolderModal';
 import SettingsModal from './Modals/SettingsModal';
 import VipModal from './Modals/VipModal';
 
-// ═══════════════════════════════════════════════════════════
-// APP
-// ═══════════════════════════════════════════════════════════
-
 function App() {
+  const navigate = useNavigate();
 
-  // ──────────────────────────────────────────────────────
-  // 1. STATE TANIMLARI
-  // ──────────────────────────────────────────────────────
-
-  // Kullanici bilgileri
+  // ── 1. STATE ──
   const [userId] = useState(() => {
     let id = localStorage.getItem('cm_user_id');
     if (!id) { id = 'usr_' + Math.random().toString(36).substring(2, 9); localStorage.setItem('cm_user_id', id); }
@@ -52,9 +32,8 @@ function App() {
   const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [mySocketId, setMySocketId] = useState('');
 
-  // Oda durumu
-  const [inRoom, setInRoom] = useState(() => !!new URLSearchParams(window.location.search).get('room'));
-  const [roomId, setRoomId] = useState(() => new URLSearchParams(window.location.search).get('room') || '');
+  const [inRoom, setInRoom] = useState(false);
+  const [roomId, setRoomId] = useState('');
   const [roomName, setRoomName] = useState('');
   const [hostUserId, setHostUserId] = useState('');
   const [roomTheme, setRoomTheme] = useState('default');
@@ -63,12 +42,10 @@ function App() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
 
-  // Medya durumu
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
   const [mediaMeta, setMediaMeta] = useState(null);
 
-  // Playlist & kategoriler
   const [playlist, setPlaylist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_local_playlist')) || []; } catch { return []; }
   });
@@ -79,18 +56,15 @@ function App() {
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [playMode, setPlayMode] = useState('sequence');
 
-  // Arama
   const [searchInput, setSearchInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Sohbet
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [reactions, setReactions] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
 
-  // Uygulama
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [youtubeError, setYoutubeError] = useState(null);
@@ -98,7 +72,6 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
-  // Modallar
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -107,22 +80,18 @@ function App() {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
 
-  // Oda olusturma
   const [quickRoomName, setQuickRoomName] = useState('');
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
   const [quickRoomType, setQuickRoomType] = useState('video');
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
-  // Odaya katilma
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
   const [joinModalPass, setJoinModalPass] = useState('');
 
-  // Playlist modal
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
 
-  // Kimlik dogrulama
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
   });
@@ -131,7 +100,6 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', bio: '', avatar: '🐱' });
 
-  // Sosyal
   const [friendSearch, setFriendSearch] = useState('');
   const [friendSearchResults, setFriendSearchResults] = useState([]);
   const [friends, setFriends] = useState([]);
@@ -143,10 +111,7 @@ function App() {
   const [profileBioInput, setProfileBioInput] = useState('');
   const [profileStatusInput, setProfileStatusInput] = useState('');
 
-  // ──────────────────────────────────────────────────────
-  // 2. SOCKET & REFS
-  // ──────────────────────────────────────────────────────
-
+  // ── 2. REFS & SOCKET ──
   const ytPlayerRef = useRef(null);
   const musicAudioRef = useRef(null);
   const socketRef = useRef(null);
@@ -169,10 +134,7 @@ function App() {
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
   useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
 
-  // ──────────────────────────────────────────────────────
-  // 3. YARDIMCI FONKSIYONLAR
-  // ──────────────────────────────────────────────────────
-
+  // ── 3. YARDIMCI FONKSIYONLAR ──
   const currentTheme = THEMES[roomTheme] || THEMES.default;
   const cssVars = { '--cm-primary': currentTheme.primary };
   const styles = getStyles(currentTheme);
@@ -211,10 +173,7 @@ function App() {
     try { return JSON.parse(localStorage.getItem(`cm_room_msgs_${rid}`)) || []; } catch { return []; }
   }, []);
 
-  // ──────────────────────────────────────────────────────
-  // 4. KIMLIK DOGRULAMA FONKSIYONLARI
-  // ──────────────────────────────────────────────────────
-
+  // ── 4. KIMLIK DOGRULAMA ──
   const openAuth = (mode = 'login') => {
     setAuthMode(mode);
     setAuthForm((prev) => ({ ...prev, password: '' }));
@@ -237,10 +196,7 @@ function App() {
     setShowSocialModal(false);
   };
 
-  // ──────────────────────────────────────────────────────
-  // 5. SOSYAL FONKSIYONLAR
-  // ──────────────────────────────────────────────────────
-
+  // ── 5. SOSYAL ──
   const sendGlobalMessage = (e) => {
     e.preventDefault();
     const text = globalChatInput.trim();
@@ -283,12 +239,7 @@ function App() {
     });
   };
 
-  // ──────────────────────────────────────────────────────
-  // 6. ODA YONETIM FONKSIYONLARI
-  // ──────────────────────────────────────────────────────
-
-  const handleQuickCreateRoom = () => setShowQuickCreate(true);
-
+  // ── 6. ODA YONETIMI ──
   const handleQuickCreateSubmit = (e) => {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
@@ -330,7 +281,7 @@ function App() {
     setReplyTo(null);
     localStorage.removeItem('cm_saved_room');
     localStorage.removeItem('cm_saved_pass');
-    window.history.replaceState({}, '', window.location.pathname);
+    navigate('/');
   };
 
   const handleSaveSettings = () => {
@@ -345,10 +296,7 @@ function App() {
   const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId });
   const handleTransferAdmin = (targetUserId) => socket.emit('update_room_settings', { roomId: currentRoomIdRef.current, newHostUserId: targetUserId });
 
-  // ──────────────────────────────────────────────────────
-  // 7. MEDYA & PLAYLIST FONKSIYONLARI
-  // ──────────────────────────────────────────────────────
-
+  // ── 7. MEDYA & PLAYLIST ──
   const handlePlay = () => {
     if (musicAudioRef.current) { try { musicAudioRef.current.play(); } catch {} }
     if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
@@ -366,7 +314,6 @@ function App() {
     const pm = playModeRef.current;
     const ms = mediaSrcRef.current;
     if (!pl || pl.length === 0) return;
-
     let nextTrack;
     if (pm === 'shuffle') {
       nextTrack = pl[Math.floor(Math.random() * pl.length)];
@@ -434,10 +381,7 @@ function App() {
 
   const confirmAddToPlaylist = () => {
     if (!pendingMediaItem) return;
-    socket.emit('add_to_playlist', {
-      roomId: currentRoomIdRef.current,
-      item: { ...pendingMediaItem, category: modalTargetCategory }
-    });
+    socket.emit('add_to_playlist', { roomId: currentRoomIdRef.current, item: { ...pendingMediaItem, category: modalTargetCategory } });
     setShowFolderModal(false);
     setPendingMediaItem(null);
   };
@@ -526,19 +470,13 @@ function App() {
     return filtered;
   }, [playlist, selectedCategory, playMode]);
 
-  // ──────────────────────────────────────────────────────
-  // 8. EFFECTS
-  // ──────────────────────────────────────────────────────
-
-  // PWA install
+  // ── 8. EFFECTS ──
   useEffect(() => {
     const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
     window.addEventListener('beforeinstallprompt', handler);
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
     return () => { window.removeEventListener('beforeinstallprompt', handler); socketRef.current?.disconnect(); socketRef.current = null; };
   }, []);
 
-  // MediaSession
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', handlePlay);
@@ -547,7 +485,6 @@ function App() {
     }
   }, [mediaType]);
 
-  // WakeLock
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
@@ -562,15 +499,6 @@ function App() {
     return () => { if (wakeLock) wakeLock.release(); };
   }, [mediaType]);
 
-  // URL'den odaya otomatik katil
-  useEffect(() => {
-    const targetRoom = new URLSearchParams(window.location.search).get('room');
-    if (targetRoom && socket) {
-      socket.emit('join_room', { roomId: targetRoom, password: '', userId, userCity, username, avatar: myAvatar, roomType: 'video' });
-    }
-  }, [userId]);
-
-  // Arama debounce
   useEffect(() => {
     if (!searchInput.trim() || searchInput.trim().length < 2 || searchInput.includes('http://') || searchInput.includes('https://')) {
       setSearchResults([]); setIsSearching(false); return;
@@ -580,22 +508,15 @@ function App() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // ──────────────────────────────────────────────────────
-  // 9. SOCKET EVENT HANDLER'LARI
-  // ──────────────────────────────────────────────────────
-
+  // ── 9. SOCKET EVENTS ──
   useEffect(() => {
     if (!socket) return;
 
-    // Baglanti
     socket.on('connect', () => setIsConnected(true));
     socket.on('disconnect', () => setIsConnected(false));
-
-    // Genel
     socket.on('public_rooms_update', (roomsList) => setPublicRooms(Array.isArray(roomsList) ? roomsList : []));
     socket.on('search_results', (results) => { setSearchResults(Array.isArray(results) ? results : []); setIsSearching(false); });
 
-    // Oda
     socket.on('room_joined', (data) => {
       setInRoom(true);
       setErrorMessage('');
@@ -620,7 +541,7 @@ function App() {
 
       localStorage.setItem('cm_saved_room', data.roomId);
       saveToRecentRooms(data.roomId);
-      window.history.replaceState({}, '', `?room=${data.roomId}`);
+      navigate(`/room/${data.roomId}`);
       if (authToken) socket.emit('social_sync', { token: authToken });
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
@@ -663,11 +584,11 @@ function App() {
     socket.on('room_error', (msg) => {
       setErrorMessage(msg);
       setInRoom(false);
+      navigate('/');
       localStorage.removeItem('cm_saved_room');
       localStorage.removeItem('cm_saved_pass');
     });
 
-    // Oda aksiyonlari
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
         if (musicAudioRef.current) { try { musicAudioRef.current.play(); } catch {} }
@@ -704,11 +625,9 @@ function App() {
       }
     });
 
-    // Global sohbet
     socket.on('global_chat_history', (items) => setGlobalMessages(Array.isArray(items) ? items : []));
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
 
-    // Kimlik dogrulama
     socket.on('social_profile', (user) => {
       setAuthUser(user);
       localStorage.setItem('cm_auth_user', JSON.stringify(user));
@@ -732,7 +651,6 @@ function App() {
       }
     });
 
-    // Sosyal
     socket.on('friends_update', (data) => {
       setFriends(Array.isArray(data?.friends) ? data.friends : []);
       setFriendRequests(Array.isArray(data?.requests) ? data.requests : []);
@@ -747,7 +665,6 @@ function App() {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
     });
 
-    // VIP
     socket.on('vip_activated', (data) => {
       setAuthUser((prev) => {
         const updated = { ...prev, isVip: data.isVip, vipExpiry: data.vipExpiry };
@@ -756,10 +673,8 @@ function App() {
       });
     });
 
-    // Bildirim izni
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
-    // Visibility degisikligi
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && socketRef.current) socketRef.current.connect();
     };
@@ -777,198 +692,137 @@ function App() {
     };
   }, []);
 
-  // ──────────────────────────────────────────────────────
-  // 10. RENDER: ANA SAYFA
-  // ──────────────────────────────────────────────────────
+  // ── 10. CONTEXT VALUE ──
+  const contextValue = useMemo(() => ({
+    socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
+    inRoom, roomId, roomName, hostUserId, roomTheme, roomType, roomUsersList,
+    publicRooms, currentRoomInfo, mediaType, mediaSrc, mediaMeta, setMediaMeta,
+    playlist, categories, selectedCategory, setSelectedCategory,
+    newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
+    searchResults, isSearching, messages, chatInput, setChatInput, reactions,
+    replyTo, setReplyTo, isConnected, errorMessage, setErrorMessage,
+    youtubeError, setYoutubeError, sidebarTab, setSidebarTab, showInstallBtn,
+    showSettingsModal, setShowSettingsModal, showFolderModal, setShowFolderModal,
+    showAuthModal, setShowAuthModal, showSocialModal, setShowSocialModal,
+    showVipModal, setShowVipModal, showQuickCreate, setShowQuickCreate,
+    showJoinModal, setShowJoinModal, authUser, authToken, authMode, authBusy,
+    authForm, setAuthForm, friendSearch, setFriendSearch, friendSearchResults,
+    friends, friendRequests, friendOnlineStatuses, globalMessages,
+    globalChatInput, setGlobalChatInput, socialTab, setSocialTab,
+    profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
+    ytPlayerRef, musicAudioRef, currentTheme, cssVars, styles, filteredPlaylist,
+    openAuth, submitAuth, handleLogout, sendGlobalMessage, searchFriends,
+    sendFriendRequest, respondFriendRequest, unfriendUser, saveProfile,
+    handleQuickCreateSubmit, handleJoinRoomFromModal, handleLeaveRoom,
+    handleSaveSettings, handleKickUser, handleTransferAdmin,
+    handlePlay, handlePause, handleMediaEnd, handleDirectPlay,
+    handleSelectSearchResult, handleOpenAddModal, confirmAddToPlaylist,
+    handleSelectPlaylistItem, handleRemovePlaylistItem, handleModeChange,
+    handleCreateCategory, handleSendMessage, sendReaction,
+    handleYouTubeError, openYouTubeExternally, handleInstallApp,
+    setJoinRoomTarget, setJoinModalPass, setQuickRoomName, setQuickRoomPass,
+    setQuickMaxUsers, setQuickRoomType, quickRoomName, quickRoomPass,
+    quickMaxUsers, quickRoomType, joinRoomTarget, joinModalPass,
+    editRoomNameInput, setEditRoomNameInput, pendingMediaItem, setPendingMediaItem,
+    modalTargetCategory, setModalTargetCategory, playMessageSound
+  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, quickRoomType, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta]);
 
-  if (!inRoom) {
-    return (
-      <div style={{ ...styles.app, overflowY: 'auto', ...cssVars }}>
-        <style>{GLOBAL_CSS + HOME_CSS}</style>
-        <div className="cm-home">
-          <div className="cm-orb one" /><div className="cm-orb two" /><div className="cm-orb three" />
+  // ── 11. RENDER ──
+  return (
+    <AppContext.Provider value={contextValue}>
+      <style>{GLOBAL_CSS}</style>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/room/:roomIdParam" element={<RoomPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
 
-          <header className="cm-home-nav">
-            <div className="cm-home-brand">
-              <div className="cm-nav-soundwave">
-                {[10,18,26,14,22,16,24,12,20].map((h, i) => (
-                  <div key={i} className="cm-nav-bar" style={{ height: `${h}px`, animation: `cmWaveBar 0.8s ease-in-out infinite ${i * 0.07}s` }} />
-                ))}
+      {/* Global Modals */}
+      {showAuthModal && (
+        <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} />
+      )}
+      {showSocialModal && (
+        <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles} />
+      )}
+      {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
+
+      {showQuickCreate && (
+        <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
+          <div style={{ width:'min(420px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
+            <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ color:'#a78bfa', fontSize:11, fontWeight:900 }}>🚀 YENI ODA</div>
+                <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>Oda Olustur</div>
+              </div>
+              <button onClick={() => setShowQuickCreate(false)} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
+            </div>
+            <form onSubmit={handleQuickCreateSubmit} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
+              <div>
+                <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adi</label>
+                <input value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)} placeholder="orn: muzik gecesi" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
               </div>
               <div>
-                <div style={{ fontWeight: 950, color: '#fff', fontSize: 17, letterSpacing: '-0.5px' }}>Couple Meeting</div>
-                <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 800, letterSpacing: '0.5px' }}>LISTEN • CONNECT • SHARE</div>
+                <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Sifre (istege bagli)</label>
+                <input type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)} placeholder="Sifre koymak istersen yaz" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
               </div>
-            </div>
-            <div className="cm-nav-actions">
-              {authUser ? (
-                <button onClick={() => setShowSocialModal(true)} className="cm-nav-btn cm-nav-btn-green">{authUser.avatar || myAvatar} {authUser.username}</button>
-              ) : (
-                <>
-                  <button onClick={() => openAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giris Yap</button>
-                  <button onClick={() => openAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ucretsiz Katil</button>
-                </>
-              )}
-            </div>
-          </header>
-
-          <main className="cm-home-main">
-            <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={handleQuickCreateRoom} />
-            <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
-            <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
-            <Features />
-            <div className="cm-footer">
-              <div className="cm-footer-text">
-                <span style={{ fontWeight: 900, color: '#fff' }}>couple</span>
-                <span style={{ fontWeight: 300, color: '#a78bfa' }}>meeting</span>
+              <div>
+                <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kisi</label>
+                <select value={quickMaxUsers} onChange={(e) => setQuickMaxUsers(e.target.value)} style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}>
+                  <option value="2">2 Kisi 💑</option>
+                  <option value="4">4 Kisi 👥</option>
+                  <option value="8">8 Kisi 🎉</option>
+                </select>
               </div>
-              <div className="cm-footer-slogan">Uzakligi biraz daha kuculten internet. ❤️</div>
-            </div>
-          </main>
-
-          {showAuthModal && (
-            <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} />
-          )}
-          {showSocialModal && (
-            <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles} />
-          )}
-          {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
-
-          {showQuickCreate && (
-            <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
-              <div style={{ width:'min(420px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
-                <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ color:'#a78bfa', fontSize:11, fontWeight:900 }}>🚀 YENI ODA</div>
-                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>Oda Olustur</div>
-                  </div>
-                  <button onClick={() => setShowQuickCreate(false)} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
+              <div>
+                <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Tipi</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button type="button" onClick={() => setQuickRoomType('video')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎬 Video</button>
+                  <button type="button" onClick={() => setQuickRoomType('music')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎵 Muzik</button>
                 </div>
-                <form onSubmit={handleQuickCreateSubmit} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adi</label>
-                    <input value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)} placeholder="orn: muzik gecesi" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Sifre (istege bagli)</label>
-                    <input type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)} placeholder="Sifre koymak istersen yaz" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kisi</label>
-                    <select value={quickMaxUsers} onChange={(e) => setQuickMaxUsers(e.target.value)} style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }}>
-                      <option value="2">2 Kisi 💑</option>
-                      <option value="4">4 Kisi 👥</option>
-                      <option value="8">8 Kisi 🎉</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Tipi</label>
-                    <div style={{ display:'flex', gap:8 }}>
-                      <button type="button" onClick={() => setQuickRoomType('video')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎬 Video</button>
-                      <button type="button" onClick={() => setQuickRoomType('music')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎵 Muzik</button>
-                    </div>
-                  </div>
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>🚀 Odayi Baslat</button>
-                </form>
               </div>
-            </div>
-          )}
-
-          {showJoinModal && joinRoomTarget && (
-            <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
-              <div style={{ width:'min(380px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
-                <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ color:'#2563eb', fontSize:11, fontWeight:900 }}>🚪 ODAYA KATIL</div>
-                    <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>{joinRoomTarget.name}</div>
-                  </div>
-                  <button onClick={() => { setShowJoinModal(false); setJoinRoomTarget(null); setJoinModalPass(''); }} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
-                </div>
-                <form onSubmit={handleJoinRoomFromModal} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)' }}>
-                    <div style={{ fontSize:24 }}>{joinRoomTarget.hasPassword ? '🔒' : '🎵'}</div>
-                    <div>
-                      <div style={{ color:'#fff', fontSize:14, fontWeight:900 }}>{joinRoomTarget.name}</div>
-                      <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kisi • {joinRoomTarget.hasPassword ? 'Sifreli' : 'Acik'}</div>
-                    </div>
-                  </div>
-                  {joinRoomTarget.hasPassword && (
-                    <div>
-                      <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Sifresi</label>
-                      <input type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)} placeholder="Sifreyi girin..." autoFocus style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
-                    </div>
-                  )}
-                  <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>🚪 Odaya Gir</button>
-                </form>
-              </div>
-            </div>
-          )}
+              <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>🚀 Odayi Baslat</button>
+            </form>
+          </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // ──────────────────────────────────────────────────────
-  // 11. RENDER: ODA
-  // ──────────────────────────────────────────────────────
-
-  return (
-    <div style={{ ...styles.app, display: 'flex', flexDirection: 'column', ...cssVars }}>
-      <style>{GLOBAL_CSS + `\n@keyframes floatUpRoom { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-300px) scale(1.6); opacity: 0; }\n`}</style>
+      {showJoinModal && joinRoomTarget && (
+        <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
+          <div style={{ width:'min(380px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
+            <div style={{ padding:'22px 24px', borderBottom:'1px solid #25313a', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ color:'#2563eb', fontSize:11, fontWeight:900 }}>🚪 ODAYA KATIL</div>
+                <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>{joinRoomTarget.name}</div>
+              </div>
+              <button onClick={() => { setShowJoinModal(false); setJoinRoomTarget(null); setJoinModalPass(''); }} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
+            </div>
+            <form onSubmit={handleJoinRoomFromModal} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)' }}>
+                <div style={{ fontSize:24 }}>{joinRoomTarget.hasPassword ? '🔒' : '🎵'}</div>
+                <div>
+                  <div style={{ color:'#fff', fontSize:14, fontWeight:900 }}>{joinRoomTarget.name}</div>
+                  <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kisi • {joinRoomTarget.hasPassword ? 'Sifreli' : 'Acik'}</div>
+                </div>
+              </div>
+              {joinRoomTarget.hasPassword && (
+                <div>
+                  <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Sifresi</label>
+                  <input type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)} placeholder="Sifreyi girin..." autoFocus style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
+                </div>
+              )}
+              <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>🚪 Odaya Gir</button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showFolderModal && (
         <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
       )}
-
       {showSettingsModal && (
         <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} />
       )}
-
-      <Header
-        roomName={roomName} currentTheme={currentTheme} isConnected={isConnected}
-        currentRoomInfo={currentRoomInfo} showInstallBtn={showInstallBtn}
-        handleInstallApp={handleInstallApp} setShowSettingsModal={setShowSettingsModal}
-        authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveRoom}
-      />
-
-      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
-        <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
-          <SearchBar
-            searchInput={searchInput} setSearchInput={setSearchInput}
-            searchResults={searchResults} isSearching={isSearching}
-            currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
-            handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
-          />
-          <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
-            ytPlayerRef={ytPlayerRef} reactions={reactions} musicAudioRef={musicAudioRef}
-            openYouTubeExternally={openYouTubeExternally}
-            handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-          />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
-        </div>
-
-        <div className="cm-sidebar" style={{ width: '380px', maxWidth: '100%', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplik ({playlist ? playlist.length : 0})</button>
-          </div>
-
-          {sidebarTab === 'chat' ? (
-            <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={currentTheme} replyTo={replyTo} setReplyTo={setReplyTo} />
-          ) : (
-            <Playlist
-              categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-              newCategoryInput={newCategoryInput} setNewCategoryInput={setNewCategoryInput}
-              handleCreateCategory={handleCreateCategory} playMode={playMode}
-              handleModeChange={handleModeChange} filteredPlaylist={filteredPlaylist}
-              mediaSrc={mediaSrc} handleSelectPlaylistItem={handleSelectPlaylistItem}
-              handleRemovePlaylistItem={handleRemovePlaylistItem} currentTheme={currentTheme}
-            />
-          )}
-        </div>
-      </div>
-    </div>
+    </AppContext.Provider>
   );
 }
 
