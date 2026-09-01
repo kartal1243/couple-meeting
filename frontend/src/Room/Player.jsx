@@ -42,7 +42,7 @@ export default function Player({
     return () => clearInterval(interval);
   }, [videoId, mediaType]);
 
-  const showPlayer = (mediaType === 'youtube' || mediaType === 'music') && videoId && !youtubeError;
+  const showPlayer = mediaType !== 'none' && videoId && !youtubeError;
 
   return (
     <div className="cm-video-wrap" style={{
@@ -52,24 +52,20 @@ export default function Player({
 
       {mediaType === 'none' && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
-          <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎵</div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Medya Aratın veya Kitaplıktan Seçin!</div>
+          <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎬</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Şarkı veya Video Aratın!</div>
         </div>
       )}
 
       {showPlayer && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', position: 'relative' }}>
-          {mediaType === 'music' && (
-            <img src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt=""
-              style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15, filter: 'blur(20px)', zIndex: 0 }} />
-          )}
+        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
           <YouTube videoId={videoId} opts={ytOpts}
-            style={{ width: '100%', height: '100%', maxWidth: '100%', position: 'relative', zIndex: 1 }}
+            style={{ width: '100%', height: '100%', maxWidth: '100%' }}
             onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
         </div>
       )}
 
-      {(mediaType === 'youtube' || mediaType === 'music') && youtubeError && (
+      {mediaType !== 'none' && youtubeError && (
         <div style={{
           width: 'min(760px, 92%)', padding: '28px', borderRadius: '24px',
           background: 'linear-gradient(145deg,#151b23,#0a0e14)',

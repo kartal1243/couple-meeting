@@ -55,7 +55,7 @@ export default function SearchBar({
     >
       <input
         type="text"
-        placeholder="🔍 Şarkı/Dizi Adı Yazın veya Link Yapıştırın..."
+        placeholder="🔍 YouTube'dan Şarkı veya Video Aratın..."
         value={searchInput}
         onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
         onFocus={() => setShowResults(true)}

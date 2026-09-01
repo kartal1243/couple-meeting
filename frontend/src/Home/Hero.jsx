@@ -17,11 +17,11 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom }) {
 
       {/* Büyük başlık */}
       <h1 className="cm-hero-title">
-        BİRLİKTE<br />DİNLE
+        BİRLİKTE<br />İZLE & DİNLE
       </h1>
       <p className="cm-hero-sub">
         Sevgilinle, arkadaşınla veya yeni insanlarla<br />
-        aynı müziği aynı anda dinle ve anlık sohbet et.
+        YouTube'da aynı videoyu aynı anda izle, müzik dinle ve sohbet et.
       </p>
 
       <div className="cm-hero-actions">

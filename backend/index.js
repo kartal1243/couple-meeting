@@ -273,7 +273,6 @@ function getPublicRoomsList() {
   return Object.entries(rooms).map(([id, room]) => ({
     id, name: room.name || id, userCount: room.users.length,
     maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip,
-    roomType: room.roomType || 'video',
     users: room.users.map(u => ({ username: u.username, avatar: u.avatar })).slice(0, 5)
   }));
 }
@@ -504,9 +503,8 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip, roomType }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip }) => {
     const cleanRoomId = sanitize(roomId, 50);
-    const cleanRoomType = roomType === 'music' ? 'music' : 'video';
     let room = rooms[cleanRoomId];
 
     if (!room) {
@@ -514,7 +512,6 @@ io.on('connection', (socket) => {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
         maxUsers: Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8),
         hostUserId: userId, theme: 'default', users: [],
-        roomType: cleanRoomType,
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
         messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
@@ -537,7 +534,6 @@ io.on('connection', (socket) => {
 
     socket.emit('room_joined', {
       roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
-      roomType: room.roomType || 'video',
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),

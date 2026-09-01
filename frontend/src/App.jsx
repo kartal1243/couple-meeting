@@ -38,7 +38,7 @@ function App() {
   const [roomName, setRoomName] = useState('');
   const [hostUserId, setHostUserId] = useState('');
   const [roomTheme, setRoomTheme] = useState('default');
-  const [roomType, setRoomType] = useState('video');
+
   const [roomUsersList, setRoomUsersList] = useState([]);
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
@@ -84,7 +84,7 @@ function App() {
   const [quickRoomName, setQuickRoomName] = useState('');
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
-  const [quickRoomType, setQuickRoomType] = useState('video');
+
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
@@ -245,7 +245,7 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar, roomType: quickRoomType };
+    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -266,7 +266,7 @@ function App() {
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     socket.emit('join_room', {
       roomId: joinRoomTarget.id, password: joinModalPass.trim(),
-      userId, userCity, username, avatar: myAvatar, roomType: 'video'
+      userId, userCity, username, avatar: myAvatar
     });
     setShowJoinModal(false);
     setJoinRoomTarget(null);
@@ -345,11 +345,10 @@ function App() {
     if (playImmediately) {
       setYoutubeError(null);
       if (song.src) {
-        const type = roomType === 'music' ? 'music' : 'youtube';
-        setMediaType(type);
+        setMediaType('youtube');
         setMediaSrc(song.src);
         setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type, src: song.src, title: song.title });
+        sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
       } else if (song.youtubeQuery) {
         setSearchInput(song.youtubeQuery);
       }
@@ -504,7 +503,7 @@ function App() {
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = match[1];
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username, avatar: myAvatar, roomType: 'video' });
+      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username, avatar: myAvatar });
     }
   }, [location.pathname]);
 
@@ -533,7 +532,6 @@ function App() {
       setRoomName(data.roomName || data.roomId);
       setHostUserId(data.hostUserId);
       setRoomTheme(data.theme || 'default');
-      setRoomType(data.roomType || 'video');
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
@@ -703,7 +701,7 @@ function App() {
   // ── 10. CONTEXT VALUE ──
   const contextValue = useMemo(() => ({
     socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
-    inRoom, roomId, roomName, hostUserId, roomTheme, roomType, roomUsersList,
+    inRoom, roomId, roomName, hostUserId, roomTheme, roomUsersList,
     publicRooms, currentRoomInfo, mediaType, mediaSrc, mediaMeta, setMediaMeta,
     playlist, categories, selectedCategory, setSelectedCategory,
     newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
@@ -733,7 +731,7 @@ function App() {
     quickMaxUsers, quickRoomType, joinRoomTarget, joinModalPass,
     editRoomNameInput, setEditRoomNameInput, pendingMediaItem, setPendingMediaItem,
     modalTargetCategory, setModalTargetCategory, playMessageSound
-  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, quickRoomType, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta]);
+  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta]);
 
   // ── 11. RENDER ──
   return (
@@ -780,13 +778,6 @@ function App() {
                   <option value="4">4 Kisi 👥</option>
                   <option value="8">8 Kisi 🎉</option>
                 </select>
-              </div>
-              <div>
-                <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Tipi</label>
-                <div style={{ display:'flex', gap:8 }}>
-                  <button type="button" onClick={() => setQuickRoomType('video')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎬 Video</button>
-                  <button type="button" onClick={() => setQuickRoomType('music')} style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomType === 'music' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomType === 'music' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomType === 'music' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>🎵 Muzik</button>
-                </div>
               </div>
               <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>🚀 Odayi Baslat</button>
             </form>
