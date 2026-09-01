@@ -727,8 +727,8 @@ function App() {
     handleCreateCategory, handleSendMessage, sendReaction,
     handleYouTubeError, openYouTubeExternally, handleInstallApp,
     setJoinRoomTarget, setJoinModalPass, setQuickRoomName, setQuickRoomPass,
-    setQuickMaxUsers, setQuickRoomType, quickRoomName, quickRoomPass,
-    quickMaxUsers, quickRoomType, joinRoomTarget, joinModalPass,
+    setQuickMaxUsers, quickRoomName, quickRoomPass,
+    quickMaxUsers, joinRoomTarget, joinModalPass,
     editRoomNameInput, setEditRoomNameInput, pendingMediaItem, setPendingMediaItem,
     modalTargetCategory, setModalTargetCategory, playMessageSound
   }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta]);
