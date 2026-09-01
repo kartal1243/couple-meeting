@@ -19,12 +19,13 @@ export default function Chat({
   }, [messages]);
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
       {/* Messages */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: '12px 10px',
         display: 'flex', flexDirection: 'column', gap: 8,
-        scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,.08) transparent'
+        scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,.08) transparent',
+        minHeight: 0
       }}>
         {messages.length === 0 && (
           <div style={{

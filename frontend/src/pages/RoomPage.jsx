@@ -70,7 +70,8 @@ export default function RoomPage() {
           borderLeft: '1px solid rgba(255,255,255,.06)',
           display: 'flex', flexDirection: 'column',
           backdropFilter: 'blur(20px)',
-          animation: 'cmSidebarGlow 6s ease-in-out infinite'
+          animation: 'cmSidebarGlow 6s ease-in-out infinite',
+          overflow: 'hidden'
         }}>
           {/* Tabs */}
           <div style={{
