@@ -1,9 +1,12 @@
 {
-  "name": "Couple Meeting",
+  "name": "Couple Meeting - Birlikte Dinle, İzle, Sohbet Et",
   "short_name": "CoupleMeeting",
+  "description": "Sevdiklerinle aynı anda müzik dinle, YouTube videolarını birlikte izle ve anlık sohbet et.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b141a",
   "theme_color": "#0b141a",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "lang": "tr",
+  "categories": ["social", "music", "entertainment"]
 }

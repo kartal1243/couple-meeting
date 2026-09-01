@@ -2,6 +2,7 @@ import { useApp } from '../contexts/AppContext';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Hero from '../Home/Hero';
+import About from '../Home/About';
 import Features from '../Home/Features';
 import PublicRooms from '../Home/PublicRooms';
 import SocialPreview from '../Home/SocialPreview';
@@ -15,12 +16,14 @@ export default function HomePage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowY: 'auto' }}>
+      <style>{HOME_CSS}</style>
       <Navbar onOpenAuth={openAuth} />
       <main className="cm-home-main" style={{ flex: 1 }}>
         <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={() => setShowQuickCreate(true)} />
         <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
-        <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
+        <About />
         <Features />
+        <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
         <Footer />
       </main>
     </div>
