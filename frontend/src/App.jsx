@@ -501,7 +501,7 @@ function App() {
   useEffect(() => {
     const match = location.pathname.match(/^\/room\/(.+)$/);
     if (match && match[1] && socket && !inRoom) {
-      const targetRoomId = match[1];
+      const targetRoomId = decodeURIComponent(match[1]);
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
       socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username, avatar: myAvatar });
     }
@@ -550,7 +550,7 @@ function App() {
       saveToRecentRooms(data.roomId);
       if (authToken) socket.emit('social_sync', { token: authToken });
 
-      setTimeout(() => navigate(`/room/${data.roomId}`), 50);
+      setTimeout(() => navigate(`/room/${encodeURIComponent(data.roomId)}`), 50);
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
         setYoutubeError(null);
