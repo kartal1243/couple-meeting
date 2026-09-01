@@ -12,7 +12,7 @@ export default function RoomPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const {
-    roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
+    roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
     handleInstallApp, setShowSettingsModal, authUser, myAvatar, handleLeaveRoom,
     mediaType, mediaSrc, youtubeError, mediaMeta, ytPlayerRef, reactions,
     openYouTubeExternally, handleMediaEnd, handleYouTubeError, searchInput, setSearchInput,
