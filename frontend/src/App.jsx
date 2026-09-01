@@ -29,7 +29,11 @@ function App() {
     if (!id) { id = 'usr_' + Math.random().toString(36).substring(2, 9); localStorage.setItem('cm_user_id', id); }
     return id;
   });
-  const [username] = useState(() => localStorage.getItem('cm_username') || 'Izleyici');
+  const [username, setUsername] = useState(() => {
+    try { const u = JSON.parse(localStorage.getItem('cm_auth_user')); if (u?.username) return u.username; } catch {}
+    return localStorage.getItem('cm_username') || 'Izleyici';
+  });
+  const displayUsername = authUser?.username || username;
   const [userCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
   const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [mySocketId, setMySocketId] = useState('');
@@ -43,6 +47,7 @@ function App() {
   const [roomUsersList, setRoomUsersList] = useState([]);
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
+  const [toast, setToast] = useState(null);
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
@@ -144,8 +149,13 @@ function App() {
   const persistAuth = (user, token) => {
     setAuthUser(user);
     setAuthToken(token || '');
-    if (user) localStorage.setItem('cm_auth_user', JSON.stringify(user));
-    else localStorage.removeItem('cm_auth_user');
+    if (user) {
+      localStorage.setItem('cm_auth_user', JSON.stringify(user));
+      if (user.username) { setUsername(user.username); localStorage.setItem('cm_username', user.username); }
+      if (user.avatar) { setMyAvatar(user.avatar); localStorage.setItem('cm_user_avatar', user.avatar); }
+    } else {
+      localStorage.removeItem('cm_auth_user');
+    }
     if (token) localStorage.setItem('cm_auth_token', token);
     else localStorage.removeItem('cm_auth_token');
   };
@@ -153,6 +163,11 @@ function App() {
   const showFloatingEmoji = (reaction) => {
     setReactions((prev) => [...prev, reaction]);
     setTimeout(() => setReactions((prev) => prev.filter((r) => r.id !== reaction.id)), 2000);
+  };
+
+  const showToast = (msg, sender) => {
+    setToast({ msg, sender, id: Date.now() });
+    setTimeout(() => setToast(null), 3000);
   };
 
   const sendAction = (type, payload) => {
@@ -246,7 +261,7 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username, avatar: myAvatar };
+    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username: displayUsername, avatar: myAvatar };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -267,7 +282,7 @@ function App() {
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     socket.emit('join_room', {
       roomId: joinRoomTarget.id, password: joinModalPass.trim(),
-      userId, userCity, username, avatar: myAvatar
+      userId, userCity, username: displayUsername, avatar: myAvatar
     });
     setShowJoinModal(false);
     setJoinRoomTarget(null);
@@ -415,7 +430,7 @@ function App() {
     if (!chatInput.trim()) return;
     const newMsg = {
       senderId: mySocketId, text: chatInput,
-      sender: authUser?.username || username || 'Izleyici',
+      sender: authUser?.username || displayUsername || 'Izleyici',
       avatar: authUser?.avatar || myAvatar,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       replyTo: replyTo?.id || null, replyToText: replyTo?.text || null, replyToSender: replyTo?.sender || null
@@ -504,7 +519,7 @@ function App() {
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = decodeURIComponent(match[1]);
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username, avatar: myAvatar });
+      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username: displayUsername, avatar: myAvatar });
     }
   }, [location.pathname]);
 
@@ -629,6 +644,11 @@ function App() {
         }
       } else if (type === 'REACTION') {
         showFloatingEmoji(payload);
+      } else if (type === 'SPEED') {
+        if (ytPlayerRef.current) { try { ytPlayerRef.current.setPlaybackRate(payload.speed || 1); } catch {} }
+      } else if (type === 'ROOM_CLOSED') {
+        setErrorMessage(payload?.message || 'Oda kapatıldı.');
+        handleLeaveRoom();
       }
     });
 

@@ -584,13 +584,15 @@ io.on('connection', (socket) => {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
         maxUsers: Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8),
         hostUserId: userId, theme: 'default', users: [],
+        kickedUsers: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
         messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
       };
       room = rooms[cleanRoomId];
     } else {
-      if (room.password && room.password !== (password || '')) { socket.emit('room_error', 'Hatali Sifre!'); return; }
+      if (room.password && room.password !== (password || '')) { socket.emit('room_error', 'Şifre hatalı!'); return; }
+      if (room.kickedUsers && room.kickedUsers.includes(userId)) { socket.emit('room_error', 'Bu odadan atıldınız, tekrar giremezsiniz!'); return; }
       if (!room.users.find(u => u.userId === userId) && room.users.length >= room.maxUsers) { socket.emit('room_error', `Oda Dolu! (${room.users.length}/${room.maxUsers})`); return; }
       if (!room.messages) room.messages = [];
     }
@@ -632,10 +634,12 @@ io.on('connection', (socket) => {
     if (room && room.hostUserId === socket.userId && targetUserId !== socket.userId) {
       const target = room.users.find(u => u.userId === targetUserId);
       if (target) {
-        io.to(target.socketId).emit('kicked_from_room', 'Odadan atildiniz.');
+        io.to(target.socketId).emit('kicked_from_room', 'Odadan atıldınız, tekrar giremezsiniz!');
         const targetSocket = io.sockets.sockets.get(target.socketId);
         if (targetSocket) targetSocket.leave(sanitize(roomId, 50));
         room.users = room.users.filter(u => u.userId !== targetUserId);
+        if (!room.kickedUsers) room.kickedUsers = [];
+        room.kickedUsers.push(targetUserId);
         updateRoomUsers(sanitize(roomId, 50)); broadcastRooms();
       }
     }
