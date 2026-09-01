@@ -559,7 +559,7 @@ function App() {
         setMediaType(data.currentMedia.type);
         setMediaSrc(data.currentMedia.src);
         setTimeout(() => {
-          if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
+          if ((data.currentMedia.type === 'youtube' || data.currentMedia.type === 'music') && ytPlayerRef.current) {
             ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
             if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo(); else ytPlayerRef.current.pauseVideo();
           }
