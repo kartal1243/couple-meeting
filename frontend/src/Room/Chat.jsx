@@ -61,7 +61,8 @@ export default function Chat({
                 flexDirection: isMe ? 'row-reverse' : 'row',
                 alignItems: 'flex-end', gap: 6,
                 alignSelf: isMe ? 'flex-end' : 'flex-start',
-                position: 'relative'
+                position: 'relative',
+                width: '100%'
               }}
             >
               {/* Avatar */}

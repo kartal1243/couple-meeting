@@ -46,7 +46,7 @@ export default function Player({
 
   return (
     <div className="cm-video-wrap" style={{
-      flex: 1, position: 'relative', width: '100%', height: '100%',
+      flex: 1, position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden',
       display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
     }}>
 
@@ -58,9 +58,9 @@ export default function Player({
       )}
 
       {showPlayer && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
+        <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', overflow: 'hidden' }}>
           <YouTube videoId={videoId} opts={ytOpts}
-            style={{ width: '100%', height: '100%', maxWidth: '100%' }}
+            style={{ width: '100%', height: '100%', maxWidth: '100%', overflow: 'hidden' }}
             onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
         </div>
       )}
