@@ -81,6 +81,19 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_friendships_user1 ON friendships(user1);
     CREATE INDEX IF NOT EXISTS idx_friendships_user2 ON friendships(user2);
     CREATE INDEX IF NOT EXISTS idx_global_messages_time ON global_messages(created_at);
+
+    CREATE TABLE IF NOT EXISTS connection_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT DEFAULT '',
+      socket_id TEXT DEFAULT '',
+      ip TEXT DEFAULT '',
+      room_id TEXT DEFAULT '',
+      action TEXT DEFAULT 'connect',
+      user_agent TEXT DEFAULT '',
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_conn_logs_time ON connection_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_conn_logs_room ON connection_logs(room_id);
   `);
 }
 
@@ -312,11 +325,41 @@ function closeDb() {
   if (db) { try { db.close(); } catch {} db = null; }
 }
 
+function addConnectionLog(username, socketId, ip, roomId, action, userAgent) {
+  if (getDb()) {
+    try {
+      db.prepare('INSERT INTO connection_logs (username, socket_id, ip, room_id, action, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(username || '', socketId || '', ip || '', roomId || '', action || 'connect', userAgent || '', Date.now());
+    } catch {}
+  }
+}
+
+function getConnectionLogs(limit = 200, roomId = null) {
+  if (getDb()) {
+    if (roomId) {
+      return db.prepare('SELECT * FROM connection_logs WHERE room_id = ? ORDER BY created_at DESC LIMIT ?').all(roomId, limit);
+    }
+    return db.prepare('SELECT * FROM connection_logs ORDER BY created_at DESC LIMIT ?').all(limit);
+  }
+  return [];
+}
+
+function getLogStats() {
+  if (getDb()) {
+    const totalLogs = db.prepare('SELECT COUNT(*) as count FROM connection_logs').get();
+    const todayLogs = db.prepare('SELECT COUNT(*) as count FROM connection_logs WHERE created_at > ?').get(Date.now() - 86400000);
+    const uniqueIps = db.prepare('SELECT COUNT(DISTINCT ip) as count FROM connection_logs WHERE created_at > ?').get(Date.now() - 86400000);
+    return { totalLogs: totalLogs?.count || 0, todayLogs: todayLogs?.count || 0, uniqueIps: uniqueIps?.count || 0 };
+  }
+  return { totalLogs: 0, todayLogs: 0, uniqueIps: 0 };
+}
+
 loadJson();
 
 module.exports = {
   getDb, getUser, getUserByEmail, getUserByToken, createUser, updateUser, updateLastSeen,
   createToken, cleanOldTokens, sendFriendRequest, getPendingFriendRequests, getFriendRequest,
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
-  searchUsers, addGlobalMessage, getGlobalMessages, getAllUsers, closeDb
+  searchUsers, addGlobalMessage, getGlobalMessages, getAllUsers, closeDb,
+  addConnectionLog, getConnectionLogs, getLogStats
 };

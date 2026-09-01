@@ -11,6 +11,7 @@ import AppContext from './contexts/AppContext';
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminPage from './pages/AdminPage';
 
 import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
@@ -740,6 +741,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/room/:roomIdParam" element={<RoomPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 

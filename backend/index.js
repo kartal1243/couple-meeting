@@ -201,6 +201,78 @@ async function getInnertube() {
 // ═══════════════════════════════════════════════════════════
 // 6. MP3 STREAMING ENDPOINT (yt-dlp python)
 // ═══════════════════════════════════════════════════════════
+// 6.5 ADMIN PANEL
+// ═══════════════════════════════════════════════════════════
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'admin123';
+
+function adminAuth(req, res, next) {
+  const pass = req.headers['x-admin-pass'] || req.query.pass;
+  if (pass !== ADMIN_PASSWORD) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
+  next();
+}
+
+app.get('/api/admin/stats', adminAuth, (req, res) => {
+  const roomList = Object.entries(rooms).map(([id, r]) => ({
+    id, name: r.name, userCount: r.users.length, maxUsers: r.maxUsers,
+    hasPassword: !!r.password, isVip: !!r.isVip,
+    users: r.users.map(u => ({ username: u.username, userId: u.userId, avatar: u.avatar })),
+    currentMedia: r.currentMedia, createdAt: r.createdAt, lastActivityAt: r.lastActivityAt
+  }));
+  const totalUsers = Object.keys(onlineUsers).length;
+  const logStats = db.getLogStats();
+  res.json({
+    ok: true,
+    rooms: roomList,
+    totalRooms: roomList.length,
+    totalOnlineUsers: totalUsers,
+    onlineUsers: Object.entries(onlineUsers).map(([name, data]) => ({
+      username: name, socketCount: data.socketIds.size, lastSeen: data.lastSeen
+    })),
+    logStats
+  });
+});
+
+app.get('/api/admin/rooms', adminAuth, (req, res) => {
+  const roomList = Object.entries(rooms).map(([id, r]) => ({
+    id, name: r.name, userCount: r.users.length, maxUsers: r.maxUsers,
+    hasPassword: !!r.password, isVip: !!r.isVip, hostUserId: r.hostUserId,
+    users: r.users.map(u => ({ username: u.username, userId: u.userId, avatar: u.avatar, socketId: u.socketId })),
+    currentMedia: r.currentMedia, createdAt: r.createdAt
+  }));
+  res.json({ ok: true, rooms: roomList });
+});
+
+app.delete('/api/admin/rooms/:roomId', adminAuth, (req, res) => {
+  const roomId = sanitize(req.params.roomId, 50);
+  const room = rooms[roomId];
+  if (!room) return res.status(404).json({ ok: false, message: 'Oda bulunamadi' });
+  io.to(roomId).emit('room_action', { type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
+  io.to(roomId).emit('kicked_from_room', 'Oda kapatıldı.');
+  for (const u of room.users) {
+    io.sockets.sockets.get(u.socketId)?.leave(roomId);
+  }
+  delete rooms[roomId];
+  broadcastRooms();
+  logger.info(`[ADMIN] Oda kapatildi: ${roomId}`);
+  res.json({ ok: true, message: 'Oda kapatildi' });
+});
+
+app.get('/api/admin/logs', adminAuth, (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 200, 1000);
+  const roomId = req.query.room || null;
+  const logs = db.getConnectionLogs(limit, roomId);
+  res.json({ ok: true, logs });
+});
+
+app.get('/api/admin/users', adminAuth, (req, res) => {
+  const users = db.getAllUsers().map(u => ({
+    username: u.username, email: u.email, avatar: u.avatar,
+    isVip: u.isVip, vipExpiry: u.vipExpiry, vipPlan: u.vipPlan,
+    createdAt: u.createdAt, lastSeen: u.lastSeen
+  }));
+  res.json({ ok: true, users });
+});
 
 
 // ═══════════════════════════════════════════════════════════
@@ -528,6 +600,7 @@ io.on('connection', (socket) => {
     if (existingIndex !== -1) room.users[existingIndex] = userInfo; else room.users.push(userInfo);
     room.lastActivityAt = Date.now();
     socket.currentRoom = cleanRoomId; socket.userId = userId; socket.join(cleanRoomId);
+    db.addConnectionLog(username, socket.id, socket.handshake?.address || '', cleanRoomId, 'join', socket.handshake?.headers?.['user-agent'] || '');
 
     let calcTime = room.currentMedia.time;
     if (room.currentMedia.isPlaying) calcTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
