@@ -46,12 +46,12 @@ export default function RoomPage() {
 
       <div className="cm-room-layout" style={{
         flex: 1, display: 'flex', width: '100%',
-        height: 'calc(100dvh - 60px)', overflow: 'hidden'
+        height: 'calc(100dvh - 60px)', overflow: 'hidden', minHeight: 0
       }}>
         {/* Main Player Column */}
         <div className="cm-player-column" style={{
-          flex: 1, display: 'flex', flexDirection: 'column',
-          background: '#000', position: 'relative'
+          flex: '1 1 0%', display: 'flex', flexDirection: 'column',
+          background: '#000', position: 'relative', minHeight: 0, overflow: 'hidden'
         }}>
           <SearchBar
             searchInput={searchInput} setSearchInput={setSearchInput}
@@ -70,7 +70,7 @@ export default function RoomPage() {
 
         {/* Sidebar */}
         <div className="cm-sidebar" style={{
-          width: 380, maxWidth: '100%',
+          width: 380, flexShrink: 0,
           background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,20,30,.98))',
           borderLeft: '1px solid rgba(255,255,255,.06)',
           display: 'flex', flexDirection: 'column',
