@@ -1,7 +1,7 @@
 :root {
   --text: #6b6375;
   --text-h: #08060d;
-  --bg: #fff;
+  --bg: #0a0e14;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
@@ -55,11 +55,14 @@ html, body {
   padding: 0;
   overflow-x: hidden;
   width: 100%;
+  background: #0a0e14 !important;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   overflow-x: hidden;
+  background: #0a0e14 !important;
 }
 
 #root {
@@ -71,6 +74,7 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  background: #0a0e14;
 }
 
 h1,
