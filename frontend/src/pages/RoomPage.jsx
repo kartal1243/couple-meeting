@@ -1,5 +1,4 @@
 import { useApp } from '../contexts/AppContext';
-import { useEffect, useState, useMemo } from 'react';
 import Header from '../Room/Header';
 import SearchBar from '../Room/SearchBar';
 import Player from '../Room/Player';
@@ -23,7 +22,16 @@ export default function RoomPage() {
   } = app;
 
   return (
-    <div style={{ ...app.styles?.app, display: 'flex', flexDirection: 'column', background: '#0b141a', ...cssVars }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      background: 'linear-gradient(180deg, #0a0e14 0%, #0f172a 50%, #0a0e14 100%)',
+      minHeight: '100vh', ...cssVars
+    }}>
+      <style>{`
+        @keyframes cmSidebarGlow { 0%,100%{box-shadow:inset 0 0 30px rgba(124,58,237,.03)} 50%{box-shadow:inset 0 0 30px rgba(124,58,237,.08)} }
+        .cm-sidebar-tab-active { background: linear-gradient(135deg, rgba(124,58,237,.12), rgba(236,72,153,.08)) !important; border-bottom: 2px solid #7c3aed !important; }
+      `}</style>
+
       <Header
         roomName={roomName} currentTheme={currentTheme} isConnected={isConnected}
         currentRoomInfo={currentRoomInfo} showInstallBtn={showInstallBtn}
@@ -31,8 +39,15 @@ export default function RoomPage() {
         authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveRoom}
       />
 
-      <div className="cm-room-layout" style={{ flex: 1, display: 'flex', width: '100%', height: 'calc(100dvh - 60px)', overflow: 'hidden' }}>
-        <div className="cm-player-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#000', position: 'relative' }}>
+      <div style={{
+        flex: 1, display: 'flex', width: '100%',
+        height: 'calc(100dvh - 60px)', overflow: 'hidden'
+      }}>
+        {/* Main Player Column */}
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          background: '#000', position: 'relative'
+        }}>
           <SearchBar
             searchInput={searchInput} setSearchInput={setSearchInput}
             searchResults={searchResults} isSearching={isSearching}
@@ -48,10 +63,56 @@ export default function RoomPage() {
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
         </div>
 
-        <div className="cm-sidebar" style={{ width: '380px', maxWidth: '100%', background: currentTheme.cardBg, borderLeft: '1px solid #222d34', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #222d34', background: '#0b141a' }}>
-            <button onClick={() => setSidebarTab('chat')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'chat' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'chat' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💬 Sohbet</button>
-            <button onClick={() => setSidebarTab('playlist')} style={{ flex: 1, padding: '12px', border: 'none', background: sidebarTab === 'playlist' ? currentTheme.cardBg : 'transparent', color: sidebarTab === 'playlist' ? currentTheme.primary : '#8696a0', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>📚 Kitaplik ({playlist ? playlist.length : 0})</button>
+        {/* Sidebar */}
+        <div style={{
+          width: 380, maxWidth: '100%',
+          background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,20,30,.98))',
+          borderLeft: '1px solid rgba(255,255,255,.06)',
+          display: 'flex', flexDirection: 'column',
+          backdropFilter: 'blur(20px)',
+          animation: 'cmSidebarGlow 6s ease-in-out infinite'
+        }}>
+          {/* Tabs */}
+          <div style={{
+            display: 'flex', borderBottom: '1px solid rgba(255,255,255,.06)',
+            background: 'rgba(0,0,0,.3)'
+          }}>
+            <button
+              onClick={() => setSidebarTab('chat')}
+              style={{
+                flex: 1, padding: '13px 0', border: 'none',
+                background: sidebarTab === 'chat' ? 'linear-gradient(135deg, rgba(124,58,237,.12), rgba(236,72,153,.08))' : 'transparent',
+                color: sidebarTab === 'chat' ? '#a855f7' : '#64748b',
+                fontWeight: 800, cursor: 'pointer', fontSize: 13,
+                borderBottom: sidebarTab === 'chat' ? '2px solid #7c3aed' : '2px solid transparent',
+                transition: 'all 0.25s ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+              }}
+            >
+              💬 Sohbet
+            </button>
+            <button
+              onClick={() => setSidebarTab('playlist')}
+              style={{
+                flex: 1, padding: '13px 0', border: 'none',
+                background: sidebarTab === 'playlist' ? 'linear-gradient(135deg, rgba(124,58,237,.12), rgba(236,72,153,.08))' : 'transparent',
+                color: sidebarTab === 'playlist' ? '#a855f7' : '#64748b',
+                fontWeight: 800, cursor: 'pointer', fontSize: 13,
+                borderBottom: sidebarTab === 'playlist' ? '2px solid #7c3aed' : '2px solid transparent',
+                transition: 'all 0.25s ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+              }}
+            >
+              📚 Kitaplık
+              {playlist && playlist.length > 0 && (
+                <span style={{
+                  background: 'rgba(124,58,237,.2)', color: '#a855f7',
+                  padding: '1px 7px', borderRadius: 10, fontSize: 10, fontWeight: 900
+                }}>
+                  {playlist.length}
+                </span>
+              )}
+            </button>
           </div>
 
           {sidebarTab === 'chat' ? (
