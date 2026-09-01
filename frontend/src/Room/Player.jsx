@@ -46,8 +46,9 @@ export default function Player({
 
   return (
     <div className="cm-video-wrap" style={{
-      flex: 1, position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden',
-      display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b141a'
+      flex: 1, position: 'relative', width: '100%', minHeight: 0,
+      display: 'flex', justifyContent: 'center', alignItems: 'center',
+      background: '#0b141a', overflow: 'hidden'
     }}>
 
       {mediaType === 'none' && (
