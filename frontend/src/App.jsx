@@ -722,7 +722,7 @@ function App() {
   // ── 10. CONTEXT VALUE ──
   const contextValue = useMemo(() => ({
     socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
-    inRoom, roomId, roomName, hostUserId, roomTheme, roomUsersList,
+    inRoom, roomId, roomName, hostUserId, roomTheme, roomUsersList, toast,
     publicRooms, currentRoomInfo, mediaType, mediaSrc, mediaMeta, setMediaMeta,
     playlist, categories, selectedCategory, setSelectedCategory,
     newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
