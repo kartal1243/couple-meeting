@@ -1,4 +1,5 @@
 import { useApp } from '../contexts/AppContext';
+import { HOME_CSS } from '../constants';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Hero from '../Home/Hero';
