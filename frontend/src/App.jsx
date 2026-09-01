@@ -33,7 +33,6 @@ function App() {
     try { const u = JSON.parse(localStorage.getItem('cm_auth_user')); if (u?.username) return u.username; } catch {}
     return localStorage.getItem('cm_username') || 'Izleyici';
   });
-  const displayUsername = authUser?.username || username;
   const [userCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
   const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [mySocketId, setMySocketId] = useState('');
@@ -106,6 +105,7 @@ function App() {
   const [authMode, setAuthMode] = useState('login');
   const [authBusy, setAuthBusy] = useState(false);
   const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', bio: '', avatar: '🐱' });
+  const displayUsername = authUser?.username || username;
 
   const [friendSearch, setFriendSearch] = useState('');
   const [friendSearchResults, setFriendSearchResults] = useState([]);
