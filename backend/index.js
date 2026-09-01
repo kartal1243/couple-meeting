@@ -17,7 +17,7 @@ const db = require('./utils/database');
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 
-if (isProd) app.set('trust proxy', 1);
+app.set('trust proxy', 1);
 
 // ═══════════════════════════════════════════════════════════
 // 1. GÜVENLİK & MIDDLEWARE
