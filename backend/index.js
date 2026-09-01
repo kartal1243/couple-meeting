@@ -721,6 +721,10 @@ io.on('connection', (socket) => {
     if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
   });
 
+  socket.on('screen_share_frame', ({ roomId, frame }) => {
+    if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_frame', { frame, socketId: socket.id });
+  });
+
   socket.on('screen_share_stop', ({ roomId }) => {
     if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
   });

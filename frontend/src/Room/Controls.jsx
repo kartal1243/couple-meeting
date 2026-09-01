@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAction, playbackSpeed, setPlaybackSpeed }) {
+export default function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAction, playbackSpeed, setPlaybackSpeed, ytPlayerRef }) {
   const [hovered, setHovered] = useState(null);
   const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
   const primary = currentTheme?.primary || '#00a884';
@@ -17,6 +17,7 @@ export default function Controls({ currentTheme, handlePlay, handlePause, sendRe
   const handleSpeedChange = (speed) => {
     setPlaybackSpeed(speed);
     sendAction('SPEED', { speed });
+    if (ytPlayerRef?.current) { try { ytPlayerRef.current.setPlaybackRate(speed); } catch {} }
   };
 
   return (

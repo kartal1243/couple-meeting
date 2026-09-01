@@ -180,7 +180,7 @@ export default function RoomPage() {
             screenSharing={screenSharing} setScreenSharing={setScreenSharing}
             socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId}
           />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} />
+          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef} />
         </div>
 
         <div className="cm-sidebar" style={{ background: chatTheme.bg }}>

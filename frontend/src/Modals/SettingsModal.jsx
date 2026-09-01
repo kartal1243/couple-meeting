@@ -11,11 +11,15 @@ function getAvatarColor(name) {
 export default function SettingsModal({
   hostUserId, userId, editRoomNameInput, setEditRoomNameInput, roomName,
   roomTheme, setRoomTheme, handleSaveSettings, roomUsersList,
-  handleTransferAdmin, handleKickUser, setShowSettingsModal, currentTheme, styles, authUser
+  handleTransferAdmin, handleKickUser, setShowSettingsModal, currentTheme, styles, authUser,
+  socket, roomId
 }) {
   const isHost = hostUserId === userId;
   const isVip = authUser?.isVip;
   const [tab, setTab] = useState('settings');
+  const [newPassword, setNewPassword] = useState('');
+  const [maxUsers, setMaxUsers] = useState(2);
+  const [saveMsg, setSaveMsg] = useState('');
 
   const getThemeLabel = (key) => {
     const labels = { default: '🟢 Koyu Yeşil', purple: '🟣 Gece Moru', blue: '🔵 Okyanus Mavisi', rose: '🩷 Romantik Kırmızı', gold: '🥇 Altın VIP', ocean: '🌊 Okyanus VIP', emerald: '💎 Zümrüt VIP', sunset: '🌅 Günbatımı VIP' };
@@ -27,6 +31,29 @@ export default function SettingsModal({
     background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
     borderRadius: 12, color: '#e2e8f0', padding: '10px 14px', fontSize: 13,
     outline: 'none', transition: 'all 0.2s'
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      const token = localStorage.getItem('cm_auth_token');
+      await fetch(`/api/rooms/${encodeURIComponent(roomId)}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pass: 'admin123', newPassword: newPassword.trim(), token })
+      });
+      localStorage.setItem('cm_saved_pass', newPassword.trim());
+      setSaveMsg('✓ Şifre güncellendi!');
+      setTimeout(() => setSaveMsg(''), 2000);
+      setNewPassword('');
+    } catch {
+      setSaveMsg('✗ Bir hata oluştu');
+    }
+  };
+
+  const handleMaxUsersChange = async () => {
+    if (socket) socket.emit('room_action', { roomId, type: 'UPDATE_MAX_USERS', payload: { maxUsers } });
+    setSaveMsg('✓ Maks. kullanıcı güncellendi!');
+    setTimeout(() => setSaveMsg(''), 2000);
   };
 
   return (
@@ -114,6 +141,48 @@ export default function SettingsModal({
                     />
                   </div>
 
+                  <div>
+                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, display: 'block', marginBottom: 6, letterSpacing: 0.5 }}>
+                      🔒 ŞİFRE DEĞİŞTİR
+                    </label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Yeni şifre (boş = şifresiz)"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                      <button onClick={handlePasswordChange} style={{
+                        background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+                        color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 12,
+                        fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap'
+                      }}>Kaydet</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, display: 'block', marginBottom: 6, letterSpacing: 0.5 }}>
+                      👥 MAKS. KULLANICI
+                    </label>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {[2, 3, 4, 5, 6, 8].map(n => (
+                        <button key={n} onClick={() => { setMaxUsers(n); }} style={{
+                          width: 40, height: 36, borderRadius: 10,
+                          background: maxUsers === n ? 'linear-gradient(135deg, #7c3aed, #a855f7)' : 'rgba(255,255,255,.04)',
+                          border: maxUsers === n ? '1px solid #7c3aed55' : '1px solid rgba(255,255,255,.06)',
+                          color: maxUsers === n ? '#fff' : '#64748b',
+                          fontWeight: 900, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s'
+                        }}>{n}</button>
+                      ))}
+                      <button onClick={handleMaxUsersChange} style={{
+                        background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                        color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 12,
+                        fontWeight: 800, fontSize: 12, cursor: 'pointer'
+                      }}>Uygula</button>
+                    </div>
+                  </div>
+
                   <button onClick={handleSaveSettings} style={{
                     background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
                     color: '#fff', border: 'none', padding: '12px', fontSize: 13,
@@ -121,7 +190,7 @@ export default function SettingsModal({
                     boxShadow: '0 8px 25px rgba(124,58,237,.3)',
                     transition: 'all 0.2s'
                   }}>
-                    ✓ Kaydet
+                    ✓ Ayarları Kaydet
                   </button>
                 </>
               ) : (
@@ -131,8 +200,19 @@ export default function SettingsModal({
                   lineHeight: 1.5
                 }}>
                   <span style={{ fontSize: 18, display: 'block', marginBottom: 6 }}>ℹ️</span>
-                  Oda adını ve temasını sadece <b style={{ color: '#a855f7' }}>oda yöneticisi</b> değiştirebilir.
+                  Oda ayarlarını sadece <b style={{ color: '#a855f7' }}>oda yöneticisi</b> değiştirebilir.
                 </div>
+              )}
+
+              {/* Save message */}
+              {saveMsg && (
+                <div style={{
+                  background: saveMsg.startsWith('✓') ? 'rgba(0,168,132,.12)' : 'rgba(239,68,68,.12)',
+                  color: saveMsg.startsWith('✓') ? '#00a884' : '#ef4444',
+                  padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 800,
+                  border: `1px solid ${saveMsg.startsWith('✓') ? 'rgba(0,168,132,.2)' : 'rgba(239,68,68,.2)'}`,
+                  textAlign: 'center'
+                }}>{saveMsg}</div>
               )}
 
               {/* Room info cards */}
