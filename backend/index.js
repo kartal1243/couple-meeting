@@ -717,6 +717,14 @@ io.on('connection', (socket) => {
   // 7.9 AYRILMA & BAGLANTI KESIMI
   // ──────────────────────────────────────────────────────
 
+  socket.on('screen_share_start', ({ roomId }) => {
+    if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
+  });
+
+  socket.on('screen_share_stop', ({ roomId }) => {
+    if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
+  });
+
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;

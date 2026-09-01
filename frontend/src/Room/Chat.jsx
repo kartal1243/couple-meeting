@@ -9,10 +9,13 @@ function getAvatarColor(name) {
 
 export default function Chat({
   messages, mySocketId, username, chatInput, setChatInput,
-  handleSendMessage, currentTheme, replyTo, setReplyTo
+  handleSendMessage, currentTheme, replyTo, setReplyTo,
+  messagesSearch, setMessagesSearch, filteredMessages
 }) {
   const chatBottomRef = useRef(null);
   const [hoveredMsg, setHoveredMsg] = useState(null);
+  const primary = currentTheme?.primary || '#00a884';
+  const displayMessages = filteredMessages || messages;
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -20,13 +23,48 @@ export default function Chat({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', minHeight: 0 }}>
+      {/* Search Bar */}
+      <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'rgba(0,0,0,.2)', flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            placeholder="🔍 Mesajlarda ara..."
+            value={messagesSearch}
+            onChange={(e) => setMessagesSearch(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              borderRadius: 10, border: '1px solid rgba(255,255,255,.08)',
+              background: 'rgba(255,255,255,.05)', color: '#e2e8f0',
+              padding: '7px 10px 7px 30px', fontSize: 11, outline: 'none'
+            }}
+          />
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, opacity: 0.5 }}>🔍</span>
+          {messagesSearch && (
+            <button
+              onClick={() => setMessagesSearch('')}
+              style={{
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                background: 'rgba(255,255,255,.08)', border: 'none', color: '#64748b',
+                width: 18, height: 18, borderRadius: 5, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10
+              }}
+            >✕</button>
+          )}
+        </div>
+        {messagesSearch && (
+          <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, fontWeight: 800 }}>
+            {displayMessages.length} sonuç bulundu
+          </div>
+        )}
+      </div>
+
       {/* Messages */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: '10px',
         display: 'flex', flexDirection: 'column', gap: 6,
         minHeight: 0
       }}>
-        {messages.length === 0 && (
+        {displayMessages.length === 0 && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -34,22 +72,24 @@ export default function Chat({
           }}>
             <div style={{
               width: 56, height: 56, borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(124,58,237,.15), rgba(236,72,153,.1))',
+              background: `linear-gradient(135deg, ${primary}22, ${primary}11)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
-              border: '1px solid rgba(124,58,237,.15)'
-            }}>💬</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#64748b' }}>Henüz mesaj yok</div>
+              border: `1px solid ${primary}22`
+            }}>{messagesSearch ? '🔍' : '💬'}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#64748b' }}>
+              {messagesSearch ? 'Sonuç bulunamadı' : 'Henüz mesaj yok'}
+            </div>
             <div style={{ fontSize: 11, textAlign: 'center', lineHeight: 1.4 }}>
-              Sohbete ilk sen başla!
+              {messagesSearch ? 'Farklı bir arama yap' : 'Sohbete ilk sen başla!'}
             </div>
           </div>
         )}
 
-        {messages.map((msg, idx) => {
+        {displayMessages.map((msg, idx) => {
           const isMe = msg.senderId === mySocketId || msg.sender === username;
           const senderName = msg.sender || 'Bilinmeyen';
           const avatarColor = getAvatarColor(senderName);
-          const showAvatar = idx === 0 || messages[idx - 1]?.sender !== msg.sender;
+          const showAvatar = idx === 0 || displayMessages[idx - 1]?.sender !== msg.sender;
 
           return (
             <div
@@ -65,7 +105,6 @@ export default function Chat({
                 width: '100%'
               }}
             >
-              {/* Avatar */}
               {!isMe && (
                 showAvatar ? (
                   <div style={{
@@ -80,7 +119,6 @@ export default function Chat({
               )}
 
               <div style={{ maxWidth: isMe ? '75%' : '70%' }}>
-                {/* Sender name */}
                 {!isMe && showAvatar && (
                   <div style={{
                     fontSize: 10, fontWeight: 800, color: avatarColor,
@@ -90,15 +128,14 @@ export default function Chat({
                   </div>
                 )}
 
-                {/* Bubble */}
                 <div style={{
                   background: isMe
-                    ? 'linear-gradient(135deg, #00a884, #008f6f)'
+                    ? `linear-gradient(135deg, ${primary}, ${primary}bb)`
                     : 'rgba(255,255,255,.06)',
                   color: isMe ? '#fff' : '#e2e8f0',
                   padding: '7px 10px',
                   borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                  boxShadow: isMe ? '0 2px 8px rgba(0,168,132,.2)' : '0 1px 4px rgba(0,0,0,.15)',
+                  boxShadow: isMe ? `0 2px 8px ${primary}33` : '0 1px 4px rgba(0,0,0,.15)',
                   border: isMe ? 'none' : '1px solid rgba(255,255,255,.04)',
                   fontSize: 12, lineHeight: 1.4,
                   wordBreak: 'break-word', overflowWrap: 'break-word',
@@ -106,13 +143,13 @@ export default function Chat({
                 }}>
                   {msg.replyTo && (
                     <div style={{
-                      borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,.35)' : currentTheme.primary}`,
+                      borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,.35)' : primary}`,
                       paddingLeft: 6, marginBottom: 4,
                       background: isMe ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.03)',
                       borderRadius: 4, padding: '4px 6px', marginBottom: 5,
                       fontSize: 10, lineHeight: 1.3
                     }}>
-                      <div style={{ fontWeight: 800, color: isMe ? '#fff' : currentTheme.primary, fontSize: 9 }}>
+                      <div style={{ fontWeight: 800, color: isMe ? '#fff' : primary, fontSize: 9 }}>
                         ↩ {msg.replyToSender}
                       </div>
                       <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
@@ -123,7 +160,6 @@ export default function Chat({
                   {msg.text}
                 </div>
 
-                {/* Time */}
                 {(!isMe && !showAvatar) || isMe ? (
                   <div style={{
                     fontSize: 8, color: '#475569',
@@ -141,10 +177,10 @@ export default function Chat({
                   style={{
                     position: 'absolute', top: 0,
                     [isMe ? 'left' : 'right']: -2,
-                    background: '#7c3aed', color: '#fff', border: 'none',
+                    background: primary, color: '#fff', border: 'none',
                     borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 800,
                     cursor: 'pointer', whiteSpace: 'nowrap', zIndex: 10,
-                    boxShadow: '0 4px 12px rgba(124,58,237,.4)'
+                    boxShadow: `0 4px 12px ${primary}66`
                   }}
                 >
                   ↩
@@ -160,13 +196,13 @@ export default function Chat({
       {replyTo && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px',
-          background: 'rgba(124,58,237,.08)',
+          background: `${primary}0d`,
           borderTop: '1px solid rgba(255,255,255,.06)',
-          borderLeft: `3px solid ${currentTheme.primary}`
+          borderLeft: `3px solid ${primary}`
         }}>
-          <span style={{ color: currentTheme.primary, fontWeight: 900, fontSize: 11 }}>↩</span>
+          <span style={{ color: primary, fontWeight: 900, fontSize: 11 }}>↩</span>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <div style={{ fontSize: 9, fontWeight: 800, color: currentTheme.primary }}>{replyTo.sender}</div>
+            <div style={{ fontSize: 9, fontWeight: 800, color: primary }}>{replyTo.sender}</div>
             <div style={{ fontSize: 10, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {replyTo.text}
             </div>
@@ -195,12 +231,13 @@ export default function Chat({
           style={{
             flex: 1, borderRadius: 12, minWidth: 0,
             background: 'rgba(255,255,255,.06)',
-            border: '1px solid rgba(255,255,255,.08)',
-            color: '#e9edef', padding: '8px 12px', fontSize: 12, outline: 'none'
+            border: `1px solid ${chatInput ? primary + '44' : 'rgba(255,255,255,.08)'}`,
+            color: '#e9edef', padding: '8px 12px', fontSize: 12, outline: 'none',
+            transition: 'border-color 0.2s'
           }}
         />
         <button type="submit" style={{
-          background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+          background: `linear-gradient(135deg, ${primary}, ${primary}bb)`,
           color: '#fff', border: 'none', borderRadius: 10, width: 36, height: 36, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 14, cursor: 'pointer'

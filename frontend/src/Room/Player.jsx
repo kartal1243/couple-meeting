@@ -1,5 +1,5 @@
 import YouTube from 'react-youtube';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -10,9 +10,14 @@ function extractVideoId(src) {
 
 export default function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, mediaMeta,
-  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError
+  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
+  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId
 }) {
   const videoId = extractVideoId(mediaSrc);
+  const screenVideoRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const [remoteScreen, setRemoteScreen] = useState(null);
+  const pcRef = useRef(null);
 
   const ytOpts = {
     height: '100%', width: '100%',
@@ -42,7 +47,41 @@ export default function Player({
     return () => clearInterval(interval);
   }, [videoId, mediaType]);
 
+  // Screen sharing via simple stream relay
+  const startScreenShare = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+      screenStreamRef.current = stream;
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = stream;
+      }
+      setScreenSharing(true);
+      stream.getVideoTracks()[0].onended = () => stopScreenShare();
+      if (socket) socket.emit('screen_share_start', { roomId: mediaMeta?.roomId });
+    } catch {}
+  };
+
+  const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+    if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
+    setScreenSharing(false);
+    if (socket) socket.emit('screen_share_stop', { roomId: mediaMeta?.roomId });
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+    const onRemoteStart = () => setRemoteScreen(true);
+    const onRemoteStop = () => setRemoteScreen(false);
+    socket.on('screen_share_started', onRemoteStart);
+    socket.on('screen_share_stopped', onRemoteStop);
+    return () => { socket.off('screen_share_started', onRemoteStart); socket.off('screen_share_stopped', onRemoteStop); };
+  }, [socket]);
+
   const showPlayer = mediaType !== 'none' && videoId && !youtubeError;
+  const isHost = hostUserId === userId;
 
   return (
     <div className="cm-video-wrap" style={{
@@ -51,7 +90,7 @@ export default function Player({
       background: '#0b141a', overflow: 'hidden'
     }}>
 
-      {mediaType === 'none' && (
+      {mediaType === 'none' && !screenSharing && !remoteScreen && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
           <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎬</div>
           <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Şarkı veya Video Aratın!</div>
@@ -63,6 +102,27 @@ export default function Player({
           <YouTube videoId={videoId} opts={ytOpts}
             style={{ width: '100%', height: '100%', maxWidth: '100%', overflow: 'hidden' }}
             onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
+        </div>
+      )}
+
+      {screenSharing && (
+        <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 20 }}>
+          <video ref={screenVideoRef} autoPlay muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <button onClick={stopScreenShare} style={{
+            position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+            background: 'rgba(239,68,68,.9)', color: '#fff', border: 'none',
+            padding: '8px 16px', borderRadius: 10, fontWeight: 800, fontSize: 12,
+            cursor: 'pointer', zIndex: 21
+          }}>⏹ Ekran Paylaşımını Durdur</button>
+        </div>
+      )}
+
+      {remoteScreen && !screenSharing && (
+        <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🖥️</div>
+            <div style={{ fontSize: 13, fontWeight: 800 }}>Bir kullanıcı ekranını paylaşıyor</div>
+          </div>
         </div>
       )}
 
@@ -95,6 +155,20 @@ export default function Player({
           {r.emoji}
         </div>
       ))}
+
+      {/* Screen share button */}
+      {isHost && !screenSharing && (
+        <button onClick={startScreenShare} title="Ekran Paylaş"
+          style={{
+            position: 'absolute', top: 12, right: 12, zIndex: 15,
+            background: 'rgba(37,99,235,.8)', color: '#fff', border: 'none',
+            borderRadius: 10, padding: '7px 12px', fontSize: 11, fontWeight: 800,
+            cursor: 'pointer', backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 12px rgba(37,99,235,.4)'
+          }}>
+          🖥️ Ekran Paylaş
+        </button>
+      )}
     </div>
   );
 }

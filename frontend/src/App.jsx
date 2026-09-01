@@ -70,6 +70,8 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const [reactions, setReactions] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [messagesSearch, setMessagesSearch] = useState('');
 
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -719,7 +721,14 @@ function App() {
     };
   }, []);
 
-  // ── 10. CONTEXT VALUE ──
+  // ── 10. FILTERED MESSAGES ──
+  const filteredMessages = useMemo(() => {
+    if (!messagesSearch.trim()) return messages;
+    const q = messagesSearch.toLowerCase();
+    return messages.filter((m) => (m.text || '').toLowerCase().includes(q) || (m.sender || '').toLowerCase().includes(q));
+  }, [messages, messagesSearch]);
+
+  // ── 11. CONTEXT VALUE ──
   const contextValue = useMemo(() => ({
     socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
     inRoom, roomId, roomName, hostUserId, roomTheme, roomUsersList, toast,
@@ -728,6 +737,7 @@ function App() {
     newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
     searchResults, isSearching, messages, chatInput, setChatInput, reactions,
     replyTo, setReplyTo, isConnected, errorMessage, setErrorMessage,
+    playbackSpeed, setPlaybackSpeed, messagesSearch, setMessagesSearch, filteredMessages,
     youtubeError, setYoutubeError, sidebarTab, setSidebarTab, showInstallBtn,
     showSettingsModal, setShowSettingsModal, showFolderModal, setShowFolderModal,
     showAuthModal, setShowAuthModal, showSocialModal, setShowSocialModal,
@@ -745,7 +755,7 @@ function App() {
     handlePlay, handlePause, handleMediaEnd, handleDirectPlay,
     handleSelectSearchResult, handleOpenAddModal, confirmAddToPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, handleModeChange,
-    handleCreateCategory, handleSendMessage, sendReaction,
+    handleCreateCategory, handleSendMessage, sendReaction, sendAction,
     handleYouTubeError, openYouTubeExternally, handleInstallApp,
     setJoinRoomTarget, setJoinModalPass, setQuickRoomName, setQuickRoomPass,
     setQuickMaxUsers, quickRoomName, quickRoomPass,

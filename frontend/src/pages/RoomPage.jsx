@@ -9,21 +9,23 @@ import { useState } from 'react';
 
 export default function RoomPage() {
   const app = useApp();
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [screenSharing, setScreenSharing] = useState(false);
   const {
     roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
     handleInstallApp, setShowSettingsModal, authUser, myAvatar, handleLeaveRoom,
     mediaType, mediaSrc, youtubeError, mediaMeta, ytPlayerRef, reactions,
     openYouTubeExternally, handleMediaEnd, handleYouTubeError, searchInput, setSearchInput,
     searchResults, isSearching, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult,
-    handlePlay, handlePause, sendReaction, messages, mySocketId, username, chatInput,
+    handlePlay, handlePause, sendReaction, sendAction, messages, mySocketId, username, chatInput,
     setChatInput, handleSendMessage, replyTo, setReplyTo, sidebarTab, setSidebarTab,
     playlist, categories, selectedCategory, setSelectedCategory, newCategoryInput,
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars,
-    toast, hostUserId, userId, roomTheme, socket
+    toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
+    messagesSearch, setMessagesSearch, filteredMessages
   } = app;
 
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const isHost = hostUserId === userId;
 
   const handleLeaveClick = () => {
@@ -78,6 +80,13 @@ export default function RoomPage() {
         @media (max-width: 900px) {
           .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 60px 1fr 1fr; }
           .cm-sidebar { grid-row: 3; grid-column: 1; border-left: none; border-top: 1px solid rgba(255,255,255,.06); }
+        }
+        @media (max-width: 480px) {
+          .cm-room-root { grid-template-rows: 50px 1fr 1fr; }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+          .cm-room-root { grid-template-rows: 44px 1fr; grid-template-columns: 1fr 320px; }
+          .cm-sidebar { grid-row: 2; grid-column: 2; }
         }
       `}</style>
 
@@ -164,12 +173,14 @@ export default function RoomPage() {
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
           />
           <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
+            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
             ytPlayerRef={ytPlayerRef} reactions={reactions}
             openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
+            screenSharing={screenSharing} setScreenSharing={setScreenSharing}
+            socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId}
           />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} />
+          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} />
         </div>
 
         <div className="cm-sidebar" style={{ background: chatTheme.bg }}>
@@ -199,7 +210,7 @@ export default function RoomPage() {
           </div>
 
           {sidebarTab === 'chat' ? (
-            <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} />
+            <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
           ) : (
             <Playlist
               categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
