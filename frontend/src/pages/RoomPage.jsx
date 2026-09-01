@@ -30,6 +30,11 @@ export default function RoomPage() {
       <style>{`
         @keyframes cmSidebarGlow { 0%,100%{box-shadow:inset 0 0 30px rgba(124,58,237,.03)} 50%{box-shadow:inset 0 0 30px rgba(124,58,237,.08)} }
         .cm-sidebar-tab-active { background: linear-gradient(135deg, rgba(124,58,237,.12), rgba(236,72,153,.08)) !important; border-bottom: 2px solid #7c3aed !important; }
+        @media (max-width: 768px) {
+          .cm-room-layout { flex-direction: column !important; }
+          .cm-sidebar { width: 100% !important; height: 50vh !important; border-left: none !important; border-top: 1px solid rgba(255,255,255,.06) !important; }
+          .cm-player-column { height: 50vh !important; }
+        }
       `}</style>
 
       <Header
@@ -39,12 +44,12 @@ export default function RoomPage() {
         authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveRoom}
       />
 
-      <div style={{
+      <div className="cm-room-layout" style={{
         flex: 1, display: 'flex', width: '100%',
         height: 'calc(100dvh - 60px)', overflow: 'hidden'
       }}>
         {/* Main Player Column */}
-        <div style={{
+        <div className="cm-player-column" style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           background: '#000', position: 'relative'
         }}>
@@ -64,7 +69,7 @@ export default function RoomPage() {
         </div>
 
         {/* Sidebar */}
-        <div style={{
+        <div className="cm-sidebar" style={{
           width: 380, maxWidth: '100%',
           background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,20,30,.98))',
           borderLeft: '1px solid rgba(255,255,255,.06)',
