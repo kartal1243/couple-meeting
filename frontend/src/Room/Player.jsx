@@ -1,23 +1,5 @@
 import YouTube from 'react-youtube';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { BACKEND_URL } from '../constants';
-
-function setupMediaSession(audio, videoId) {
-  if (!('mediaSession' in navigator)) return;
-  navigator.mediaSession.metadata = new MediaMetadata({
-    title: document.title || 'Couple Meeting',
-    artist: 'Couple Meeting',
-    artwork: [{ src: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
-  });
-  navigator.mediaSession.setActionHandler('play', () => { audio.play().catch(() => {}); });
-  navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
-  navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; });
-  navigator.mediaSession.playbackState = 'playing';
-}
-
-async function requestWakeLock() {
-  try { await navigator.wakeLock?.request('screen'); } catch {}
-}
+import { useCallback, useEffect, useRef } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -26,99 +8,9 @@ function extractVideoId(src) {
   return m ? m[1] : src;
 }
 
-function AudioPlayer({ videoId, onEnded, onReady, audioRef: externalRef }) {
-  const internalRef = useRef(null);
-  const audioRef = externalRef || internalRef;
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!videoId || !audioRef.current) return;
-    const audio = audioRef.current;
-    setError(null);
-
-    const streamUrl = `${BACKEND_URL}/api/stream/${videoId}`;
-    audio.src = streamUrl;
-    audio.load();
-
-    const tryPlay = () => {
-      const playPromise = audio.play();
-      if (playPromise) {
-        playPromise.then(() => {
-          setIsPlaying(true);
-          setupMediaSession(audio, videoId);
-          requestWakeLock();
-          onReady?.();
-        }).catch(() => {
-          setIsPlaying(false);
-          const btn = document.createElement('button');
-          btn.textContent = 'Sesi Dinle';
-          btn.id = 'cm-mobile-play';
-          btn.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:9999;padding:16px 32px;border-radius:16px;background:#00a884;color:#fff;border:none;font-size:18px;font-weight:800;box-shadow:0 8px 30px rgba(0,0,0,.5);cursor:pointer;';
-          btn.onclick = () => { audio.play().then(() => { setIsPlaying(true); btn.remove(); }).catch(() => {}); };
-          document.body.appendChild(btn);
-          setTimeout(() => btn.remove(), 15000);
-        });
-      }
-    };
-
-    audio.oncanplay = () => tryPlay();
-    audio.onended = () => { setIsPlaying(false); onEnded?.(); };
-    audio.onerror = () => { setError('Ses yuklenemedi'); };
-
-    return () => {
-      audio.pause();
-      audio.oncanplay = null;
-      audio.onended = null;
-      audio.onerror = null;
-      audio.src = '';
-      const oldBtn = document.getElementById('cm-mobile-play');
-      if (oldBtn) oldBtn.remove();
-    };
-  }, [videoId]);
-
-  useEffect(() => {
-    let wakeLock = null;
-    const handleVis = async () => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      if (document.hidden) {
-        audio.play().catch(() => {});
-        try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
-      } else {
-        if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
-      }
-    };
-    const handleFreeze = () => {
-      const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        audio.play().catch(() => {});
-      }
-    };
-    document.addEventListener('visibilitychange', handleVis);
-    document.addEventListener('freeze', handleFreeze);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVis);
-      document.removeEventListener('freeze', handleFreeze);
-      if (wakeLock) wakeLock.release().catch(() => {});
-    };
-  }, [isPlaying]);
-
-  return (
-    <>
-      <audio ref={audioRef} preload="auto" playsInline muted={false} />
-      {error && (
-        <div style={{ position:'absolute', bottom:60, left:'50%', transform:'translateX(-50%)', padding:'8px 16px', borderRadius:10, background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)', color:'#ef4444', fontSize:12, fontWeight:700, zIndex:50 }}>
-          ⚠️ {error}
-        </div>
-      )}
-    </>
-  );
-}
-
 export default function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, mediaMeta,
-  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError, musicAudioRef
+  reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError
 }) {
   const videoId = extractVideoId(mediaSrc);
 
@@ -137,7 +29,6 @@ export default function Player({
     endedRef.current = false;
     if (!videoId || mediaType === 'none') return;
     const interval = setInterval(() => {
-      if (mediaType === 'music') return;
       const player = ytPlayerRef.current;
       if (!player || endedRef.current) return;
       try {
@@ -151,8 +42,7 @@ export default function Player({
     return () => clearInterval(interval);
   }, [videoId, mediaType]);
 
-  const showMusicPlayer = mediaType === 'music' && videoId;
-  const showVideoPlayer = (mediaType === 'youtube' || mediaType === 'music') && videoId && !showMusicPlayer && !youtubeError;
+  const showPlayer = (mediaType === 'youtube' || mediaType === 'music') && videoId && !youtubeError;
 
   return (
     <div className="cm-video-wrap" style={{
@@ -167,25 +57,7 @@ export default function Player({
         </div>
       )}
 
-      {showMusicPlayer && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', position: 'relative' }}>
-          <img src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt=""
-            style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15, filter: 'blur(20px)', zIndex: 0 }} />
-          <div style={{ position:'relative', zIndex:2, textAlign:'center' }}>
-            <img src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt=""
-              style={{ width:200, height:200, borderRadius:20, objectFit:'cover', boxShadow:'0 20px 60px rgba(0,0,0,.5)' }} />
-            <div style={{ marginTop:16, color:'#fff', fontSize:16, fontWeight:800, maxWidth:300, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-              {mediaMeta?.title || 'Muzik'}
-            </div>
-            <div style={{ marginTop:4, color:'#94a3b8', fontSize:13 }}>
-              {mediaMeta?.artist || 'Bilinmeyen Sanatci'}
-            </div>
-          </div>
-          <AudioPlayer videoId={videoId} onEnded={handleMediaEnd} audioRef={musicAudioRef} />
-        </div>
-      )}
-
-      {showVideoPlayer && (
+      {showPlayer && (
         <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', position: 'relative' }}>
           {mediaType === 'music' && (
             <img src={mediaMeta?.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt=""

@@ -202,62 +202,6 @@ async function getInnertube() {
 // 6. MP3 STREAMING ENDPOINT (yt-dlp python)
 // ═══════════════════════════════════════════════════════════
 
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(exec);
-
-async function getYtDlpUrl(videoId) {
-  const { stdout } = await execAsync(
-    `python3 -m yt_dlp --get-url --no-playlist -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`,
-    { timeout: 20000, maxBuffer: 1024 * 1024 }
-  );
-  return stdout.trim();
-}
-
-app.get('/api/stream/:videoId', async (req, res) => {
-  const videoId = sanitize(req.params.videoId, 20);
-  if (!videoId) return res.status(400).json({ ok: false });
-
-  try {
-    logger.info(`[STREAM] istek: ${videoId}`);
-    const streamUrl = await getYtDlpUrl(videoId);
-    if (!streamUrl) throw new Error('url alinamadi');
-
-    logger.info(`[STREAM] ${videoId} -> url alindi`);
-
-    const upstream = await fetch(streamUrl);
-    if (!upstream.ok) throw new Error(`upstream ${upstream.status}`);
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-
-    const reader = upstream.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) { res.end(); return; }
-      res.write(value);
-    }
-  } catch (e) {
-    logger.error(`[STREAM] hata: ${videoId} - ${e.message}`);
-    if (!res.headersSent) res.status(500).json({ ok: false, message: 'Stream hatasi' });
-  }
-});
-
-app.get('/api/stream-info/:videoId', async (req, res) => {
-  const videoId = sanitize(req.params.videoId, 20);
-  if (!videoId) return res.json({ ok: false });
-  try {
-    const { stdout } = await execAsync(
-      `python3 -m yt_dlp --no-playlist --no-warnings --print "%(title)s|||%(duration)s" "https://www.youtube.com/watch?v=${videoId}"`,
-      { timeout: 15000, maxBuffer: 1024 * 1024 }
-    );
-    const [title, duration] = stdout.trim().split('|||');
-    res.json({ ok: true, title: title || '', duration: parseInt(duration) || 0, thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` });
-  } catch (e) {
-    logger.error(`[STREAM-INFO] hata: ${videoId} - ${e.message}`);
-    res.json({ ok: false });
-  }
-});
 
 // ═══════════════════════════════════════════════════════════
 // 7. SOCKET.IO SERVER

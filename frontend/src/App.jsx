@@ -114,7 +114,7 @@ function App() {
 
   // ── 2. REFS & SOCKET ──
   const ytPlayerRef = useRef(null);
-  const musicAudioRef = useRef(null);
+
   const socketRef = useRef(null);
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
@@ -299,13 +299,11 @@ function App() {
 
   // ── 7. MEDYA & PLAYLIST ──
   const handlePlay = () => {
-    if (musicAudioRef.current) { try { musicAudioRef.current.play(); } catch {} }
     if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
     sendAction('PLAY', { time: 0 });
   };
 
   const handlePause = () => {
-    if (musicAudioRef.current) { try { musicAudioRef.current.pause(); } catch {} }
     if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
     sendAction('PAUSE', {});
   };
@@ -603,10 +601,8 @@ function App() {
 
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
-        if (musicAudioRef.current) { try { musicAudioRef.current.play(); } catch {} }
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {} }
       } else if (type === 'PAUSE') {
-        if (musicAudioRef.current) { try { musicAudioRef.current.pause(); } catch {} }
         if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
       } else if (type === 'SEEK') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {} }
@@ -722,7 +718,7 @@ function App() {
     friends, friendRequests, friendOnlineStatuses, globalMessages,
     globalChatInput, setGlobalChatInput, socialTab, setSocialTab,
     profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
-    ytPlayerRef, musicAudioRef, currentTheme, cssVars, styles, filteredPlaylist,
+    ytPlayerRef, currentTheme, cssVars, styles, filteredPlaylist,
     openAuth, submitAuth, handleLogout, sendGlobalMessage, searchFriends,
     sendFriendRequest, respondFriendRequest, unfriendUser, saveProfile,
     handleQuickCreateSubmit, handleJoinRoomFromModal, handleLeaveRoom,

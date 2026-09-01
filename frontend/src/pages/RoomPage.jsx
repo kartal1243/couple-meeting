@@ -12,7 +12,7 @@ export default function RoomPage() {
   const {
     roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
     handleInstallApp, setShowSettingsModal, authUser, myAvatar, handleLeaveRoom,
-    mediaType, mediaSrc, youtubeError, mediaMeta, ytPlayerRef, reactions, musicAudioRef,
+    mediaType, mediaSrc, youtubeError, mediaMeta, ytPlayerRef, reactions,
     openYouTubeExternally, handleMediaEnd, handleYouTubeError, searchInput, setSearchInput,
     searchResults, isSearching, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult,
     handlePlay, handlePause, sendReaction, messages, mySocketId, username, chatInput,
@@ -41,7 +41,7 @@ export default function RoomPage() {
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={mediaMeta}
-            ytPlayerRef={ytPlayerRef} reactions={reactions} musicAudioRef={musicAudioRef}
+            ytPlayerRef={ytPlayerRef} reactions={reactions}
             openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
           />
