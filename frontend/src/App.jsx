@@ -291,6 +291,12 @@ function App() {
 
   const sendFriendRequest = (targetUsername) => {
     if (!authUser) return openAuth('register');
+    if (!authToken) {
+      setToast({ msg: 'Oturum bulunamadı. Lütfen tekrar giriş yap.', sender: 'Sistem', id: Date.now() });
+      setTimeout(() => setToast(null), 3000);
+      openAuth('login');
+      return;
+    }
     socket.emit('friend_request', { targetUsername, token: authToken });
   };
 
@@ -603,7 +609,10 @@ function App() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('connect', () => setIsConnected(true));
+    socket.on('connect', () => {
+      setIsConnected(true);
+      if (authToken) socket.emit('social_sync', { token: authToken });
+    });
     socket.on('disconnect', () => setIsConnected(false));
     socket.on('public_rooms_update', (roomsList) => setPublicRooms(Array.isArray(roomsList) ? roomsList : []));
     socket.on('search_results', (results) => { setSearchResults(Array.isArray(results) ? results : []); setIsSearching(false); });
@@ -766,6 +775,10 @@ function App() {
     socket.on('group_message', ({ groupId, msg }) => { if (activeGroup === groupId) setGroupMessages((prev) => [...prev, msg]); });
 
     socket.on('social_profile', (user) => {
+      if (!user) {
+        persistAuth(null, '');
+        return;
+      }
       setAuthUser(user);
       localStorage.setItem('cm_auth_user', JSON.stringify(user));
       setProfileBioInput(user?.bio || '');

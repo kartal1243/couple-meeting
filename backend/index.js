@@ -485,7 +485,10 @@ io.on('connection', (socket) => {
 
   socket.on('social_sync', ({ token }) => {
     const user = db.getUserByToken(token);
-    if (!user) return;
+    if (!user) {
+      socket.emit('social_profile', null);
+      return;
+    }
     socket.socialUsername = user.username;
     setOnline(user.username, socket.id);
     broadcastOnlineStatus(user.username);
