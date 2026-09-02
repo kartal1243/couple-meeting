@@ -184,10 +184,7 @@ export default function RoomPage() {
             screenSharing={screenSharing} setScreenSharing={setScreenSharing}
             socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId}
           />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef} />
-          <div style={{ padding: '4px 20px', background: 'rgba(0,0,0,.3)', borderTop: '1px solid rgba(255,255,255,.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} roomUsersList={roomUsersList} isMuted={isMuted} setIsMuted={setIsMuted} />
-          </div>
+          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef} voiceChat={<VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} />}           />
         </div>
 
         <div className="cm-sidebar" style={{ background: chatTheme.bg }}>

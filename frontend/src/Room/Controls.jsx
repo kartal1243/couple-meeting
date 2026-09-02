@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAction, playbackSpeed, setPlaybackSpeed, ytPlayerRef }) {
+export default function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAction, playbackSpeed, setPlaybackSpeed, ytPlayerRef, voiceChat }) {
   const [hovered, setHovered] = useState(null);
   const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
   const primary = currentTheme?.primary || '#00a884';
@@ -107,6 +107,12 @@ export default function Controls({ currentTheme, handlePlay, handlePause, sendRe
           </button>
         ))}
       </div>
+
+      {voiceChat && (
+        <div style={{ marginLeft: 'auto' }}>
+          {voiceChat}
+        </div>
+      )}
     </div>
   );
 }
