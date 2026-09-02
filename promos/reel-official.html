@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Couple Meeting - Reel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; overflow: hidden; background: #0b1218; font-family: 'Inter', sans-serif; }
+.c { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+
+/* Background */
+.bg { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(139,92,246,0.12), transparent), radial-gradient(ellipse 50% 40% at 30% 60%, rgba(16,185,129,0.08), transparent), radial-gradient(ellipse 50% 40% at 70% 50%, rgba(236,72,153,0.08), transparent), #0b1218; }
+
+/* Grid */
+.grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px); background-size: 50px 50px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%); }
+
+/* Logo container */
+.logo-wrap { position: relative; z-index: 10; animation: logoIn 1.5s ease-out both; }
+@keyframes logoIn { 0% { opacity: 0; transform: scale(0.6) translateY(40px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* Glow behind logo */
+.logo-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 350px; height: 350px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,0.25), rgba(16,185,129,0.15), transparent 70%); filter: blur(40px); animation: glowPulse 4s ease-in-out infinite; }
+@keyframes glowPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; } 50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } }
+
+/* Neon rings */
+.ring { position: absolute; top: 50%; left: 50%; border-radius: 50%; border: 2px solid; transform: translate(-50%, -50%); animation: ringPulse 5s ease-in-out infinite; }
+.ring-1 { width: 280px; height: 280px; border-color: rgba(16,185,129,0.2); animation-delay: 0s; }
+.ring-2 { width: 340px; height: 340px; border-color: rgba(139,92,246,0.15); animation-delay: -1.5s; }
+.ring-3 { width: 400px; height: 400px; border-color: rgba(236,72,153,0.1); animation-delay: -3s; }
+@keyframes ringPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; } 50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; } }
+
+/* Soundwave */
+.sw { display: flex; align-items: flex-end; gap: 5px; height: 30px; position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%); animation: logoIn 1.5s ease-out 0.5s both; }
+.bar { width: 4px; border-radius: 99px; background: linear-gradient(to top, #10b981, #8b5cf6); animation: barP 0.8s ease-in-out infinite; transform-origin: bottom; }
+@keyframes barP { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+
+/* Title */
+.title { position: relative; z-index: 10; text-align: center; margin-top: 80px; animation: fadeUp 1.2s ease-out 0.8s both; }
+@keyframes fadeUp { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
+.title h1 { font-size: 82px; font-weight: 900; letter-spacing: -3px; line-height: 0.95; color: #fff; }
+.title .pink { color: #c084fc; }
+.title .green { background: linear-gradient(135deg, #10b981, #34d399); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Subtitle */
+.sub { position: relative; z-index: 10; text-align: center; margin-top: 28px; animation: fadeUp 1.2s ease-out 1.2s both; }
+.sub p { font-size: 28px; color: #64748b; font-weight: 600; line-height: 1.6; }
+
+/* Features row */
+.features { position: relative; z-index: 10; display: flex; gap: 24px; margin-top: 50px; animation: fadeUp 1.2s ease-out 1.6s both; }
+.feat { display: flex; align-items: center; gap: 10px; padding: 14px 24px; border-radius: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+.feat-icon { font-size: 22px; }
+.feat-text { font-size: 18px; color: #e2e8f0; font-weight: 700; }
+
+/* CTA */
+.cta { position: relative; z-index: 10; margin-top: 50px; animation: fadeUp 1.2s ease-out 2s both; }
+.cta-btn { padding: 20px 60px; border-radius: 18px; font-size: 24px; font-weight: 800; border: none; color: #fff; background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 10px 40px rgba(16,185,129,0.3); cursor: pointer; transition: all 0.3s; }
+.cta-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 50px rgba(16,185,129,0.4); }
+
+/* Bottom */
+.bottom { position: absolute; bottom: 80px; z-index: 10; text-align: center; animation: fadeUp 1.2s ease-out 2.4s both; }
+.bottom .url { font-size: 22px; color: #475569; font-weight: 800; letter-spacing: 4px; }
+
+/* Particles */
+.particles { position: absolute; inset: 0; pointer-events: none; }
+.p { position: absolute; width: 2px; height: 2px; background: rgba(255,255,255,0.3); border-radius: 50%; animation: pFloat linear infinite; }
+@keyframes pFloat { 0% { transform: translateY(1920px); opacity: 0; } 5% { opacity: 1; } 95% { opacity: 1; } 100% { transform: translateY(-10px); opacity: 0; } }
+
+/* Vignette */
+.vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%); z-index: 15; }
+
+/* Divider */
+.div { position: relative; z-index: 10; width: 120px; height: 2px; background: linear-gradient(90deg, transparent, #8b5cf6, transparent); margin-top: 40px; border-radius: 99px; animation: fadeUp 1.2s ease-out 1.4s both; }
+</style>
+</head>
+<body>
+<div class="c">
+  <div class="bg"></div>
+  <div class="grid"></div>
+
+  <!-- Particles -->
+  <div class="particles">
+    <div class="p" style="left:8%; animation-duration:18s; animation-delay:0s;"></div>
+    <div class="p" style="left:22%; animation-duration:22s; animation-delay:3s;"></div>
+    <div class="p" style="left:38%; animation-duration:15s; animation-delay:1s;"></div>
+    <div class="p" style="left:52%; animation-duration:20s; animation-delay:5s;"></div>
+    <div class="p" style="left:67%; animation-duration:17s; animation-delay:2s;"></div>
+    <div class="p" style="left:80%; animation-duration:19s; animation-delay:4s;"></div>
+    <div class="p" style="left:92%; animation-duration:14s; animation-delay:1.5s;"></div>
+    <div class="p" style="left:15%; animation-duration:25s; animation-delay:6s;"></div>
+    <div class="p" style="left:45%; animation-duration:16s; animation-delay:0.5s;"></div>
+    <div class="p" style="left:72%; animation-duration:21s; animation-delay:7s;"></div>
+    <div class="p" style="left:58%; animation-duration:13s; animation-delay:2.5s;"></div>
+    <div class="p" style="left:33%; animation-duration:23s; animation-delay:8s;"></div>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo-wrap" style="position:relative;">
+    <div class="logo-glow"></div>
+    <div class="ring ring-1"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-3"></div>
+
+    <!-- SVG Logo -->
+    <svg width="220" height="200" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:relative; z-index:2; filter: drop-shadow(0 0 40px rgba(139,92,246,0.4)) drop-shadow(0 0 80px rgba(16,185,129,0.2));">
+      <!-- Left phone (cyan) -->
+      <g transform="translate(25, 20)">
+        <!-- Phone body -->
+        <rect x="10" y="10" width="75" height="130" rx="16" stroke="url(#gradCyan)" stroke-width="4" fill="none" transform="rotate(-15, 47, 75)"/>
+        <!-- Play button -->
+        <polygon points="38,60 38,90 62,75" fill="url(#gradCyan)" transform="rotate(-15, 47, 75)"/>
+        <!-- WiFi signal -->
+        <path d="M30,18 Q47,5 64,18" stroke="url(#gradCyan)" stroke-width="3" fill="none" stroke-linecap="round" transform="rotate(-15, 47, 75)"/>
+        <path d="M37,25 Q47,16 57,25" stroke="url(#gradCyan)" stroke-width="3" fill="none" stroke-linecap="round" transform="rotate(-15, 47, 75)"/>
+      </g>
+
+      <!-- Right phone (pink) -->
+      <g transform="translate(110, 20)">
+        <!-- Phone body -->
+        <rect x="10" y="10" width="75" height="130" rx="16" stroke="url(#gradPink)" stroke-width="4" fill="none" transform="rotate(15, 47, 75)"/>
+        <!-- Play button (reversed) -->
+        <polygon points="56,60 56,90 32,75" fill="url(#gradPink)" transform="rotate(15, 47, 75)"/>
+        <!-- WiFi signal -->
+        <path d="M30,18 Q47,5 64,18" stroke="url(#gradPink)" stroke-width="3" fill="none" stroke-linecap="round" transform="rotate(15, 47, 75)"/>
+        <path d="M37,25 Q47,16 57,25" stroke="url(#gradPink)" stroke-width="3" fill="none" stroke-linecap="round" transform="rotate(15, 47, 75)"/>
+      </g>
+
+      <!-- Center heart (purple/gradient) -->
+      <path d="M110,80 C110,60 90,45 75,55 C65,62 60,75 60,75 C60,75 55,62 45,55 C30,45 10,60 10,80 C10,110 60,140 110,160 C160,140 210,110 210,80 C210,60 190,45 175,55 C165,62 160,75 160,75 C160,75 155,62 145,55 C130,45 110,60 110,80 Z"
+        fill="url(#gradHeart)" opacity="0.85"/>
+
+      <defs>
+        <linearGradient id="gradCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#06b6d4"/>
+          <stop offset="100%" stop-color="#22d3ee"/>
+        </linearGradient>
+        <linearGradient id="gradPink" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ec4899"/>
+          <stop offset="100%" stop-color="#f472b6"/>
+        </linearGradient>
+        <linearGradient id="gradHeart" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#c084fc"/>
+          <stop offset="50%" stop-color="#a855f7"/>
+          <stop offset="100%" stop-color="#ec4899"/>
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <!-- Soundwave -->
+    <div class="sw">
+      <div class="bar" style="height:12px; animation-delay:0s;"></div>
+      <div class="bar" style="height:22px; animation-delay:0.08s;"></div>
+      <div class="bar" style="height:30px; animation-delay:0.16s;"></div>
+      <div class="bar" style="height:18px; animation-delay:0.24s;"></div>
+      <div class="bar" style="height:26px; animation-delay:0.32s;"></div>
+      <div class="bar" style="height:14px; animation-delay:0.40s;"></div>
+      <div class="bar" style="height:24px; animation-delay:0.48s;"></div>
+      <div class="bar" style="height:20px; animation-delay:0.56s;"></div>
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div class="title">
+    <h1>Couple <span class="pink">Meeting</span></h1>
+  </div>
+
+  <div class="sub">
+    <p>Birlikte İzle & Dinle<br>Müzik, Video ve Sohbet</p>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- Features -->
+  <div class="features">
+    <div class="feat">
+      <span class="feat-icon">🎵</span>
+      <span class="feat-text">Senkron Müzik</span>
+    </div>
+    <div class="feat">
+      <span class="feat-icon">🎬</span>
+      <span class="feat-text">Birlikte İzle</span>
+    </div>
+    <div class="feat">
+      <span class="feat-icon">💬</span>
+      <span class="feat-text">Canlı Sohbet</span>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <button class="cta-btn">Hemen Katıl →</button>
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom">
+    <div class="url">COUPLEMEETING.COM.TR</div>
+  </div>
+
+  <div class="vig"></div>
+</div>
+</body>
+</html>
