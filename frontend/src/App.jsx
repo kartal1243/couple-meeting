@@ -263,8 +263,9 @@ function App() {
 
   const openDm = (withUser) => {
     setDmActiveChat(withUser);
-    socket.emit('dm_history', { withUser, token: authToken });
-    socket.emit('dm_read', { withUser, token: authToken });
+    const username = typeof withUser === 'string' ? withUser : withUser?.username;
+    socket.emit('dm_history', { withUser: username, token: authToken });
+    socket.emit('dm_read', { withUser: username, token: authToken });
     setSocialTab('dm');
   };
 
@@ -777,8 +778,12 @@ function App() {
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
 
     socket.on('dm_list', ({ conversations }) => setDmConversations(conversations || []));
-    socket.on('dm_history', ({ messages, withUser }) => { if (dmActiveChat?.username === withUser) setDmMessages(messages || []); });
+    socket.on('dm_history', ({ messages, withUser }) => {
+      if (dmActiveChat?.username === withUser || dmActiveChat === withUser) setDmMessages(messages || []);
+      else if (!dmActiveChat && messages) setDmMessages(messages || []);
+    });
     socket.on('dm_sent', (msg) => { setDmMessages((prev) => [...prev, msg]); loadDmList(); });
+    socket.on('dm_status', (data) => { if (data?.message) { setToast({ msg: data.message, sender: 'Sistem', id: Date.now() }); setTimeout(() => setToast(null), 4000); } });
     socket.on('dm_received', (msg) => {
       if (dmActiveChat?.username === msg.from) { setDmMessages((prev) => [...prev, msg]); socket.emit('dm_read', { withUser: msg.from, token: authToken }); }
       else {
@@ -921,7 +926,7 @@ function App() {
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('global_online_update'); socket.off('vip_activated');
       socket.off('typing_indicator'); socket.off('dm_read_receipt'); socket.off('dm_deleted'); socket.off('dm_edited');
       socket.off('reactions_update'); socket.off('room_invite');
-      socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received');
+      socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received'); socket.off('dm_status');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
   }, []);
