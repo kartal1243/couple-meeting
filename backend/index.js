@@ -72,7 +72,9 @@ const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 }, fileFilt
 
 app.use('/uploads', express.static(uploadsDir));
 
-app.post('/api/upload-avatar', (req, res) => {
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla dosya yükleme.' } });
+
+app.post('/api/upload-avatar', uploadLimiter, (req, res) => {
   upload.single('avatar')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, message: err.message });
     if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadı.' });
@@ -570,7 +572,6 @@ io.on('connection', (socket) => {
   socket.on('change_password', ({ token, currentPassword, newPassword }) => {
     const user = db.getUserByToken(token);
     if (!user) return socket.emit('change_password_result', { success: false, message: 'Kullanıcı bulunamadı.' });
-    const crypto = require('crypto');
     const [salt, hash] = user.passwordHash.split(':');
     const newHash = crypto.scryptSync(currentPassword, salt, 64).toString('hex');
     if (hash !== newHash) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' });
@@ -599,6 +600,8 @@ io.on('connection', (socket) => {
     if (!user) return;
     const target = sanitize(targetUsername, 20);
     if (target === user.username) return;
+    const targetUser = db.getUser(target);
+    if (!targetUser) return socket.emit('block_result', { success: false, message: 'Kullanıcı bulunamadı.' });
     db.blockUser(user.username, target);
     socket.emit('block_result', { success: true, blocked: target });
     sendFriendsUpdate(user.username);
@@ -621,11 +624,18 @@ io.on('connection', (socket) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     const key = [user.username, sanitize(withUser, 24)].sort().join(':');
+    let deleted = false;
     if (dmMessages[key]) {
-      dmMessages[key] = dmMessages[key].filter(m => m.id !== messageId);
+      const msg = dmMessages[key].find(m => m.id === messageId);
+      if (msg && msg.from === user.username) {
+        dmMessages[key] = dmMessages[key].filter(m => m.id !== messageId);
+        deleted = true;
+      }
     }
-    emitToUser(sanitize(withUser, 24), 'dm_deleted', { messageId, from: user.username });
-    socket.emit('dm_deleted', { messageId, from: user.username });
+    if (deleted) {
+      emitToUser(sanitize(withUser, 24), 'dm_deleted', { messageId, from: user.username });
+      socket.emit('dm_deleted', { messageId, from: user.username });
+    }
   });
   socket.on('dm_edit', ({ messageId, withUser, newText, token }) => {
     const user = db.getUserByToken(token);
@@ -647,14 +657,16 @@ io.on('connection', (socket) => {
     if (!user) return;
     db.addReaction(messageId, messageType || 'dm', user.username, emoji);
     const reactions = db.getReactions(messageId, messageType || 'dm');
-    io.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+    socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
   });
   socket.on('remove_reaction', ({ messageId, messageType, emoji, token }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     db.removeReaction(messageId, messageType || 'dm', user.username, emoji);
     const reactions = db.getReactions(messageId, messageType || 'dm');
-    io.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+    socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
   });
 
   // ── ODA DAVETİ ──
@@ -790,18 +802,33 @@ io.on('connection', (socket) => {
     const from = db.getUserByToken(token);
     if (!from) return;
     const conversations = {};
+
+    const dbConvs = db.getDmConversations(from.username);
+    for (const conv of dbConvs) {
+      conversations[conv.username] = {
+        username: conv.username, avatar: conv.avatar || '🐱',
+        lastMessage: conv.lastMessage, lastTime: conv.lastTime,
+        unread: conv.unread, isOnline: !!onlineUsers[conv.username],
+        lastSeen: onlineUsers[conv.username]?.lastSeen || conv.lastSeen || null
+      };
+    }
+
     for (const [key, msgs] of Object.entries(dmMessages)) {
       if (key.includes(from.username) && msgs.length > 0) {
         const last = msgs[msgs.length - 1];
         const other = last.from === from.username ? last.to : last.from;
         const otherUser = db.getUser(other);
-        conversations[other] = {
-          username: other, avatar: otherUser?.avatar || '🐱',
-          lastMessage: last.text, lastTime: last.time,
-          unread: msgs.filter(m => m.to === from.username && !m.read).length,
-          isOnline: !!onlineUsers[other],
-          lastSeen: onlineUsers[other]?.lastSeen || otherUser?.lastSeen || null
-        };
+        const existing = conversations[other];
+        const memLastTime = last.time;
+        if (!existing || memLastTime > existing.lastTime) {
+          conversations[other] = {
+            username: other, avatar: otherUser?.avatar || '🐱',
+            lastMessage: last.text, lastTime: memLastTime,
+            unread: msgs.filter(m => m.to === from.username && !m.read).length,
+            isOnline: !!onlineUsers[other],
+            lastSeen: onlineUsers[other]?.lastSeen || otherUser?.lastSeen || null
+          };
+        }
       }
     }
     socket.emit('dm_list', { conversations: Object.values(conversations).sort((a, b) => b.lastTime > a.lastTime ? 1 : -1) });

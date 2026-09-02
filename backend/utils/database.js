@@ -448,6 +448,39 @@ function getUnreadDmCount(username) {
   return 0;
 }
 
+function getDmConversations(username) {
+  if (getDb()) {
+    const rows = db.prepare(`
+      SELECT 
+        CASE WHEN from_username = ? THEN to_username ELSE from_username END as other_user,
+        text, time, created_at, read, from_username
+      FROM dm_messages 
+      WHERE from_username = ? OR to_username = ?
+      ORDER BY created_at DESC
+    `).all(username, username, username);
+    
+    const convMap = {};
+    for (const r of rows) {
+      if (!convMap[r.other_user]) {
+        const otherUser = db.prepare('SELECT * FROM users WHERE username = ?').get(r.other_user);
+        convMap[r.other_user] = {
+          username: r.other_user,
+          avatar: otherUser?.avatar || '🐱',
+          lastMessage: r.text,
+          lastTime: r.time,
+          lastSeen: otherUser?.last_seen || 0,
+          unread: 0
+        };
+      }
+      if (r.from_username !== username && !r.read) {
+        convMap[r.other_user].unread++;
+      }
+    }
+    return Object.values(convMap);
+  }
+  return [];
+}
+
 // ═══════════════════════════════════════════════════════════
 // GRUP MESAJLARI
 // ═══════════════════════════════════════════════════════════
@@ -554,7 +587,7 @@ module.exports = {
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
   searchUsers, addGlobalMessage, getGlobalMessages, getAllUsers, closeDb,
   addConnectionLog, getConnectionLogs, getLogStats,
-  saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount,
+  saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
   saveGroupMessage, getGroupHistory,
   blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
   addReaction, removeReaction, getReactions

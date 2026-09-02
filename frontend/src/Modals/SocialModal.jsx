@@ -10,9 +10,19 @@ function formatLastSeen(ts) {
   return `${Math.floor(diff / 86400000)} gün önce`;
 }
 
-function DmChat({ activeChat, messages, input, setInput, onSend, onBack }) {
+function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping }) {
   const endRef = useRef(null);
+  const typingTimeout = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  const isTyping = typingUsers && typingUsers[activeChat?.username];
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    if (sendDmTyping && activeChat?.username) {
+      sendDmTyping(activeChat.username);
+      clearTimeout(typingTimeout.current);
+      typingTimeout.current = setTimeout(() => { if (sendDmStopTyping) sendDmStopTyping(activeChat.username); }, 2000);
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
@@ -23,7 +33,7 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack }) {
         </div>
         <div>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{activeChat.username}</div>
-          <div style={{ color: activeChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{activeChat.isOnline ? '🟢 Çevrimiçi' : 'Çevrimdışı'}</div>
+          <div style={{ color: activeChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? '✏️ yazıyor...' : (activeChat.isOnline ? '🟢 Çevrimiçi' : 'Çevrimdışı')}</div>
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -33,7 +43,7 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack }) {
           return (
             <div key={m.id || i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
               <div style={{ maxWidth: '75%', padding: '8px 12px', borderRadius: 14, background: isMe ? '#005c4b' : '#1f2c34', borderBottomRightRadius: isMe ? 4 : 14, borderBottomLeftRadius: isMe ? 14 : 4 }}>
-                <div style={{ fontSize: 12, color: '#e9edef', wordBreak: 'break-word' }}>{m.text}</div>
+                <div style={{ fontSize: 12, color: '#e9edef', wordBreak: 'break-word' }}>{m.text}{m.edited && <span style={{ fontSize: 9, color: '#667781', marginLeft: 4 }}>(düzenlendi)</span>}</div>
                 <div style={{ fontSize: 9, color: '#667781', textAlign: 'right', marginTop: 3 }}>{m.time}</div>
               </div>
             </div>
@@ -42,7 +52,7 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack }) {
         <div ref={endRef} />
       </div>
       <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Mesaj yaz..." style={{ flex: 1, background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '9px 12px', borderRadius: 10, fontSize: 13, outline: 'none' }} />
+        <input value={input} onChange={handleInputChange} placeholder="Mesaj yaz..." style={{ flex: 1, background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '9px 12px', borderRadius: 10, fontSize: 13, outline: 'none' }} />
         <button type="submit" style={{ background: '#00a884', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: 10, fontWeight: 900, cursor: 'pointer' }}>➤</button>
       </form>
     </div>
@@ -94,7 +104,8 @@ export default function SocialModal({
   sendDm, openDm, loadDmList,
   chatGroups, activeGroup, setActiveGroup, groupMessages, groupInput, setGroupInput,
   showGroupCreate, setShowGroupCreate, groupNameInput, setGroupNameInput,
-  groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups
+  groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups,
+  typingUsers, sendDmTyping, sendDmStopTyping
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
@@ -197,7 +208,7 @@ export default function SocialModal({
               </div>
             )}
             {socialTab === 'dm' && dmActiveChat && (
-              <DmChat activeChat={dmActiveChat} messages={dmMessages} input={dmInput} setInput={setDmInput} onSend={(text) => sendDm(dmActiveChat.username, text)} onBack={() => { setDmActiveChat(null); setDmMessages([]); }} />
+              <DmChat activeChat={dmActiveChat} messages={dmMessages} input={dmInput} setInput={setDmInput} onSend={(text) => sendDm(dmActiveChat.username, text)} onBack={() => { setDmActiveChat(null); setDmMessages([]); }} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} />
             )}
 
             {/* Groups */}

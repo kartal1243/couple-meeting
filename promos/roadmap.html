@@ -3,599 +3,300 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Couple Meeting - Backend Yol Haritası</title>
+    <title>Couple Meeting - Güncel Yol Haritası v2</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #0a0e14;
-            color: #fff;
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0e14; color: #fff; min-height: 100vh; padding: 40px 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; font-size: 32px; font-weight: 950; margin-bottom: 8px; background: linear-gradient(135deg, #00a884, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { text-align: center; color: #7f8c98; font-size: 14px; margin-bottom: 40px; }
 
-        h1 {
-            text-align: center;
-            font-size: 36px;
-            font-weight: 950;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #00a884, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .subtitle {
-            text-align: center;
-            color: #7f8c98;
-            font-size: 14px;
-            margin-bottom: 48px;
-        }
+        /* Progress */
+        .progress-section { margin-bottom: 40px; padding: 24px; background: #111b21; border-radius: 16px; border: 1px solid #25313a; }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .progress-title { font-size: 16px; font-weight: 800; }
+        .progress-percent { font-size: 28px; font-weight: 950; color: #00a884; }
+        .progress-bar { height: 16px; background: #1a2634; border-radius: 8px; overflow: hidden; display: flex; }
+        .progress-seg { height: 100%; transition: width 0.5s ease; }
+        .seg-done { background: linear-gradient(90deg, #00a884, #10b981); }
+        .seg-todo { background: #2a3942; }
+        .progress-legend { display: flex; gap: 20px; margin-top: 12px; font-size: 12px; color: #7f8c98; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+        .stat { text-align: center; padding: 20px; background: #111b21; border-radius: 12px; border: 1px solid #25313a; }
+        .stat-num { font-size: 36px; font-weight: 950; line-height: 1; }
+        .stat-num.green { color: #00a884; }
+        .stat-num.yellow { color: #f59e0b; }
+        .stat-num.purple { color: #7c3aed; }
+        .stat-num.blue { color: #3b82f6; }
+        .stat-label { font-size: 11px; color: #7f8c98; margin-top: 6px; }
 
         /* Timeline */
-        .timeline {
-            position: relative;
-            padding-left: 40px;
-        }
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 15px;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(180deg, #ef4444 0%, #f59e0b 33%, #00a884 66%, #7c3aed 100%);
-            border-radius: 3px;
-        }
+        .timeline { position: relative; padding-left: 40px; }
+        .timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #00a884 0%, #f59e0b 50%, #7c3aed 100%); border-radius: 3px; }
+        .phase { position: relative; margin-bottom: 40px; }
+        .phase-dot { position: absolute; left: -33px; top: 8px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #0a0e14; z-index: 1; }
+        .phase-dot.done { background: #00a884; box-shadow: 0 0 20px rgba(0,168,132,0.5); }
+        .phase-dot.pending { background: #f59e0b; box-shadow: 0 0 20px rgba(245,158,11,0.5); }
+        .phase-dot.future { background: #7c3aed; box-shadow: 0 0 20px rgba(124,58,237,0.5); }
 
-        .phase {
-            position: relative;
-            margin-bottom: 48px;
-        }
-        .phase-dot {
-            position: absolute;
-            left: -33px;
-            top: 8px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 3px solid #0a0e14;
-            z-index: 1;
-        }
-        .phase-dot.critical { background: #ef4444; box-shadow: 0 0 20px rgba(239,68,68,0.5); }
-        .phase-dot.important { background: #f59e0b; box-shadow: 0 0 20px rgba(245,158,11,0.5); }
-        .phase-dot.enhancement { background: #00a884; box-shadow: 0 0 20px rgba(0,168,132,0.5); }
-        .phase-dot.vision { background: #7c3aed; box-shadow: 0 0 20px rgba(124,58,237,0.5); }
+        .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .phase-tag { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 900; letter-spacing: 1px; }
+        .tag-done { background: rgba(0,168,132,0.2); color: #00a884; border: 1px solid rgba(0,168,132,0.3); }
+        .tag-pending { background: rgba(245,158,11,0.2); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+        .tag-future { background: rgba(124,58,237,0.2); color: #7c3aed; border: 1px solid rgba(124,58,237,0.3); }
+        .phase-title { font-size: 20px; font-weight: 900; }
+        .phase-count { color: #7f8c98; font-size: 13px; margin-left: auto; }
 
-        .phase-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        .phase-tag {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 900;
-            letter-spacing: 1px;
-        }
-        .tag-critical { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
-        .tag-important { background: rgba(245,158,11,0.2); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
-        .tag-enhancement { background: rgba(0,168,132,0.2); color: #00a884; border: 1px solid rgba(0,168,132,0.3); }
-        .tag-vision { background: rgba(124,58,237,0.2); color: #7c3aed; border: 1px solid rgba(124,58,237,0.3); }
+        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+        .card { background: #111b21; border: 1px solid #25313a; border-radius: 14px; padding: 16px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .card:hover { transform: translateY(-2px); border-color: #2a3942; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .card.card-done::before { background: linear-gradient(90deg, #00a884, #10b981); }
+        .card.card-pending::before { background: linear-gradient(90deg, #f59e0b, #eab308); }
+        .card.card-future::before { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
 
-        .phase-title {
-            font-size: 22px;
-            font-weight: 900;
-        }
-        .phase-time {
-            color: #7f8c98;
-            font-size: 12px;
-            margin-left: auto;
-        }
-
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
-        }
-
-        .card {
-            background: #111b21;
-            border: 1px solid #25313a;
-            border-radius: 16px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            border-color: #2a3942;
-        }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-        }
-        .card.card-critical::before { background: linear-gradient(90deg, #ef4444, #f97316); }
-        .card.card-important::before { background: linear-gradient(90deg, #f59e0b, #eab308); }
-        .card.card-enhancement::before { background: linear-gradient(90deg, #00a884, #10b981); }
-        .card.card-vision::before { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
-
-        .card-icon {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-        .card-title {
-            font-size: 15px;
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-        .card-desc {
-            font-size: 12px;
-            color: #7f8c98;
-            line-height: 1.5;
-            margin-bottom: 12px;
-        }
-        .card-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: 800;
-        }
-        .status-critical { background: rgba(239,68,68,0.15); color: #ef4444; }
-        .status-important { background: rgba(245,158,11,0.15); color: #f59e0b; }
-        .status-enhancement { background: rgba(0,168,132,0.15); color: #00a884; }
-        .status-vision { background: rgba(124,58,237,0.15); color: #7c3aed; }
+        .card-icon { font-size: 24px; margin-bottom: 8px; }
+        .card-title { font-size: 14px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+        .card-desc { font-size: 11px; color: #7f8c98; line-height: 1.5; margin-bottom: 10px; }
+        .card-status { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; font-size: 9px; font-weight: 800; }
         .status-done { background: rgba(0,168,132,0.15); color: #00a884; }
+        .status-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .status-future { background: rgba(124,58,237,0.15); color: #7c3aed; }
+        .check { color: #00a884; font-weight: 900; }
 
-        .card-effort {
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .effort-bar {
-            flex: 1;
-            height: 4px;
-            background: #1a2634;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .effort-fill {
-            height: 100%;
-            border-radius: 2px;
-        }
-        .effort-label {
-            font-size: 10px;
-            color: #7f8c98;
-            white-space: nowrap;
-        }
-
-        /* Summary */
-        .summary {
-            margin-top: 60px;
-            padding: 32px;
-            background: linear-gradient(135deg, #111b21, #0f172a);
-            border: 1px solid #25313a;
-            border-radius: 20px;
-        }
-        .summary h2 {
-            font-size: 20px;
-            font-weight: 900;
-            margin-bottom: 20px;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-        }
-        .stat {
-            text-align: center;
-            padding: 16px;
-            background: #0a0e14;
-            border-radius: 12px;
-        }
-        .stat-num {
-            font-size: 32px;
-            font-weight: 950;
-            line-height: 1;
-        }
-        .stat-num.red { color: #ef4444; }
-        .stat-num.yellow { color: #f59e0b; }
-        .stat-num.green { color: #00a884; }
-        .stat-num.purple { color: #7c3aed; }
-        .stat-label {
-            font-size: 11px;
-            color: #7f8c98;
-            margin-top: 6px;
-        }
-
-        /* Progress bar */
-        .progress-section {
-            margin-top: 24px;
-        }
-        .progress-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin-bottom: 8px;
-        }
-        .progress-bar {
-            height: 12px;
-            background: #1a2634;
-            border-radius: 6px;
-            overflow: hidden;
-            display: flex;
-        }
-        .progress-seg {
-            height: 100%;
-            transition: width 0.5s ease;
-        }
-        .seg-done { background: #00a884; }
-        .seg-progress { background: #f59e0b; }
-        .seg-todo { background: #2a3942; }
+        /* Table */
+        .table-section { margin-top: 40px; padding: 24px; background: #111b21; border-radius: 16px; border: 1px solid #25313a; }
+        .table-section h2 { font-size: 18px; font-weight: 900; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px; color: #7f8c98; font-size: 11px; border-bottom: 1px solid #25313a; }
+        td { padding: 10px; font-size: 12px; border-bottom: 1px solid #1a2634; }
+        tr:hover { background: rgba(255,255,255,0.02); }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🗺️ Backend Yol Haritası</h1>
-        <p class="subtitle">Couple Meeting — Mevcut durum, eksikler ve geliştirme planı</p>
+        <h1>🗺️ Couple Meeting - Güncel Yol Haritası</h1>
+        <p class="subtitle">v2 — 10/20 özellik tamamlandı (%50)</p>
 
         <!-- Progress -->
-        <div class="summary" style="margin-bottom: 40px;">
-            <h2>📊 Genel Durum</h2>
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-num green">40</div>
-                    <div class="stat-label">Aktif Handler</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-num red">3</div>
-                    <div class="stat-label">Kritik Eksik</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-num yellow">7</div>
-                    <div class="stat-label">Önemli Eksik</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-num purple">10+</div>
-                    <div class="stat-label">Geliştirme</div>
-                </div>
+        <div class="progress-section">
+            <div class="progress-header">
+                <span class="progress-title">📊 Genel İlerleme</span>
+                <span class="progress-percent">%50</span>
             </div>
-            <div class="progress-section">
-                <div class="progress-label">
-                    <span style="color:#00a884">Tamamlanan: %40</span>
-                    <span style="color:#f59e0b">Yolda: %25</span>
-                    <span style="color:#2a3942">Bekleyen: %35</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-seg seg-done" style="width:40%"></div>
-                    <div class="progress-seg seg-progress" style="width:25%"></div>
-                    <div class="progress-seg seg-todo" style="width:35%"></div>
-                </div>
+            <div class="progress-bar">
+                <div class="progress-seg seg-done" style="width:50%"></div>
+                <div class="progress-seg seg-todo" style="width:50%"></div>
             </div>
+            <div class="progress-legend">
+                <span><span class="legend-dot" style="background:#00a884"></span>Tamamlanan: 10</span>
+                <span><span class="legend-dot" style="background:#2a3942"></span>Kalan: 10</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat"><div class="stat-num green">50+</div><div class="stat-label">Toplam Handler</div></div>
+            <div class="stat"><div class="stat-num blue">10</div><div class="stat-label">Veritabanı Tablosu</div></div>
+            <div class="stat"><div class="stat-num yellow">12</div><div class="stat-label">API Endpoint</div></div>
+            <div class="stat"><div class="stat-num purple">15+</div><div class="stat-label">Frontend Bileşeni</div></div>
         </div>
 
         <div class="timeline">
-            <!-- PHASE 1: CRITICAL -->
+            <!-- TAMAMLANANLAR -->
             <div class="phase">
-                <div class="phase-dot critical"></div>
+                <div class="phase-dot done"></div>
                 <div class="phase-header">
-                    <span class="phase-tag tag-critical">KRİTİK</span>
-                    <span class="phase-title">Hafta 1-2: Acil Düzeltmeler</span>
-                    <span class="phase-time">Öncelik: Yüksek</span>
+                    <span class="phase-tag tag-done">TAMAMLANDI</span>
+                    <span class="phase-title">Kritik & Önemli Özellikler</span>
+                    <span class="phase-count">10/10 ✅</span>
                 </div>
                 <div class="cards">
-                    <div class="card card-critical">
+                    <div class="card card-done">
                         <div class="card-icon">💾</div>
-                        <div class="card-title">DM Mesajlarını Kaydet</div>
-                        <div class="card-desc">Sunucu Reinicia siliniyor! dm_messages tablosu oluştur, her mesajı SQLite'a yaz.</div>
-                        <span class="card-status status-critical">⚠️ Veri Kaybı Riski</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:60%;background:#ef4444"></div></div>
-                            <span class="effort-label">2-3 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> DM Mesaj Kalıcılığı</div>
+                        <div class="card-desc">Mesajlar SQLite'a kaydediliyor, restart'da silinmiyor.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-critical">
+                    <div class="card card-done">
                         <div class="card-icon">👥</div>
-                        <div class="card-title">Grup Mesajlarını Kaydet</div>
-                        <div class="card-desc">group_messages tablosu oluştur, grup sohbetini kalıcı yap.</div>
-                        <span class="card-status status-critical">⚠️ Veri Kaybı Riski</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:50%;background:#ef4444"></div></div>
-                            <span class="effort-label">2 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Grup Mesaj Kalıcılığı</div>
+                        <div class="card-desc">Grup sohbeti veritabanında saklanıyor.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-critical">
+                    <div class="card card-done">
                         <div class="card-icon">🔑</div>
-                        <div class="card-title">Şifre Değiştirme</div>
-                        <div class="card-desc">Giriş yapmış kullanıcılar şifrelerini değiştirebilmeli. change_password handler.</div>
-                        <span class="card-status status-critical">⚠️ Güvenlik Açığı</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:30%;background:#ef4444"></div></div>
-                            <span class="effort-label">1 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Şifre Değiştirme</div>
+                        <div class="card-desc">Giriş yapmış kullanıcılar şifrelerini değiştirebilir.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                </div>
-            </div>
-
-            <!-- PHASE 2: IMPORTANT -->
-            <div class="phase">
-                <div class="phase-dot important"></div>
-                <div class="phase-header">
-                    <span class="phase-tag tag-important">ÖNEMLİ</span>
-                    <span class="phase-title">Hafta 3-4: Sosyal İyileştirmeler</span>
-                    <span class="phase-time">Öncelik: Orta-Yüksek</span>
-                </div>
-                <div class="cards">
-                    <div class="card card-important">
-                        <div class="card-icon">😀</div>
-                        <div class="card-title">Mesaj Tepkileri</div>
-                        <div class="card-desc">Her mesaja emoji ile tepki ver. ❤️👍😂 gibi seçenekler.</div>
-                        <span class="card-status status-important">🚀 Yeni Özellik</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:50%;background:#f59e0b"></div></div>
-                            <span class="effort-label">2-3 gün</span>
-                        </div>
-                    </div>
-                    <div class="card card-important">
+                    <div class="card card-done">
                         <div class="card-icon">⌨️</div>
-                        <div class="card-title">Yazma İndikatörü</div>
-                        <div class="card-desc">Birisi yazarken "Ahmet yazıyor..." göstersin.</div>
-                        <span class="card-status status-important">💬 UX İyileştirmesi</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:30%;background:#f59e0b"></div></div>
-                            <span class="effort-label">1 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Yazma İndikatörü</div>
+                        <div class="card-desc">"Ahmet yazıyor..." göstergesi.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-important">
+                    <div class="card card-done">
                         <div class="card-icon">👁️</div>
-                        <div class="card-title">Okundu Bilgisi</div>
-                        <div class="card-desc">Mesaj okunduğunda gönderene bildirim git.</div>
-                        <span class="card-status status-important">📱 Bildirim</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:40%;background:#f59e0b"></div></div>
-                            <span class="effort-label">1-2 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Okundu Bilgisi</div>
+                        <div class="card-desc">Mesaj okunduğunda gönderene bildirim.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-important">
+                    <div class="card card-done">
                         <div class="card-icon">🚫</div>
-                        <div class="card-title">Kullanıcı Engelleme</div>
-                        <div class="card-desc">Birini engelle, mesaj gönderemesin, listende görünmesin.</div>
-                        <span class="card-status status-important">🛡️ Güvenlik</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:40%;background:#f59e0b"></div></div>
-                            <span class="effort-label">1-2 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Kullanıcı Engelleme</div>
+                        <div class="card-desc">Engellenen kullanıcı mesaj gönderemez.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-important">
+                    <div class="card card-done">
                         <div class="card-icon">✏️</div>
-                        <div class="card-title">Mesaj Silme/Düzenleme</div>
+                        <div class="card-title"><span class="check">✓</span> Mesaj Silme/Düzenleme</div>
                         <div class="card-desc">Gönderdiğin mesajı sil veya düzenle.</div>
-                        <span class="card-status status-important">🔧 Yönetim</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:50%;background:#f59e0b"></div></div>
-                            <span class="effort-label">2 gün</span>
-                        </div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-important">
+                    <div class="card card-done">
+                        <div class="card-icon">😀</div>
+                        <div class="card-title"><span class="check">✓</span> Mesaj Tepkileri</div>
+                        <div class="card-desc">Her mesaja emoji ile tepki ver.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
+                    </div>
+                    <div class="card card-done">
                         <div class="card-icon">📩</div>
-                        <div class="card-title">Oda Daveti</div>
-                        <div class="card-desc">Kullanıcı adına oda daveti gönder, bildirim alsın.</div>
-                        <span class="card-status status-important">🏠 Oda İyileştirmesi</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:50%;background:#f59e0b"></div></div>
-                            <span class="effort-label">2 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Oda Daveti</div>
+                        <div class="card-desc">Kullanıcı adına oda daveti gönder.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
-                    <div class="card card-important">
+                    <div class="card card-done">
                         <div class="card-icon">📸</div>
-                        <div class="card-title">Profil Fotoğrafı</div>
-                        <div class="card-desc">Emoji yerine gerçek fotoğraf yükle. Multer + Sharp.</div>
-                        <span class="card-status status-important">🎨 Profil</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:60%;background:#f59e0b"></div></div>
-                            <span class="effort-label">3 gün</span>
-                        </div>
+                        <div class="card-title"><span class="check">✓</span> Profil Fotoğrafı</div>
+                        <div class="card-desc">Emoji yerine gerçek fotoğraf yükle.</div>
+                        <span class="card-status status-done">✅ Tamamlandı</span>
                     </div>
                 </div>
             </div>
 
-            <!-- PHASE 3: ENHANCEMENT -->
+            <!-- BEKLEYENLER -->
             <div class="phase">
-                <div class="phase-dot enhancement"></div>
+                <div class="phase-dot pending"></div>
                 <div class="phase-header">
-                    <span class="phase-tag tag-enhancement">GELİŞTİRME</span>
-                    <span class="phase-title">Hafta 5-8: Platform Olgunlaştırma</span>
-                    <span class="phase-time">Öncelik: Orta</span>
+                    <span class="phase-tag tag-pending">SIRADAKİ</span>
+                    <span class="phase-title">Geliştirme Fazı</span>
+                    <span class="phase-count">0/6 ⏳</span>
                 </div>
                 <div class="cards">
-                    <div class="card card-enhancement">
+                    <div class="card card-pending">
                         <div class="card-icon">🔔</div>
                         <div class="card-title">Bildirim Sistemi</div>
                         <div class="card-desc">Web Push + in-app bildirimler. Tercih ayarları.</div>
-                        <span class="card-status status-enhancement">🔔 Push Notification</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:80%;background:#00a884"></div></div>
-                            <span class="effort-label">5-7 gün</span>
-                        </div>
+                        <span class="card-status status-pending">⏳ 5-7 gün</span>
                     </div>
-                    <div class="card card-enhancement">
+                    <div class="card card-pending">
                         <div class="card-icon">👆</div>
                         <div class="card-title">Takip Sistemi</div>
-                        <div class="card-desc">Tek taraflı takip + takipçi. Arkadaşlık + takip karışımı.</div>
-                        <span class="card-status status-enhancement">🤝 Sosyal</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:70%;background:#00a884"></div></div>
-                            <span class="effort-label">4-5 gün</span>
-                        </div>
+                        <div class="card-desc">Tek taraflı takip + takipçi listesi.</div>
+                        <span class="card-status status-pending">⏳ 4-5 gün</span>
                     </div>
-                    <div class="card card-enhancement">
+                    <div class="card card-pending">
                         <div class="card-icon">👮</div>
                         <div class="card-title">Admin Rol Sistemi</div>
-                        <div class="card-desc">user → mod → admin → superadmin rolleri.</div>
-                        <span class="card-status status-enhancement">🛡️ Yönetim</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:60%;background:#00a884"></div></div>
-                            <span class="effort-label">3-4 gün</span>
-                        </div>
+                        <div class="card-desc">user → mod → admin → superadmin.</div>
+                        <span class="card-status status-pending">⏳ 3-4 gün</span>
                     </div>
-                    <div class="card card-enhancement">
+                    <div class="card card-pending">
                         <div class="card-icon">🚨</div>
                         <div class="card-title">Kullanıcı Raporlama</div>
-                        <div class="card-desc">Şikayet et → admin paneline düşsün → işlem yapılsın.</div>
-                        <span class="card-status status-enhancement">📋 Moderasyon</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:50%;background:#00a884"></div></div>
-                            <span class="effort-label">2-3 gün</span>
-                        </div>
+                        <div class="card-desc">Şikayet → admin paneline düşsün.</div>
+                        <span class="card-status status-pending">⏳ 2-3 gün</span>
                     </div>
-                    <div class="card card-enhancement">
-                        <div class="card-icon">🔐</div>
-                        <div class="card-title">İki Faktörlü Doğrulama</div>
-                        <div class="card-desc">Google Authenticator ile 2FA.</div>
-                        <span class="card-status status-enhancement">🔒 Güvenlik</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:60%;background:#00a884"></div></div>
-                            <span class="effort-label">3-4 gün</span>
-                        </div>
-                    </div>
-                    <div class="card card-enhancement">
+                    <div class="card card-pending">
                         <div class="card-icon">📧</div>
                         <div class="card-title">Email Doğrulama</div>
-                        <div class="card-desc">Kayıt sonrası email doğrulama. Nodemailer + Gmail SMTP.</div>
-                        <span class="card-status status-enhancement">✅ Güvenilirlik</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:50%;background:#00a884"></div></div>
-                            <span class="effort-label">2-3 gün</span>
-                        </div>
+                        <div class="card-desc">Kayıt sonrası email doğrulama.</div>
+                        <span class="card-status status-pending">⏳ 2-3 gün</span>
+                    </div>
+                    <div class="card card-pending">
+                        <div class="card-icon">🔐</div>
+                        <div class="card-title">İki Faktörlü Doğrulama</div>
+                        <div class="card-desc">Google Authenticator 2FA.</div>
+                        <span class="card-status status-pending">⏳ 3-4 gün</span>
                     </div>
                 </div>
             </div>
 
-            <!-- PHASE 4: VISION -->
+            <!-- VİZYON -->
             <div class="phase">
-                <div class="phase-dot vision"></div>
+                <div class="phase-dot future"></div>
                 <div class="phase-header">
-                    <span class="phase-tag tag-vision">VİZYON</span>
-                    <span class="phase-title">Hafta 8+: Büyük Özellikler</span>
-                    <span class="phase-time">Öncelik: Düşük (Uzun Vadeli)</span>
+                    <span class="phase-tag tag-future">VİZYON</span>
+                    <span class="phase-title">Uzun Vadeli Özellikler</span>
+                    <span class="phase-count">0/4 🔮</span>
                 </div>
                 <div class="cards">
-                    <div class="card card-vision">
+                    <div class="card card-future">
                         <div class="card-icon">🏘️</div>
                         <div class="card-title">Topluluklar</div>
-                        <div class="card-desc">İlgi alanına göre topluluk oluştur, forum gibi.</div>
-                        <span class="card-status status-vision">🌐 Sosyal</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:90%;background:#7c3aed"></div></div>
-                            <span class="effort-label">10+ gün</span>
-                        </div>
+                        <div class="card-desc">İlgi alanına göre topluluk oluştur.</div>
+                        <span class="card-status status-future">🔮 10+ gün</span>
                     </div>
-                    <div class="card card-vision">
+                    <div class="card card-future">
                         <div class="card-icon">📝</div>
                         <div class="card-title">Gönderi & Feed</div>
-                        <div class="card-desc">Fotoğraf/video paylaş, yorum yap, beğen.</div>
-                        <span class="card-status status-vision">📸 İçerik</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:90%;background:#7c3aed"></div></div>
-                            <span class="effort-label">10+ gün</span>
-                        </div>
+                        <div class="card-desc">Fotoğraf/video paylaşımı + yorum.</div>
+                        <span class="card-status status-future">🔮 10+ gün</span>
                     </div>
-                    <div class="card card-vision">
+                    <div class="card card-future">
                         <div class="card-icon">📅</div>
                         <div class="card-title">Etkinlik Takvimi</div>
-                        <div class="card-desc">Etkinlik oluştur, katıl, hatırlatıcı al.</div>
-                        <span class="card-status status-vision">🗓️ Planlama</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:70%;background:#7c3aed"></div></div>
-                            <span class="effort-label">5-7 gün</span>
-                        </div>
+                        <div class="card-desc">Etkinlik oluştur + hatırlatıcı.</div>
+                        <span class="card-status status-future">🔮 5-7 gün</span>
                     </div>
-                    <div class="card card-vision">
+                    <div class="card card-future">
                         <div class="card-icon">📊</div>
                         <div class="card-title">Redis Multi-Instance</div>
-                        <div class="card-desc">Çoklu sunucu desteği, oturum paylaşımı.</div>
-                        <span class="card-status status-vision">⚡ Altyapı</span>
-                        <div class="card-effort">
-                            <div class="effort-bar"><div class="effort-fill" style="width:80%;background:#7c3aed"></div></div>
-                            <span class="effort-label">7-10 gün</span>
-                        </div>
+                        <div class="card-desc">Çoklu sunucu desteği.</div>
+                        <span class="card-status status-future">🔮 7-10 gün</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Summary -->
-        <div class="summary">
-            <h2>📋 Özet Tablo</h2>
-            <table style="width:100%; border-collapse:collapse; margin-top:12px;">
+        <!-- Table -->
+        <div class="table-section">
+            <h2>📋 Tüm Özellikler Özeti</h2>
+            <table>
                 <thead>
-                    <tr style="border-bottom:1px solid #25313a;">
-                        <th style="text-align:left;padding:10px;color:#7f8c98;font-size:12px;">Özellik</th>
-                        <th style="text-align:center;padding:10px;color:#7f8c98;font-size:12px;">Öncelik</th>
-                        <th style="text-align:center;padding:10px;color:#7f8c98;font-size:12px;">Süre</th>
-                        <th style="text-align:center;padding:10px;color:#7f8c98;font-size:12px;">Durum</th>
+                    <tr>
+                        <th>#</th>
+                        <th>Özellik</th>
+                        <th>Kategori</th>
+                        <th>Süre</th>
+                        <th>Durum</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">💾 DM Mesajlarını Kaydet</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-critical" style="font-size:10px;">KRİTİK</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">2-3 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#ef4444;">❌ Başlanmadı</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">👥 Grup Mesajlarını Kaydet</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-critical" style="font-size:10px;">KRİTİK</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">2 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#ef4444;">❌ Başlanmadı</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">🔑 Şifre Değiştirme</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-critical" style="font-size:10px;">KRİTİK</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">1 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#ef4444;">❌ Başlanmadı</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">😀 Mesaj Tepkileri</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-important" style="font-size:10px;">ÖNEMLİ</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">2-3 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#f59e0b;">⏳ Bekliyor</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">⌨️ Yazma İndikatörü</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-important" style="font-size:10px;">ÖNEMLİ</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">1 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#f59e0b;">⏳ Bekliyor</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">🚫 Kullanıcı Engelleme</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-important" style="font-size:10px;">ÖNEMLİ</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">1-2 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#f59e0b;">⏳ Bekliyor</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #1a2634;">
-                        <td style="padding:10px;font-size:13px;">📸 Profil Fotoğrafı</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-important" style="font-size:10px;">ÖNEMLİ</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">3 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#f59e0b;">⏳ Bekliyor</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:10px;font-size:13px;">🔔 Bildirim Sistemi</td>
-                        <td style="text-align:center;padding:10px;"><span class="card-status status-enhancement" style="font-size:10px;">GELİŞTİRME</span></td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#7f8c98;">5-7 gün</td>
-                        <td style="text-align:center;padding:10px;font-size:12px;color:#00a884;">🔮 Gelecek</td>
-                    </tr>
+                    <tr><td>1</td><td>💾 DM Mesaj Kalıcılığı</td><td>Kritik</td><td>2-3 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>2</td><td>👥 Grup Mesaj Kalıcılığı</td><td>Kritik</td><td>2 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>3</td><td>🔑 Şifre Değiştirme</td><td>Kritik</td><td>1 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>4</td><td>⌨️ Yazma İndikatörü</td><td>Önemli</td><td>1 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>5</td><td>👁️ Okundu Bilgisi</td><td>Önemli</td><td>1-2 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>6</td><td>🚫 Kullanıcı Engelleme</td><td>Önemli</td><td>1-2 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>7</td><td>✏️ Mesaj Silme/Düzenleme</td><td>Önemli</td><td>2 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>8</td><td>😀 Mesaj Tepkileri</td><td>Önemli</td><td>2-3 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>9</td><td>📩 Oda Daveti</td><td>Önemli</td><td>2 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr><td>10</td><td>📸 Profil Fotoğrafı</td><td>Önemli</td><td>3 gün</td><td><span class="card-status status-done">✅</span></td></tr>
+                    <tr style="border-top:2px solid #25313a;"><td>11</td><td>🔔 Bildirim Sistemi</td><td>Geliştirme</td><td>5-7 gün</td><td><span class="card-status status-pending">⏳</span></td></tr>
+                    <tr><td>12</td><td>👆 Takip Sistemi</td><td>Geliştirme</td><td>4-5 gün</td><td><span class="card-status status-pending">⏳</span></td></tr>
+                    <tr><td>13</td><td>👮 Admin Rolü</td><td>Geliştirme</td><td>3-4 gün</td><td><span class="card-status status-pending">⏳</span></td></tr>
+                    <tr><td>14</td><td>🚨 Kullanıcı Raporlama</td><td>Geliştirme</td><td>2-3 gün</td><td><span class="card-status status-pending">⏳</span></td></tr>
+                    <tr><td>15</td><td>📧 Email Doğrulama</td><td>Geliştirme</td><td>2-3 gün</td><td><span class="card-status status-pending">⏳</span></td></tr>
+                    <tr><td>16</td><td>🔐 İki Faktörlü Doğrulama</td><td>Geliştirme</td><td>3-4 gün</td><td><span class="card-status status-pending">⏳</span></td></tr>
+                    <tr style="border-top:2px solid #25313a;"><td>17</td><td>🏘️ Topluluklar</td><td>Vizyon</td><td>10+ gün</td><td><span class="card-status status-future">🔮</span></td></tr>
+                    <tr><td>18</td><td>📝 Gönderi & Feed</td><td>Vizyon</td><td>10+ gün</td><td><span class="card-status status-future">🔮</span></td></tr>
+                    <tr><td>19</td><td>📅 Etkinlik Takvimi</td><td>Vizyon</td><td>5-7 gün</td><td><span class="card-status status-future">🔮</span></td></tr>
+                    <tr><td>20</td><td>📊 Redis Multi-Instance</td><td>Vizyon</td><td>7-10 gün</td><td><span class="card-status status-future">🔮</span></td></tr>
                 </tbody>
             </table>
         </div>

@@ -777,10 +777,10 @@ function App() {
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
 
     socket.on('dm_list', ({ conversations }) => setDmConversations(conversations || []));
-    socket.on('dm_history', ({ messages, withUser }) => { if (dmActiveChat === withUser) setDmMessages(messages || []); });
+    socket.on('dm_history', ({ messages, withUser }) => { if (dmActiveChat?.username === withUser) setDmMessages(messages || []); });
     socket.on('dm_sent', (msg) => { setDmMessages((prev) => [...prev, msg]); loadDmList(); });
     socket.on('dm_received', (msg) => {
-      if (dmActiveChat === msg.from) { setDmMessages((prev) => [...prev, msg]); socket.emit('dm_read', { withUser: msg.from, token: authToken }); }
+      if (dmActiveChat?.username === msg.from) { setDmMessages((prev) => [...prev, msg]); socket.emit('dm_read', { withUser: msg.from, token: authToken }); }
       else {
         setToast({ msg: `${msg.from}: ${msg.text}`, sender: msg.from, id: Date.now() });
         setTimeout(() => setToast(null), 4000);
@@ -1018,6 +1018,7 @@ function App() {
         <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles}
           dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} loadDmList={loadDmList}
           chatGroups={chatGroups} activeGroup={activeGroup} setActiveGroup={setActiveGroup} groupMessages={groupMessages} groupInput={groupInput} setGroupInput={setGroupInput} showGroupCreate={showGroupCreate} setShowGroupCreate={setShowGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} createGroup={createGroup} openGroup={openGroup} sendGroupMessage={sendGroupMessage} loadGroups={loadGroups}
+          typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping}
         />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
