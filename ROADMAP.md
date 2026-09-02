@@ -1,5 +1,5 @@
 # Couple Meeting - GÜNCEL Yol Haritası (v2)
-## 📊 Durum: 12/20 Özellik Tamamlandı (%60)
+## 📊 Durum: 13/20 Özellik Tamamlandı (%65)
 
 ---
 
@@ -18,6 +18,11 @@
 - [x] Mesaj Silme/Düzenleme → `dm_delete` / `dm_edit`
 - [x] Oda Daveti → `invite_to_room`
 - [x] Profil Fotoğrafı Yükleme → `/api/upload-avatar`
+
+### 🔧 BUG FIX (3 Bug Düzeltildi)
+- [x] DM Sol-Sağ Karışması → `getDmHistory` field alias düzeltildi
+- [x] Real-Time Mesaj Gitmiyor → `authTokenRef` closure bug fix
+- [x] Sohbetle Yanıtlama → Chat reply ID + mobil touch handler
 
 ---
 

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Couple Meeting - Instagram Post 4K</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+  .post {
+    width: 2160px;
+    height: 2160px;
+    background: linear-gradient(145deg, #0a0f1a 0%, #0d1520 25%, #111d2e 50%, #0a1628 75%, #060d17 100%);
+    position: relative;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Animated gradient orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.4;
+  }
+  .orb-1 { width: 800px; height: 800px; background: #00a884; top: -200px; left: -200px; }
+  .orb-2 { width: 600px; height: 600px; background: #7c3aed; bottom: -100px; right: -100px; }
+  .orb-3 { width: 500px; height: 500px; background: #f59e0b; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.2; }
+
+  /* Grid pattern overlay */
+  .grid-overlay {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Noise texture */
+  .noise {
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .content {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 140px;
+  }
+
+  /* Top section */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .logo-icon {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #00a884, #00d4aa);
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+    box-shadow: 0 20px 60px rgba(0, 168, 132, 0.4);
+  }
+
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .logo-text .name {
+    font-size: 42px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+
+  .logo-text .tagline {
+    font-size: 22px;
+    color: #00a884;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .vip-badge {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff;
+    padding: 16px 36px;
+    border-radius: 50px;
+    font-size: 24px;
+    font-weight: 900;
+    box-shadow: 0 12px 40px rgba(245, 158, 11, 0.4);
+    letter-spacing: 1px;
+  }
+
+  /* Center section */
+  .center {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 60px;
+  }
+
+  .hero-emoji {
+    font-size: 180px;
+    line-height: 1;
+    filter: drop-shadow(0 30px 60px rgba(0,0,0,0.5));
+  }
+
+  .hero-title {
+    font-size: 108px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.1;
+    letter-spacing: -3px;
+    max-width: 1600px;
+  }
+
+  .hero-title span {
+    background: linear-gradient(135deg, #00a884, #53e6bc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-subtitle {
+    font-size: 44px;
+    color: #94a3b8;
+    font-weight: 500;
+    max-width: 1200px;
+    line-height: 1.4;
+  }
+
+  /* Features */
+  .features {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 1800px;
+  }
+
+  .feature {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 36px 48px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    backdrop-filter: blur(20px);
+  }
+
+  .feature-icon {
+    font-size: 48px;
+  }
+
+  .feature-text {
+    font-size: 28px;
+    color: #e2e8f0;
+    font-weight: 700;
+  }
+
+  /* Bottom section */
+  .bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .cta {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .cta-btn {
+    background: linear-gradient(135deg, #00a884, #00d4aa);
+    color: #fff;
+    padding: 32px 72px;
+    border-radius: 20px;
+    font-size: 36px;
+    font-weight: 900;
+    display: inline-block;
+    box-shadow: 0 20px 60px rgba(0, 168, 132, 0.5);
+    letter-spacing: 1px;
+  }
+
+  .cta-url {
+    font-size: 28px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  .stats {
+    display: flex;
+    gap: 60px;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    font-size: 64px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00a884, #53e6bc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 22px;
+    color: #64748b;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* Decorative elements */
+  .deco-line {
+    position: absolute;
+    width: 3px;
+    height: 200px;
+    background: linear-gradient(to bottom, transparent, #00a884, transparent);
+    opacity: 0.3;
+  }
+  .deco-line-1 { top: 100px; right: 200px; transform: rotate(15deg); }
+  .deco-line-2 { bottom: 300px; left: 150px; transform: rotate(-20deg); }
+
+  .deco-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #00a884;
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+  .deco-dot-1 { top: 400px; right: 350px; }
+  .deco-dot-2 { bottom: 500px; left: 400px; }
+  .deco-dot-3 { top: 800px; left: 200px; }
+
+  .corner-accent {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border: 2px solid rgba(0, 168, 132, 0.15);
+    border-radius: 0 0 40px 0;
+    border-top: none;
+    border-left: none;
+    bottom: 120px;
+    right: 120px;
+  }
+</style>
+</head>
+<body>
+  <div class="post">
+    <!-- Background effects -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid-overlay"></div>
+    <div class="noise"></div>
+
+    <!-- Decorative elements -->
+    <div class="deco-line deco-line-1"></div>
+    <div class="deco-line deco-line-2"></div>
+    <div class="deco-dot deco-dot-1"></div>
+    <div class="deco-dot deco-dot-2"></div>
+    <div class="deco-dot deco-dot-3"></div>
+    <div class="corner-accent"></div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Top -->
+      <div class="top-bar">
+        <div class="logo-area">
+          <div class="logo-icon">🎬</div>
+          <div class="logo-text">
+            <div class="name">Couple Meeting</div>
+            <div class="tagline">Birlikte İzle, Birlikte Bağlan</div>
+          </div>
+        </div>
+        <div class="vip-badge">⭐ VIP ÜYELİK</div>
+      </div>
+
+      <!-- Center -->
+      <div class="center">
+        <div class="hero-emoji">💑</div>
+        <div class="hero-title">
+          Sevdiklerinle<br>
+          <span>Gerçek Zamanlı</span><br>
+          Bağlan
+        </div>
+        <div class="hero-subtitle">
+          Müzik dinle, video izle, sohbet et — her şey aynı anda,<br>
+          tam senkronize. Arkadaşlarınla veya sevdiklerinle.
+        </div>
+
+        <div class="features">
+          <div class="feature">
+            <span class="feature-icon">🎵</span>
+            <span class="feature-text">Müzik Senkronizasyonu</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">💬</span>
+            <span class="feature-text">Gerçek Zamanlı Sohbet</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">🎮</span>
+            <span class="feature-text">Tombala Oyunu</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">👥</span>
+            <span class="feature-text">Grup Odaları</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom -->
+      <div class="bottom">
+        <div class="cta">
+          <div class="cta-btn">🚀 Hemen Başla</div>
+          <div class="cta-url">couplemeeting.com</div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-number">10K+</div>
+            <div class="stat-label">Kullanıcı</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">50K+</div>
+            <div class="stat-label">Sohbet</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">Aktif</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
