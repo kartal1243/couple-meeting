@@ -639,13 +639,14 @@ io.on('connection', (socket) => {
     updateRoomUsers(cleanRoomId); broadcastRooms();
   });
 
-  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId }) => {
+  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers }) => {
     const room = rooms[sanitize(roomId, 50)];
     if (room && room.hostUserId === socket.userId) {
       if (newName && newName.trim()) room.name = sanitize(newName, 50);
       if (newTheme) room.theme = newTheme;
       if (newHostUserId) room.hostUserId = newHostUserId;
-      io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId });
+      if (newMaxUsers) room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), 8);
+      io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId, maxUsers: room.maxUsers });
       broadcastRooms();
     }
   });
@@ -730,6 +731,16 @@ io.on('connection', (socket) => {
         if (!room.messages) room.messages = [];
         room.messages.push(msg);
         room.messages = room.messages.slice(-200);
+      } else if (type === 'UPDATE_MAX_USERS') {
+        room.maxUsers = Math.min(Math.max(parseInt(payload.maxUsers) || 2, 2), 8);
+        broadcastRooms();
+        io.to(cleanRoomId).emit('room_user_count_update', { userCount: room.users.length, maxUsers: room.maxUsers });
+      } else if (type === 'ROOM_NAME_UPDATE') {
+        room.name = sanitize(payload.name, 50) || room.name;
+        broadcastRooms();
+      } else if (type === 'ROOM_THEME_UPDATE') {
+        room.theme = sanitize(payload.theme, 30) || room.theme;
+        broadcastRooms();
       }
       room.lastActivityAt = Date.now();
     }

@@ -50,10 +50,22 @@ export default function SettingsModal({
     }
   };
 
-  const handleMaxUsersChange = async () => {
+  const handleMaxUsersChange = () => {
     if (socket) socket.emit('room_action', { roomId, type: 'UPDATE_MAX_USERS', payload: { maxUsers } });
     setSaveMsg('✓ Maks. kullanıcı güncellendi!');
     setTimeout(() => setSaveMsg(''), 2000);
+  };
+
+  const handleSaveAll = () => {
+    if (!isHost) return;
+    // Room name + theme
+    handleSaveSettings();
+    // Max users
+    if (socket) socket.emit('room_action', { roomId, type: 'UPDATE_MAX_USERS', payload: { maxUsers } });
+    // Password
+    if (newPassword.trim()) handlePasswordChange();
+    setSaveMsg('✓ Tüm ayarlar kaydedildi!');
+    setTimeout(() => { setSaveMsg(''); setShowSettingsModal(false); }, 1200);
   };
 
   return (
@@ -175,15 +187,10 @@ export default function SettingsModal({
                           fontWeight: 900, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s'
                         }}>{n}</button>
                       ))}
-                      <button onClick={handleMaxUsersChange} style={{
-                        background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-                        color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 12,
-                        fontWeight: 800, fontSize: 12, cursor: 'pointer'
-                      }}>Uygula</button>
                     </div>
                   </div>
 
-                  <button onClick={handleSaveSettings} style={{
+                  <button onClick={handleSaveAll} style={{
                     background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
                     color: '#fff', border: 'none', padding: '12px', fontSize: 13,
                     fontWeight: 800, borderRadius: 12, cursor: 'pointer',

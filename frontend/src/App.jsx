@@ -312,7 +312,8 @@ function App() {
     socket.emit('update_room_settings', {
       roomId: currentRoomIdRef.current,
       newName: editRoomNameInput.trim() || roomName,
-      newTheme: roomTheme
+      newTheme: roomTheme,
+      newMaxUsers: currentRoomInfo?.maxUsers
     });
     setShowSettingsModal(false);
   };
@@ -600,6 +601,7 @@ function App() {
       if (data.roomName) setRoomName(data.roomName);
       if (data.theme) setRoomTheme(data.theme);
       if (data.hostUserId) setHostUserId(data.hostUserId);
+      if (data.maxUsers) setCurrentRoomInfo((prev) => ({ ...prev, maxUsers: data.maxUsers }));
     });
 
     socket.on('kicked_from_room', (msg) => { setErrorMessage(msg); handleLeaveRoom(); });
