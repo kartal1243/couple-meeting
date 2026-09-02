@@ -796,7 +796,10 @@ function App() {
       }
     });
     socket.on('friend_request_status', (data) => {
-      if (data?.message) setErrorMessage(data.message);
+      if (data?.message) {
+        setToast({ msg: data.message, sender: 'Sistem', id: Date.now() });
+        setTimeout(() => setToast(null), 3000);
+      }
       socket.emit('social_sync', { token: authToken });
     });
     socket.on('friend_online_status', (data) => {
@@ -896,6 +899,27 @@ function App() {
   return (
     <AppContext.Provider value={contextValue}>
       <style>{GLOBAL_CSS}</style>
+
+      {/* Global Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 99999,
+          background: 'linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,41,59,.95))',
+          backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,.1)',
+          padding: '10px 20px', borderRadius: 14,
+          boxShadow: '0 10px 40px rgba(0,0,0,.5)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          animation: 'cmGlobalToastIn 0.3s ease'
+        }}>
+          <span style={{ fontSize: 16 }}>💬</span>
+          <div>
+            <span style={{ fontWeight: 800, color: '#00a884', fontSize: 12 }}>{toast.sender}</span>
+            <span style={{ color: '#94a3b8', fontSize: 12, marginLeft: 6 }}>{toast.msg}</span>
+          </div>
+          <style>{`@keyframes cmGlobalToastIn { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }`}</style>
+        </div>
+      )}
+
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/room/:roomIdParam" element={<RoomPage />} />

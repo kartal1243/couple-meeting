@@ -95,6 +95,10 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_conn_logs_time ON connection_logs(created_at);
     CREATE INDEX IF NOT EXISTS idx_conn_logs_room ON connection_logs(room_id);
   `);
+
+  // Migration: reset_token ve reset_expiry sütunları
+  try { db.exec(`ALTER TABLE users ADD COLUMN reset_token TEXT DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN reset_expiry INTEGER DEFAULT 0`); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -124,6 +128,14 @@ function getUserByToken(token) {
   }
   const uname = jsonFallback.tokens[token];
   return uname ? jsonFallback.users[uname] : null;
+}
+
+function getUserByResetToken(resetToken) {
+  if (getDb()) {
+    const row = db.prepare('SELECT * FROM users WHERE reset_token = ? AND reset_expiry > ?').get(resetToken, Date.now());
+    return row ? formatUser(row) : null;
+  }
+  return Object.values(jsonFallback.users).find(u => u.resetToken === resetToken && (u.resetExpiry || 0) > Date.now()) || null;
 }
 
 function createUser(username, email, passwordHash, avatar, bio) {
@@ -317,6 +329,8 @@ function formatUser(row) {
     vipPlan: row.vip_plan || row.vipPlan, vipActivatedAt: row.vip_activated_at || row.vipActivatedAt,
     stripeCustomerId: row.stripe_customer_id || row.stripeCustomerId || '',
     stripeSubscriptionId: row.stripe_subscription_id || row.stripeSubscriptionId || '',
+    resetToken: row.reset_token || row.resetToken || '',
+    resetExpiry: row.reset_expiry || row.resetExpiry || 0,
     createdAt: row.created_at || row.createdAt, lastSeen: row.last_seen || row.lastSeen
   };
 }
@@ -357,7 +371,7 @@ function getLogStats() {
 loadJson();
 
 module.exports = {
-  getDb, getUser, getUserByEmail, getUserByToken, createUser, updateUser, updateLastSeen,
+  getDb, getUser, getUserByEmail, getUserByToken, getUserByResetToken, createUser, updateUser, updateLastSeen,
   createToken, cleanOldTokens, sendFriendRequest, getPendingFriendRequests, getFriendRequest,
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
   searchUsers, addGlobalMessage, getGlobalMessages, getAllUsers, closeDb,

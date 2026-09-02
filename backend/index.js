@@ -290,6 +290,8 @@ const io = new Server(server, {
 });
 
 const rooms = {};
+const globalDmMessages = {};
+const globalChatGroups = {};
 const onlineUsers = {};
 
 // --- Yardimci Fonksiyonlar ---
@@ -468,8 +470,7 @@ io.on('connection', (socket) => {
     const cleanToken = sanitize(resetToken, 64);
     const cleanPass = newPassword;
     if (!cleanToken || !cleanPass || cleanPass.length < 6) return socket.emit('reset_result', { ok: false, message: 'Token ve en az 6 karakterlik şifre gerekli.' });
-    const users = db.getAllUsers ? db.getAllUsers() : [];
-    const user = (Array.isArray(users) ? users : []).find(u => u.resetToken === cleanToken && u.resetExpiry > Date.now());
+    const user = db.getUserByResetToken(cleanToken);
     if (!user) return socket.emit('reset_result', { ok: false, message: 'Token geçersiz veya süresi dolmuş.' });
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(cleanPass, salt, 64).toString('hex');
@@ -580,8 +581,8 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
   // 6.5 ÖZEL MESAJ (DM) & GRUP SOHBETİ
   // ──────────────────────────────────────────────────────
-  const dmMessages = {};
-  const chatGroups = {};
+  const dmMessages = globalDmMessages;
+  const chatGroups = globalChatGroups;
 
   socket.on('dm_send', ({ to, text, token }) => {
     const from = db.getUserByToken(token);
