@@ -26,7 +26,7 @@ export default function RoomPage() {
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars,
     toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
-    messagesSearch, setMessagesSearch, filteredMessages
+    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList
   } = app;
 
   const isHost = hostUserId === userId;
