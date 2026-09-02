@@ -573,7 +573,7 @@ function App() {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const newMsg = {
-      senderId: mySocketId, text: chatInput,
+      id: crypto.randomUUID(), senderId: mySocketId, text: chatInput,
       sender: authUser?.username || displayUsername || 'Izleyici',
       avatar: authUser?.avatar || myAvatar,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

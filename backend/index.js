@@ -1158,6 +1158,9 @@ io.on('connection', (socket) => {
         if (!room.messages) room.messages = [];
         room.messages.push(msg);
         room.messages = room.messages.slice(-200);
+        room.lastActivityAt = Date.now();
+        socket.to(cleanRoomId).emit('room_action', { type, payload: msg });
+        return;
       } else if (type === 'UPDATE_MAX_USERS') {
         room.maxUsers = Math.min(Math.max(parseInt(payload.maxUsers) || 2, 2), 8);
         broadcastRooms();

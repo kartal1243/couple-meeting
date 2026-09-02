@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
 function getAvatarColor(name) {
@@ -20,6 +20,16 @@ export default function Chat({
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleTouchReply = useCallback((msg, idx) => {
+    if (hoveredMsg === idx) {
+      setReplyTo(msg);
+      setHoveredMsg(null);
+    } else {
+      setHoveredMsg(idx);
+      setTimeout(() => setHoveredMsg(null), 3000);
+    }
+  }, [hoveredMsg, setReplyTo]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', minHeight: 0 }}>
@@ -59,7 +69,7 @@ export default function Chat({
       </div>
 
       {/* Messages */}
-      <div style={{
+      <div onClick={() => setHoveredMsg(null)} style={{
         flex: 1, overflowY: 'auto', padding: '10px',
         display: 'flex', flexDirection: 'column', gap: 6,
         minHeight: 0
@@ -118,7 +128,10 @@ export default function Chat({
                 ) : <div style={{ width: 30, flexShrink: 0 }} />
               )}
 
-              <div style={{ maxWidth: isMe ? '75%' : '70%' }}>
+              <div style={{
+                maxWidth: isMe ? '75%' : '70%',
+                cursor: 'pointer'
+              }}>
                 {!isMe && showAvatar && (
                   <div style={{
                     fontSize: 10, fontWeight: 800, color: avatarColor,
@@ -128,7 +141,10 @@ export default function Chat({
                   </div>
                 )}
 
-                <div style={{
+                <div
+                  onClick={() => handleTouchReply(msg, idx)}
+                  onTouchStart={(e) => { e.stopPropagation(); handleTouchReply(msg, idx); }}
+                  style={{
                   background: isMe
                     ? `linear-gradient(135deg, ${primary}, ${primary}bb)`
                     : 'rgba(255,255,255,.06)',
@@ -171,9 +187,10 @@ export default function Chat({
                 ) : null}
               </div>
 
-              {hoveredMsg === idx && (
+              {(hoveredMsg === idx) && (
                 <button
-                  onClick={() => setReplyTo(msg)}
+                  onClick={(e) => { e.stopPropagation(); setReplyTo(msg); setHoveredMsg(null); }}
+                  onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); setReplyTo(msg); setHoveredMsg(null); }}
                   style={{
                     position: 'absolute', top: 0,
                     [isMe ? 'left' : 'right']: -2,
