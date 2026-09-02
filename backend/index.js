@@ -282,11 +282,10 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*', credentials: true },
-  pingTimeout: 30000,
-  pingInterval: 10000,
+  pingTimeout: 15000,
+  pingInterval: 8000,
   transports: ['websocket', 'polling'],
-  maxHttpBufferSize: 1e6,
-  connectionStateRecovery: { maxDisconnectionDuration: 120000, skipMiddlewares: true }
+  maxHttpBufferSize: 1e6
 });
 
 const rooms = {};
@@ -333,14 +332,32 @@ function setOffline(username, socketId) {
     if (onlineUsers[username].socketIds.size === 0) {
       onlineUsers[username].lastSeen = Date.now();
       db.updateLastSeen(username);
+      delete onlineUsers[username];
     }
   }
 }
 
 function broadcastOnlineStatus(username) {
+  const isOnline = !!onlineUsers[username];
+  const lastSeen = onlineUsers[username]?.lastSeen || Date.now();
+  const payload = { username, isOnline, lastSeen };
+
   for (const friendName of db.getDb().prepare('SELECT user2 as f FROM friendships WHERE user1 = ?').all(username).map(r => r.f)) {
-    emitToUser(friendName, 'friend_online_status', { username, isOnline: !!onlineUsers[username], lastSeen: onlineUsers[username]?.lastSeen || Date.now() });
+    emitToUser(friendName, 'friend_online_status', payload);
   }
+  for (const friendName of db.getDb().prepare('SELECT user1 as f FROM friendships WHERE user2 = ?').all(username).map(r => r.f)) {
+    emitToUser(friendName, 'friend_online_status', payload);
+  }
+
+  for (const [groupId, group] of Object.entries(globalChatGroups)) {
+    if (group.members && group.members.includes(username)) {
+      for (const member of group.members) {
+        if (member !== username) emitToUser(member, 'user_online_status', payload);
+      }
+    }
+  }
+
+  io.emit('global_online_update', { username, isOnline, lastSeen });
 }
 
 function getPublicRoomsList() {
@@ -633,7 +650,13 @@ io.on('connection', (socket) => {
         const last = msgs[msgs.length - 1];
         const other = last.from === from.username ? last.to : last.from;
         const otherUser = db.getUser(other);
-        conversations[other] = { username: other, avatar: otherUser?.avatar || '🐱', lastMessage: last.text, lastTime: last.time, unread: msgs.filter(m => m.to === from.username && !m.read).length };
+        conversations[other] = {
+          username: other, avatar: otherUser?.avatar || '🐱',
+          lastMessage: last.text, lastTime: last.time,
+          unread: msgs.filter(m => m.to === from.username && !m.read).length,
+          isOnline: !!onlineUsers[other],
+          lastSeen: onlineUsers[other]?.lastSeen || otherUser?.lastSeen || null
+        };
       }
     }
     socket.emit('dm_list', { conversations: Object.values(conversations).sort((a, b) => b.lastTime > a.lastTime ? 1 : -1) });
@@ -662,7 +685,11 @@ io.on('connection', (socket) => {
     const from = db.getUserByToken(token);
     if (!from) return;
     const groups = Object.values(chatGroups).filter(g => g.members.includes(from.username));
-    socket.emit('group_list', { groups: groups.map(g => ({ id: g.id, name: g.name, members: g.members, createdBy: g.createdBy, lastMessage: g.messages[g.messages.length - 1] || null })) });
+    socket.emit('group_list', { groups: groups.map(g => ({
+      id: g.id, name: g.name, members: g.members, createdBy: g.createdBy,
+      lastMessage: g.messages[g.messages.length - 1] || null,
+      memberStatus: g.members.map(m => ({ username: m, isOnline: !!onlineUsers[m], lastSeen: onlineUsers[m]?.lastSeen || null }))
+    })) });
   });
 
   socket.on('group_send', ({ groupId, text, token }) => {
@@ -1043,12 +1070,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('heartbeat', () => {
+    if (socket.socialUsername && onlineUsers[socket.socialUsername]) {
+      onlineUsers[socket.socialUsername].lastSeen = Date.now();
+    }
+  });
+
   socket.on('disconnect', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom; const sid = socket.id;
-      setTimeout(() => {
-        if (rooms[rId]) { rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid); rooms[rId].lastActivityAt = Date.now(); updateRoomUsers(rId); broadcastRooms(); }
-      }, 3000);
+      if (rooms[rId]) { rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid); rooms[rId].lastActivityAt = Date.now(); updateRoomUsers(rId); broadcastRooms(); }
     }
     if (socket.socialUsername) { setOffline(socket.socialUsername, socket.id); broadcastOnlineStatus(socket.socialUsername); }
   });
@@ -1060,6 +1091,23 @@ io.on('connection', (socket) => {
 
 process.on('SIGTERM', () => { logger.info('SIGTERM alindi, kapatiliyor...'); db.closeDb(); process.exit(0); });
 process.on('SIGINT', () => { logger.info('SIGINT alindi, kapatiliyor...'); db.closeDb(); process.exit(0); });
+
+const HEARTBEAT_TIMEOUT = 30000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [username, data] of Object.entries(onlineUsers)) {
+    if (now - data.lastSeen > HEARTBEAT_TIMEOUT) {
+      delete onlineUsers[username];
+      db.updateLastSeen(username);
+      for (const friendName of db.getDb().prepare('SELECT user2 as f FROM friendships WHERE user1 = ?').all(username).map(r => r.f)) {
+        emitToUser(friendName, 'friend_online_status', { username, isOnline: false, lastSeen: data.lastSeen });
+      }
+      for (const friendName of db.getDb().prepare('SELECT user1 as f FROM friendships WHERE user2 = ?').all(username).map(r => r.f)) {
+        emitToUser(friendName, 'friend_online_status', { username, isOnline: false, lastSeen: data.lastSeen });
+      }
+    }
+  }
+}, 15000);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {

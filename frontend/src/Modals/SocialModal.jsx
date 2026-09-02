@@ -17,10 +17,13 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack }) {
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 16, fontWeight: 900 }}>←</button>
-        <div style={{ fontSize: 18 }}>{activeChat.avatar}</div>
+        <div style={{ fontSize: 18, position: 'relative' }}>
+          {activeChat.avatar}
+          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: activeChat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
+        </div>
         <div>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{activeChat.username}</div>
-          <div style={{ color: '#7f8c98', fontSize: 10 }}>Özel mesaj</div>
+          <div style={{ color: activeChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{activeChat.isOnline ? '🟢 Çevrimiçi' : 'Çevrimdışı'}</div>
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -174,9 +177,15 @@ export default function SocialModal({
                 ) : dmConversations.map(c => (
                   <div key={c.username} onClick={() => openDm(c)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer', transition: 'background 0.2s' }}
                     onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'} onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}>
-                    <div style={{ fontSize: 24 }}>{c.avatar}</div>
+                    <div style={{ fontSize: 24, position: 'relative' }}>
+                      {c.avatar}
+                      <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: c.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{c.username}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{c.username}</span>
+                        <span style={{ color: c.isOnline ? '#25d366' : '#63727d', fontSize: 10 }}>{c.isOnline ? '●' : '○'}</span>
+                      </div>
                       <div style={{ color: '#7f8c98', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMessage}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>

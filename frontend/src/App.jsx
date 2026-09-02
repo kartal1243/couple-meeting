@@ -614,6 +614,15 @@ function App() {
       if (authToken) socket.emit('social_sync', { token: authToken });
     });
     socket.on('disconnect', () => setIsConnected(false));
+    socket.on('reconnect', () => {
+      if (authToken) socket.emit('social_sync', { token: authToken });
+      if (roomId) socket.emit('request_room_sync', { roomId, token: authToken });
+    });
+
+    const heartbeatInterval = setInterval(() => {
+      if (socket.connected) socket.emit('heartbeat');
+    }, 15000);
+
     socket.on('public_rooms_update', (roomsList) => setPublicRooms(Array.isArray(roomsList) ? roomsList : []));
     socket.on('search_results', (results) => { setSearchResults(Array.isArray(results) ? results : []); setIsSearching(false); });
 
@@ -823,6 +832,9 @@ function App() {
     socket.on('friend_online_status', (data) => {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
     });
+    socket.on('global_online_update', (data) => {
+      setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
+    });
 
     socket.on('vip_activated', (data) => {
       setAuthUser((prev) => {
@@ -851,6 +863,7 @@ function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      clearInterval(heartbeatInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
@@ -859,7 +872,7 @@ function App() {
       socket.off('room_sync_data');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
-      socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('vip_activated');
+      socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('global_online_update'); socket.off('vip_activated');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };

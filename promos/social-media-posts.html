@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sosyal Medya Görselleri - Couple Meeting</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a2e; padding: 40px; font-family: 'Segoe UI', sans-serif; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .post {
+            width: 400px;
+            height: 400px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        /* Post 1: Feature Highlight */
+        .post-1 {
+            background: linear-gradient(135deg, #0a0e14 0%, #1a1a2e 100%);
+        }
+        .post-1 .content {
+            padding: 40px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .post-1 .badge {
+            display: inline-flex;
+            padding: 6px 12px;
+            background: rgba(0,168,132,0.2);
+            border: 1px solid rgba(0,168,132,0.4);
+            border-radius: 20px;
+            color: #00a884;
+            font-size: 11px;
+            font-weight: 800;
+            width: fit-content;
+            letter-spacing: 1px;
+        }
+        .post-1 h2 {
+            font-size: 32px;
+            font-weight: 950;
+            color: #fff;
+            line-height: 1.2;
+        }
+        .post-1 h2 span { color: #00a884; }
+        .post-1 .desc {
+            color: #7f8c98;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .post-1 .cta {
+            display: inline-flex;
+            padding: 12px 24px;
+            background: #00a884;
+            color: #fff;
+            border-radius: 10px;
+            font-weight: 900;
+            font-size: 14px;
+            width: fit-content;
+        }
+        .post-1 .decoration {
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(0,168,132,0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .post-1 .hearts {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 48px;
+            opacity: 0.2;
+        }
+
+        /* Post 2: Stats */
+        .post-2 {
+            background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+        }
+        .post-2 .content {
+            padding: 40px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+        }
+        .post-2 .stat-number {
+            font-size: 72px;
+            font-weight: 950;
+            color: #fff;
+            line-height: 1;
+        }
+        .post-2 .stat-label {
+            font-size: 18px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 8px;
+        }
+        .post-2 .divider {
+            width: 60px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            margin: 24px auto;
+        }
+        .post-2 .sub-stats {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-top: 16px;
+        }
+        .post-2 .sub-stat {
+            text-align: center;
+        }
+        .post-2 .sub-stat-num {
+            font-size: 24px;
+            font-weight: 900;
+            color: #fff;
+        }
+        .post-2 .sub-stat-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* Post 3: How It Works */
+        .post-3 {
+            background: #0f172a;
+        }
+        .post-3 .content {
+            padding: 32px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .post-3 h3 {
+            font-size: 14px;
+            color: #00a884;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+        .post-3 h2 {
+            font-size: 24px;
+            font-weight: 950;
+            color: #fff;
+            margin-bottom: 24px;
+        }
+        .post-3 .steps {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .post-3 .step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .post-3 .step-num {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #00a884, #008f6f);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 14px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .post-3 .step-text {
+            font-size: 14px;
+            color: #e9edef;
+            font-weight: 600;
+        }
+        .post-3 .step-text span {
+            color: #7f8c98;
+            font-weight: 400;
+        }
+
+        /* Post 4: Quote */
+        .post-4 {
+            background: linear-gradient(135deg, #0a0e14 0%, #1a1a2e 100%);
+        }
+        .post-4 .content {
+            padding: 40px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .post-4 .quote-mark {
+            font-size: 64px;
+            color: #7c3aed;
+            line-height: 1;
+            font-weight: 950;
+        }
+        .post-4 .quote {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.5;
+            margin: 16px 0;
+        }
+        .post-4 .author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .post-4 .author-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #7c3aed, #2563eb);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .post-4 .author-name {
+            font-weight: 800;
+            font-size: 14px;
+            color: #fff;
+        }
+        .post-4 .author-role {
+            font-size: 11px;
+            color: #7f8c98;
+        }
+
+        /* Post 5: CTA */
+        .post-5 {
+            background: linear-gradient(135deg, #00a884 0%, #008f6f 100%);
+        }
+        .post-5 .content {
+            padding: 40px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+        }
+        .post-5 .emoji {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .post-5 h2 {
+            font-size: 28px;
+            font-weight: 950;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .post-5 p {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 24px;
+        }
+        .post-5 .btn {
+            display: inline-flex;
+            padding: 14px 28px;
+            background: #fff;
+            color: #00a884;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 16px;
+            width: fit-content;
+            margin: 0 auto;
+        }
+        .post-5 .url {
+            margin-top: 16px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* Post 6: Feature Grid */
+        .post-6 {
+            background: #0f172a;
+        }
+        .post-6 .content {
+            padding: 32px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .post-6 h3 {
+            font-size: 11px;
+            color: #00a884;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+        .post-6 h2 {
+            font-size: 22px;
+            font-weight: 950;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .post-6 .grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .post-6 .grid-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .post-6 .grid-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .post-6 .grid-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .post-6 .grid-desc {
+            font-size: 10px;
+            color: #7f8c98;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid">
+        <!-- Post 1: Feature Highlight -->
+        <div class="post post-1">
+            <div class="decoration"></div>
+            <div class="hearts">♥♥</div>
+            <div class="content">
+                <div>
+                    <div class="badge">🎬 YENİ ÖZELLİK</div>
+                </div>
+                <div>
+                    <h2>Aynı Anda<br><span>İzle & Dinle</span></h2>
+                    <p class="desc">Sevdiklerinle YouTube'da aynı videoyu aynı anda izle. Zamanlama farkı yok.</p>
+                </div>
+                <div class="cta">Hemen Dene →</div>
+            </div>
+        </div>
+
+        <!-- Post 2: Stats -->
+        <div class="post post-2">
+            <div class="content">
+                <div>
+                    <div class="stat-number">10K+</div>
+                    <div class="stat-label">Aktif Kullanıcı</div>
+                </div>
+                <div class="divider"></div>
+                <div class="sub-stats">
+                    <div class="sub-stat">
+                        <div class="sub-stat-num">50K+</div>
+                        <div class="sub-stat-label">Oda Oluşturuldu</div>
+                    </div>
+                    <div class="sub-stat">
+                        <div class="sub-stat-num">100K+</div>
+                        <div class="sub-stat-label">Saat İzlenme</div>
+                    </div>
+                    <div class="sub-stat">
+                        <div class="sub-stat-num">1M+</div>
+                        <div class="sub-stat-label">Mesaj Gönderildi</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post 3: How It Works -->
+        <div class="post post-3">
+            <div class="content">
+                <h3>NASIL ÇALIŞIR?</h3>
+                <h2>3 Adımda Başla</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-text">Hesap oluştur <span>veya misafir gir</span></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-text">Arkadaşlarını ekle <span>veya yeni kişilerle tanış</span></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-text">Oda oluştur <span>ve birlikte izlemeye başla</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post 4: Quote -->
+        <div class="post post-4">
+            <div class="content">
+                <div class="quote-mark">"</div>
+                <div class="quote">Uzaktaki sevgilimle her akşam aynı filmi izliyoruz. Mükemmel bir uygulama!</div>
+                <div class="author">
+                    <div class="author-avatar">👩</div>
+                    <div>
+                        <div class="author-name">Elif</div>
+                        <div class="author-role">Üniversite Öğrencisi</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post 5: CTA -->
+        <div class="post post-5">
+            <div class="content">
+                <div class="emoji">🚀</div>
+                <h2>Hemen Başla</h2>
+                <p>Ücretsiz hesap aç, arkadaşlarını davet et.</p>
+                <div class="btn">Ücretsiz Katıl</div>
+                <div class="url">couplemeeting.com.tr</div>
+            </div>
+        </div>
+
+        <!-- Post 6: Feature Grid -->
+        <div class="post post-6">
+            <div class="content">
+                <h3>ÖZELLİKLER</h3>
+                <h2>Her Şey Burada</h2>
+                <div class="grid">
+                    <div class="grid-item">
+                        <div class="grid-icon">🎬</div>
+                        <div class="grid-title">Senkronize Video</div>
+                        <div class="grid-desc">Aynı anda YouTube izle</div>
+                    </div>
+                    <div class="grid-item">
+                        <div class="grid-icon">💬</div>
+                        <div class="grid-title">Canlı Sohbet</div>
+                        <div class="grid-desc">Anlık mesajlaşma</div>
+                    </div>
+                    <div class="grid-item">
+                        <div class="grid-icon">🤝</div>
+                        <div class="grid-title">Arkadaş Sistemi</div>
+                        <div class="grid-desc">Arkadaşlarını ekle</div>
+                    </div>
+                    <div class="grid-item">
+                        <div class="grid-icon">🔒</div>
+                        <div class="grid-title">Özel Odalar</div>
+                        <div class="grid-desc">Şifreli odalar</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
