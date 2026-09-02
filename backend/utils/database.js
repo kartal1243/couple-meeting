@@ -134,6 +134,24 @@ function initTables() {
       PRIMARY KEY (message_id, message_type, username, emoji)
     );
     CREATE INDEX IF NOT EXISTS idx_reactions_msg ON message_reactions(message_id, message_type);
+
+    CREATE TABLE IF NOT EXISTS follows (
+      follower TEXT NOT NULL,
+      following TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (follower, following)
+    );
+    CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower);
+    CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following);
+
+    CREATE TABLE IF NOT EXISTS feed_items (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      type TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_feed_user ON feed_items(username, created_at DESC);
   `);
 
   // Migration: reset_token ve reset_expiry sütunları
@@ -581,6 +599,111 @@ function getReactions(messageId, messageType) {
   return {};
 }
 
+function followUser(follower, following) {
+  if (getDb()) {
+    if (follower === following) return false;
+    const existing = db.prepare('SELECT 1 FROM follows WHERE follower = ? AND following = ?').get(follower, following);
+    if (existing) return false;
+    db.prepare('INSERT INTO follows (follower, following, created_at) VALUES (?, ?, ?)').run(follower, following, Date.now());
+    return true;
+  }
+  return false;
+}
+
+function unfollowUser(follower, following) {
+  if (getDb()) {
+    db.prepare('DELETE FROM follows WHERE follower = ? AND following = ?').run(follower, following);
+    return true;
+  }
+  return false;
+}
+
+function isFollowing(follower, following) {
+  if (getDb()) {
+    return !!db.prepare('SELECT 1 FROM follows WHERE follower = ? AND following = ?').get(follower, following);
+  }
+  return false;
+}
+
+function getFollowers(username) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT u.username, u.avatar, u.bio, u.is_vip, f.created_at as followed_at
+      FROM follows f JOIN users u ON f.follower = u.username
+      WHERE f.following = ? ORDER BY f.created_at DESC
+    `).all(username);
+  }
+  return [];
+}
+
+function getFollowing(username) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT u.username, u.avatar, u.bio, u.is_vip, f.created_at as followed_at
+      FROM follows f JOIN users u ON f.following = u.username
+      WHERE f.follower = ? ORDER BY f.created_at DESC
+    `).all(username);
+  }
+  return [];
+}
+
+function getFollowCounts(username) {
+  if (getDb()) {
+    const followers = db.prepare('SELECT COUNT(*) as c FROM follows WHERE following = ?').get(username)?.c || 0;
+    const following = db.prepare('SELECT COUNT(*) as c FROM follows WHERE follower = ?').get(username)?.c || 0;
+    return { followers, following };
+  }
+  return { followers: 0, following: 0 };
+}
+
+function addFeedItem(username, type, data) {
+  if (getDb()) {
+    const id = crypto.randomUUID();
+    db.prepare('INSERT INTO feed_items (id, username, type, data, created_at) VALUES (?, ?, ?, ?, ?)').run(id, username, type, JSON.stringify(data), Date.now());
+    return id;
+  }
+  return null;
+}
+
+function getFeedForUser(username) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT f.*, u.avatar FROM feed_items f
+      JOIN users u ON f.username = u.username
+      WHERE f.username IN (SELECT following FROM follows WHERE follower = ?)
+      ORDER BY f.created_at DESC LIMIT 50
+    `).all(username);
+  }
+  return [];
+}
+
+function getMutualFollowers(username1, username2) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT u.username, u.avatar FROM follows f1
+      JOIN follows f2 ON f1.following = f2.following
+      JOIN users u ON f1.following = u.username
+      WHERE f1.follower = ? AND f2.follower = ? AND f1.following != ? AND f1.following != ?
+    `).all(username1, username2, username1, username2);
+  }
+  return [];
+}
+
+function getSuggestedFollows(username, limit = 10) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT u.username, u.avatar, u.bio, u.is_vip, COUNT(f.follower) as follower_count
+      FROM users u
+      LEFT JOIN follows f ON u.username = f.following
+      WHERE u.username != ? AND u.username NOT IN (SELECT following FROM follows WHERE follower = ?)
+      GROUP BY u.username
+      ORDER BY follower_count DESC
+      LIMIT ?
+    `).all(username, username, limit);
+  }
+  return [];
+}
+
 loadJson();
 
 module.exports = {
@@ -592,5 +715,7 @@ module.exports = {
   saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
   saveGroupMessage, getGroupHistory,
   blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
-  addReaction, removeReaction, getReactions
+  addReaction, removeReaction, getReactions,
+  followUser, unfollowUser, isFollowing, getFollowers, getFollowing, getFollowCounts,
+  addFeedItem, getFeedForUser, getMutualFollowers, getSuggestedFollows
 };

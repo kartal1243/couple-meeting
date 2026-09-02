@@ -1,5 +1,5 @@
 # Couple Meeting - GÜNCEL Yol Haritası (v2)
-## 📊 Durum: 10/20 Özellik Tamamlandı (%50)
+## 📊 Durum: 12/20 Özellik Tamamlandı (%60)
 
 ---
 
@@ -23,9 +23,9 @@
 
 ## ⏳ BEKLEYEN ÖZELLİKLER
 
-### 🟢 GELİŞTİRME (0/6)
+### 🟢 GELİŞTİRME (1/6)
 - [ ] 🔔 **Bildirim Sistemi** — Web Push + in-app bildirimler
-- [ ] 👆 **Takip Sistemi** — Tek taraflı takip + takipçi
+- [x] 👆 **Takip Sistemi** — Tek taraflı takip + takipçi + feed akışı
 - [ ] 👮 **Admin Rol Sistemi** — user → mod → admin → superadmin
 - [ ] 🚨 **Kullanıcı Raporlama** — Şikayet → admin paneli
 - [ ] 📧 **Email Doğrulama** — Kayıt sonrası email doğrulama
@@ -124,8 +124,8 @@ changePassword(cur, new) // Şifre değiştir
 | Veritabanı Tablosu | 10 |
 | Frontend Bileşeni | 15+ |
 | API Endpoint | 12 |
-| Tamamlanan | %50 |
-| Kalan | %50 |
+| Tamamlanan | %60 |
+| Kalan | %40 |
 
 ---
 

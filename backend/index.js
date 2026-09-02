@@ -680,6 +680,73 @@ io.on('connection', (socket) => {
     socket.emit('room_invite_result', { success: true, message: `${target} kullanıcısına davet gönderildi.` });
   });
 
+  // ── TAKİP SİSTEMİ ──
+  socket.on('follow_user', ({ targetUsername, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(targetUsername, 20);
+    if (target === user.username) return socket.emit('follow_result', { success: false, message: 'Kendini takip edemezsin.' });
+    const targetUser = db.getUser(target);
+    if (!targetUser) return socket.emit('follow_result', { success: false, message: 'Kullanıcı bulunamadı.' });
+    const ok = db.followUser(user.username, target);
+    if (ok) {
+      db.addFeedItem(user.username, 'follow', { following: target });
+      emitToUser(target, 'followed_you', { username: user.username, avatar: user.avatar });
+    }
+    const counts = db.getFollowCounts(target);
+    socket.emit('follow_result', { success: ok, following: ok, target, ...counts });
+    emitToUser(target, 'follow_counts_update', counts);
+  });
+
+  socket.on('unfollow_user', ({ targetUsername, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(targetUsername, 20);
+    db.unfollowUser(user.username, target);
+    const counts = db.getFollowCounts(target);
+    socket.emit('follow_result', { success: true, following: false, target, ...counts });
+    emitToUser(target, 'follow_counts_update', counts);
+  });
+
+  socket.on('get_follow_counts', ({ username, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(username, 20);
+    const counts = db.getFollowCounts(target);
+    const isFollowing = db.isFollowing(user.username, target);
+    socket.emit('follow_counts', { username: target, ...counts, isFollowing });
+  });
+
+  socket.on('get_followers', ({ username, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(username, 20);
+    const followers = db.getFollowers(target);
+    socket.emit('followers_list', { username: target, followers });
+  });
+
+  socket.on('get_following', ({ username, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(username, 20);
+    const following = db.getFollowing(target);
+    socket.emit('following_list', { username: target, following });
+  });
+
+  socket.on('get_feed', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const feed = db.getFeedForUser(user.username);
+    socket.emit('feed', { items: feed });
+  });
+
+  socket.on('get_suggested_follows', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const suggestions = db.getSuggestedFollows(user.username, 10);
+    socket.emit('suggested_follows', { suggestions });
+  });
+
   // ──────────────────────────────────────────────────────
   // 7.3 ARKADASLIK SISTEMI
   // ──────────────────────────────────────────────────────

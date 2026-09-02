@@ -10,7 +10,7 @@ function formatLastSeen(ts) {
   return `${Math.floor(diff / 86400000)} gün önce`;
 }
 
-function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping }) {
+function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser }) {
   const endRef = useRef(null);
   const typingTimeout = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -34,6 +34,12 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingU
         <div>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{activeChat.username}</div>
           <div style={{ color: activeChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? '✏️ yazıyor...' : (activeChat.isOnline ? '🟢 Çevrimiçi' : 'Çevrimdışı')}</div>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <button type="button" onClick={() => isFollowingUser ? unfollowUser(activeChat.username) : followUser(activeChat.username)}
+            style={{ background: isFollowingUser ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>
+            {isFollowingUser ? '✕ Takipten Çık' : '👆 Takip Et'}
+          </button>
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -106,16 +112,23 @@ export default function SocialModal({
   chatGroups, activeGroup, setActiveGroup, groupMessages, groupInput, setGroupInput,
   showGroupCreate, setShowGroupCreate, groupNameInput, setGroupNameInput,
   groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups,
-  typingUsers, sendDmTyping, sendDmStopTyping
+  typingUsers, sendDmTyping, sendDmStopTyping,
+  followUser, unfollowUser, loadFollowCounts, loadFollowers, loadFollowing,
+  followCounts, isFollowingUser, followersList, followingList,
+  showFollowersModal, setShowFollowersModal, showFollowingModal, setShowFollowingModal,
+  feedItems, loadFeed, showFeedModal, setShowFeedModal,
+  suggestedFollows, loadSuggestedFollows
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
+  useEffect(() => { if (authUser && socialTab === 'feed') { loadFeed(); loadSuggestedFollows(); } }, [socialTab, authUser]);
 
   const tabs = [
     { tab: 'global', label: '🌐 Global' },
     { tab: 'dm', label: '💬 Mesajlar' },
     { tab: 'groups', label: '👥 Gruplar' },
     { tab: 'friends', label: `🤝 Arkadaşlar${friendRequests.length ? ` (${friendRequests.length})` : ''}` },
+    { tab: 'feed', label: '📰 Akış' },
     { tab: 'profile', label: '👤 Profilim' }
   ];
 
@@ -209,7 +222,7 @@ export default function SocialModal({
               </div>
             )}
             {socialTab === 'dm' && dmActiveChat && (
-              <DmChat activeChat={dmActiveChat} messages={dmMessages} input={dmInput} setInput={setDmInput} onSend={(text) => sendDm(dmActiveChat.username, text)} onBack={() => { setDmActiveChat(null); setDmMessages([]); }} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} />
+              <DmChat activeChat={dmActiveChat} messages={dmMessages} input={dmInput} setInput={setDmInput} onSend={(text) => sendDm(dmActiveChat.username, text)} onBack={() => { setDmActiveChat(null); setDmMessages([]); }} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} followUser={followUser} unfollowUser={unfollowUser} isFollowingUser={isFollowingUser} />
             )}
 
             {/* Groups */}
@@ -331,6 +344,53 @@ export default function SocialModal({
               </div>
             )}
 
+            {/* Feed */}
+            {socialTab === 'feed' && (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                {!authUser ? (
+                  <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Akışı görmek için hesap açmalısın.</div>
+                ) : (
+                  <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>📰 Akış</div>
+                      {feedItems.length === 0 ? (
+                        <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>
+                          Henüz akış yok. Takip ettiğin kişilerin aktiviteleri burada görünecek.
+                        </div>
+                      ) : feedItems.map((item, i) => {
+                        let content = '';
+                        try {
+                          const data = JSON.parse(item.data);
+                          if (item.type === 'follow') content = `${item.username} birini takip etti → ${data.following}`;
+                          else if (item.type === 'message') content = `${item.username} birine mesaj gönderdi`;
+                          else if (item.type === 'room') content = `${item.username} bir odaya katıldı`;
+                          else content = `${item.username}: ${item.type}`;
+                        } catch { content = `${item.username}: ${item.type}`; }
+                        return (
+                          <div key={item.id || i} style={{ padding: '10px 14px', background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
+                            <div style={{ fontSize: 12, color: '#e9edef' }}>{content}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ width: 200, borderLeft: '1px solid #25313a', background: '#0b141a', padding: 14, overflowY: 'auto' }}>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 13, marginBottom: 12 }}>💡 Önerilen</div>
+                      {suggestedFollows.map(s => (
+                        <div key={s.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #25313a' }}>
+                          <span style={{ fontSize: 20 }}>{s.avatar}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>{s.username}</div>
+                            <div style={{ color: '#667781', fontSize: 10 }}>{s.follower_count || 0} takipçi</div>
+                          </div>
+                          <button type="button" onClick={() => followUser(s.username)} style={{ background: '#00a884', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Takip Et</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Profile */}
             {socialTab === 'profile' && (
               <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
@@ -340,7 +400,14 @@ export default function SocialModal({
                   <div style={{ maxWidth: 520 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
                       <div style={{ fontSize: 44, width: 66, height: 66, borderRadius: 18, display: 'grid', placeItems: 'center', background: '#111b21', border: '1px solid #2a3942' }}>{authUser.avatar}</div>
-                      <div><div style={{ fontSize: 20, color: '#fff', fontWeight: 900 }}>{authUser.username}</div><div style={{ fontSize: 11, color: '#53e6bc' }}>{authUser.email}</div></div>
+                      <div>
+                        <div style={{ fontSize: 20, color: '#fff', fontWeight: 900 }}>{authUser.username}</div>
+                        <div style={{ fontSize: 11, color: '#53e6bc' }}>{authUser.email}</div>
+                        <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
+                          <span onClick={() => loadFollowers(authUser.username)} style={{ color: '#7f8c98', fontSize: 11, cursor: 'pointer' }}><span style={{ color: '#fff', fontWeight: 900 }}>{followCounts.followers}</span> Takipçi</span>
+                          <span onClick={() => loadFollowing(authUser.username)} style={{ color: '#7f8c98', fontSize: 11, cursor: 'pointer' }}><span style={{ color: '#fff', fontWeight: 900 }}>{followCounts.following}</span> Takip</span>
+                        </div>
+                      </div>
                     </div>
                     <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 900 }}>DURUM</label>
                     <input value={profileStatusInput} onChange={(e) => setProfileStatusInput(e.target.value)} placeholder="Şu an ne yapıyorsun?" style={{ ...styles.input, width: '100%', margin: '6px 0 12px' }} />
@@ -360,6 +427,58 @@ export default function SocialModal({
           </div>
         </div>
       </div>
+
+      {/* Takipçiler Modalı */}
+      {showFollowersModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowFollowersModal(false)}>
+          <div style={{ width: 360, maxHeight: '70vh', background: '#111b21', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#fff', fontWeight: 900 }}>👤 Takipçiler ({followersList.length})</span>
+              <button onClick={() => setShowFollowersModal(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+              {followersList.length === 0 ? (
+                <div style={{ color: '#7f8c98', textAlign: 'center', padding: 20 }}>Henüz takipçin yok.</div>
+              ) : followersList.map(u => (
+                <div key={u.username} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0b141a', borderRadius: 12, marginBottom: 6 }}>
+                  <span style={{ fontSize: 24 }}>{u.avatar}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
+                    {u.bio && <div style={{ color: '#7f8c98', fontSize: 10 }}>{u.bio.slice(0, 50)}</div>}
+                  </div>
+                  <button type="button" onClick={() => { followUser(u.username); setShowFollowersModal(false); }} style={{ background: '#00a884', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Takip Et</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Takip Edilenler Modalı */}
+      {showFollowingModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowFollowingModal(false)}>
+          <div style={{ width: 360, maxHeight: '70vh', background: '#111b21', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#fff', fontWeight: 900 }}>👥 Takip Edilen ({followingList.length})</span>
+              <button onClick={() => setShowFollowingModal(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+              {followingList.length === 0 ? (
+                <div style={{ color: '#7f8c98', textAlign: 'center', padding: 20 }}>Henüz kimseleri takip etmiyorsun.</div>
+              ) : followingList.map(u => (
+                <div key={u.username} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0b141a', borderRadius: 12, marginBottom: 6 }}>
+                  <span style={{ fontSize: 24 }}>{u.avatar}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
+                    {u.bio && <div style={{ color: '#7f8c98', fontSize: 10 }}>{u.bio.slice(0, 50)}</div>}
+                  </div>
+                  <button type="button" onClick={() => { unfollowUser(u.username); setShowFollowingModal(false); }} style={{ background: '#ea0038', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Takipten Çık</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

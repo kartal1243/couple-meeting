@@ -105,6 +105,16 @@ function App() {
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
 
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [feedItems, setFeedItems] = useState([]);
+  const [showFeedModal, setShowFeedModal] = useState(false);
+  const [suggestedFollows, setSuggestedFollows] = useState([]);
+
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
   });
@@ -348,6 +358,44 @@ function App() {
     if (data?.username && data.username !== authUser.username) { updated.username = data.username; setUsername(data.username); localStorage.setItem('cm_username', data.username); }
     setAuthUser(updated);
     localStorage.setItem('cm_auth_user', JSON.stringify(updated));
+  };
+
+  // ── TAKİP SİSTEMİ ──
+  const followUser = (targetUsername) => {
+    if (!authUser) { openAuth('login'); return; }
+    socket.emit('follow_user', { targetUsername, token: authToken });
+  };
+
+  const unfollowUser = (targetUsername) => {
+    socket.emit('unfollow_user', { targetUsername, token: authToken });
+  };
+
+  const loadFollowCounts = (username) => {
+    if (!authUser) return;
+    socket.emit('get_follow_counts', { username, token: authToken });
+  };
+
+  const loadFollowers = (username) => {
+    if (!authUser) return;
+    socket.emit('get_followers', { username, token: authToken });
+    setShowFollowersModal(true);
+  };
+
+  const loadFollowing = (username) => {
+    if (!authUser) return;
+    socket.emit('get_following', { username, token: authToken });
+    setShowFollowingModal(true);
+  };
+
+  const loadFeed = () => {
+    if (!authUser) return;
+    socket.emit('get_feed', { token: authToken });
+    setShowFeedModal(true);
+  };
+
+  const loadSuggestedFollows = () => {
+    if (!authUser) return;
+    socket.emit('get_suggested_follows', { token: authToken });
   };
 
   // ── 6. ODA YONETIMI ──
@@ -905,6 +953,39 @@ function App() {
       });
     });
 
+    socket.on('follow_result', (data) => {
+      if (data?.success) {
+        setIsFollowingUser(data.following);
+        if (data.target) setFollowCounts({ followers: data.followers || 0, following: data.following || 0 });
+      }
+      if (data?.message) {
+        setToast({ msg: data.message, sender: 'Sistem', id: Date.now() });
+        setTimeout(() => setToast(null), 4000);
+      }
+    });
+
+    socket.on('follow_counts', (data) => {
+      if (data?.username) {
+        setFollowCounts({ followers: data.followers || 0, following: data.following || 0 });
+        setIsFollowingUser(data.isFollowing || false);
+      }
+    });
+
+    socket.on('follow_counts_update', (data) => {
+      setFollowCounts({ followers: data.followers || 0, following: data.following || 0 });
+    });
+
+    socket.on('followed_you', (data) => {
+      setToast({ msg: `${data.username} seni takip etti!`, sender: data.username, id: Date.now() });
+      setTimeout(() => setToast(null), 4000);
+      loadDmList();
+    });
+
+    socket.on('followers_list', (data) => { if (data?.followers) setFollowersList(data.followers); });
+    socket.on('following_list', (data) => { if (data?.following) setFollowingList(data.following); });
+    socket.on('feed', (data) => { if (data?.items) setFeedItems(data.items); });
+    socket.on('suggested_follows', (data) => { if (data?.suggestions) setSuggestedFollows(data.suggestions); });
+
     if ('Notification' in window && Notification.permission === 'default') {
       document.addEventListener('click', function reqNotif() {
         Notification.requestPermission();
@@ -937,6 +1018,9 @@ function App() {
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('global_online_update'); socket.off('vip_activated');
       socket.off('typing_indicator'); socket.off('dm_read_receipt'); socket.off('dm_deleted'); socket.off('dm_edited');
       socket.off('reactions_update'); socket.off('room_invite');
+      socket.off('follow_result'); socket.off('follow_counts'); socket.off('follow_counts_update');
+      socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
+      socket.off('feed'); socket.off('suggested_follows');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received'); socket.off('dm_status');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
@@ -992,7 +1076,7 @@ function App() {
     messageReactions, addReaction, removeReaction,
     blockedUsers, blockUser, unblockUser,
     deleteDm, editDm, inviteToRoom, changePassword
-  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers]);
+  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows]);
 
   // ── 11. RENDER ──
   return (
@@ -1035,6 +1119,14 @@ function App() {
           dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} loadDmList={loadDmList}
           chatGroups={chatGroups} activeGroup={activeGroup} setActiveGroup={setActiveGroup} groupMessages={groupMessages} groupInput={groupInput} setGroupInput={setGroupInput} showGroupCreate={showGroupCreate} setShowGroupCreate={setShowGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} createGroup={createGroup} openGroup={openGroup} sendGroupMessage={sendGroupMessage} loadGroups={loadGroups}
           typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping}
+          followUser={followUser} unfollowUser={unfollowUser} loadFollowCounts={loadFollowCounts}
+          loadFollowers={loadFollowers} loadFollowing={loadFollowing}
+          followCounts={followCounts} isFollowingUser={isFollowingUser}
+          followersList={followersList} followingList={followingList}
+          showFollowersModal={showFollowersModal} setShowFollowersModal={setShowFollowersModal}
+          showFollowingModal={showFollowingModal} setShowFollowingModal={setShowFollowingModal}
+          feedItems={feedItems} loadFeed={loadFeed} showFeedModal={showFeedModal} setShowFeedModal={setShowFeedModal}
+          suggestedFollows={suggestedFollows} loadSuggestedFollows={loadSuggestedFollows}
         />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
