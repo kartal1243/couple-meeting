@@ -81,11 +81,11 @@ export default function RoomPage() {
         .cm-player-col > * { min-height: 0; }
         .cm-sidebar > * { min-height: 0; }
         @media (max-width: 900px) {
-          .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 60px 1fr 1fr; }
-          .cm-sidebar { grid-row: 3; grid-column: 1; border-left: none; border-top: 1px solid rgba(255,255,255,.06); }
+          .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 52px 1fr auto; }
+          .cm-sidebar { grid-row: 3; grid-column: 1; border-left: none; border-top: 1px solid rgba(255,255,255,.06); max-height: 45vh; overflow: hidden; }
         }
         @media (max-width: 480px) {
-          .cm-room-root { grid-template-rows: 50px 1fr 1fr; }
+          .cm-room-root { grid-template-rows: 46px 1fr auto; }
         }
         @media (orientation: landscape) and (max-height: 500px) {
           .cm-room-root { grid-template-rows: 44px 1fr; grid-template-columns: 1fr 320px; }

@@ -5,15 +5,6 @@ export default function Controls({ currentTheme, handlePlay, handlePause, sendRe
   const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
   const primary = currentTheme?.primary || '#00a884';
 
-  const btnBase = (color, hoverColor) => ({
-    background: hovered === color ? hoverColor : `linear-gradient(135deg, ${color}, ${color}dd)`,
-    color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 12,
-    fontWeight: 800, fontSize: 13, cursor: 'pointer', flex: 1,
-    boxShadow: hovered === color ? `0 8px 25px ${color}44` : '0 4px 15px rgba(0,0,0,.3)',
-    transition: 'all 0.25s ease', transform: hovered === color ? 'translateY(-1px)' : 'none',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-  });
-
   const handleSpeedChange = (speed) => {
     setPlaybackSpeed(speed);
     sendAction('SPEED', { speed });
@@ -21,98 +12,94 @@ export default function Controls({ currentTheme, handlePlay, handlePause, sendRe
   };
 
   return (
-    <div style={{
-      padding: '12px 20px',
+    <div className="cm-controls-wrap" style={{
+      padding: '12px 16px',
       background: 'linear-gradient(180deg, rgba(15,23,42,.95), rgba(30,41,59,.95))',
       backdropFilter: 'blur(20px)',
-      borderTop: '1px solid rgba(255,255,255,.06)',
-      display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap'
+      borderTop: '1px solid rgba(255,255,255,.06)'
     }}>
       <style>{`
-        @media (max-width: 600px) {
+        .cm-controls-wrap { display: flex; flex-direction: column; gap: 8px; }
+        .cm-controls-row { display: flex; gap: 8px; align-items: center; }
+        .cm-controls-row-center { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; }
+        .cm-play-btn {
+          flex: 1; min-width: 0; padding: 10px 0; border: none; border-radius: 12px;
+          font-weight: 800; font-size: 13px; cursor: pointer; color: #fff;
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          transition: all 0.2s ease;
+        }
+        .cm-play-btn:active { transform: scale(0.96); }
+        .cm-emoji-btn {
+          background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+          font-size: 16px; padding: 5px 7px; border-radius: 8px; cursor: pointer;
+          transition: all 0.2s ease; line-height: 1;
+        }
+        .cm-emoji-btn:active { transform: scale(1.2); }
+        .cm-speed-label { color: #64748b; font-size: 10px; font-weight: 800; margin-right: 2px; white-space: nowrap; }
+        .cm-speed-btn {
+          background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+          color: #64748b; font-size: 11px; font-weight: 900; padding: 4px 6px;
+          border-radius: 6px; cursor: pointer; transition: all 0.2s ease; line-height: 1;
+        }
+        .cm-speed-btn:active { transform: scale(1.1); }
+        .cm-divider { width: 1px; height: 24px; background: rgba(255,255,255,.08); flex-shrink: 0; }
+        @media (max-width: 480px) {
           .cm-controls-wrap { padding: 8px 10px !important; gap: 6px !important; }
-          .cm-controls-wrap button { padding: 7px 12px !important; font-size: 11px !important; }
-          .cm-speed-btn { padding: 3px 5px !important; font-size: 9px !important; }
+          .cm-play-btn { padding: 9px 0 !important; font-size: 12px !important; border-radius: 10px !important; }
+          .cm-emoji-btn { font-size: 14px !important; padding: 4px 5px !important; border-radius: 6px !important; }
+          .cm-speed-btn { font-size: 10px !important; padding: 3px 5px !important; border-radius: 5px !important; }
           .cm-speed-label { display: none !important; }
+          .cm-divider { height: 20px !important; }
         }
       `}</style>
-      <button
-        onClick={handlePlay}
-        onMouseEnter={() => setHovered('green')}
-        onMouseLeave={() => setHovered(null)}
-        style={btnBase(primary, `${primary}dd`)}
-      >
-        ▶ Oynat
-      </button>
-      <button
-        onClick={handlePause}
-        onMouseEnter={() => setHovered('orange')}
-        onMouseLeave={() => setHovered(null)}
-        style={btnBase('#f59e0b', '#fbbf24')}
-      >
-        ⏸ Durdur
-      </button>
 
-      <div style={{
-        width: 1, height: 28, background: 'rgba(255,255,255,.08)', margin: '0 4px'
-      }} />
+      {/* Row 1: Play/Pause + Voice */}
+      <div className="cm-controls-row">
+        <button
+          className="cm-play-btn"
+          onClick={handlePlay}
+          style={{ background: `linear-gradient(135deg, ${primary}, ${primary}dd)`, boxShadow: '0 4px 15px rgba(0,0,0,.3)' }}
+        >▶ Oynat</button>
+        <button
+          className="cm-play-btn"
+          onClick={handlePause}
+          style={{ background: 'linear-gradient(135deg, #f59e0b, #f59e0bdd)', boxShadow: '0 4px 15px rgba(0,0,0,.3)' }}
+        >⏸ Durdur</button>
+        {voiceChat && (
+          <div style={{ flexShrink: 0 }}>{voiceChat}</div>
+        )}
+      </div>
 
-      <div style={{ display: 'flex', gap: 4 }}>
+      {/* Row 2: Emojis + Speed */}
+      <div className="cm-controls-row-center">
         {['❤️', '🔥', '😂', '😮', '👏', '😍', '🎉', '💯'].map((emoji) => (
           <button
             key={emoji}
+            className="cm-emoji-btn"
             onClick={() => sendReaction(emoji)}
+            style={hovered === emoji ? { background: 'rgba(255,255,255,.1)', borderColor: 'rgba(255,255,255,.15)', transform: 'scale(1.2)' } : {}}
             onMouseEnter={() => setHovered(emoji)}
             onMouseLeave={() => setHovered(null)}
-            style={{
-              background: hovered === emoji ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.04)',
-              border: hovered === emoji ? '1px solid rgba(255,255,255,.15)' : '1px solid rgba(255,255,255,.06)',
-              fontSize: 18, padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              transform: hovered === emoji ? 'scale(1.2)' : 'scale(1)'
-            }}
-          >
-            {emoji}
-          </button>
+          >{emoji}</button>
         ))}
-      </div>
 
-      <div style={{
-        width: 1, height: 28, background: 'rgba(255,255,255,.08)', margin: '0 4px'
-      }} />
+        <div className="cm-divider" />
 
-      <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-        <span className="cm-speed-label" style={{ color: '#64748b', fontSize: 11, fontWeight: 800, marginRight: 4 }}>HIZ</span>
+        <span className="cm-speed-label">HIZ</span>
         {speeds.map((s) => (
           <button
             key={s}
             className="cm-speed-btn"
             onClick={() => handleSpeedChange(s)}
+            style={playbackSpeed === s ? {
+              background: `linear-gradient(135deg, ${primary}, ${primary}cc)`,
+              borderColor: `${primary}88`, color: '#fff'
+            } : hovered === 'speed_' + s ? { background: 'rgba(255,255,255,.08)' } : {}}
             onMouseEnter={() => setHovered('speed_' + s)}
             onMouseLeave={() => setHovered(null)}
-            style={{
-              background: playbackSpeed === s
-                ? `linear-gradient(135deg, ${primary}, ${primary}cc)`
-                : hovered === 'speed_' + s ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.03)',
-              border: playbackSpeed === s
-                ? `1px solid ${primary}88`
-                : '1px solid rgba(255,255,255,.06)',
-              color: playbackSpeed === s ? '#fff' : '#64748b',
-              fontSize: 11, fontWeight: 900, padding: '5px 8px', borderRadius: 8,
-              cursor: 'pointer', transition: 'all 0.2s ease',
-              transform: hovered === 'speed_' + s ? 'scale(1.1)' : 'scale(1)'
-            }}
-          >
-            {s}x
-          </button>
+          >{s}x</button>
         ))}
       </div>
-
-      {voiceChat && (
-        <div style={{ marginLeft: 'auto' }}>
-          {voiceChat}
-        </div>
-      )}
     </div>
   );
 }
