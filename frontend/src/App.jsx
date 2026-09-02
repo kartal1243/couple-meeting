@@ -329,8 +329,9 @@ function App() {
 
   // ── 7. MEDYA & PLAYLIST ──
   const handlePlay = () => {
+    const currentTime = ytPlayerRef.current?.getCurrentTime?.() || 0;
     if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
-    sendAction('PLAY', { time: 0 });
+    sendAction('PLAY', { time: currentTime });
   };
 
   const handlePause = () => {
