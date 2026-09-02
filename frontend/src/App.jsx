@@ -127,6 +127,11 @@ function App() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyCode, setVerifyCode] = useState('');
   const [verifySent, setVerifySent] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [twoFASecret, setTwoFASecret] = useState('');
+  const [twoFAQR, setTwoFAQR] = useState('');
+  const [twoFACode, setTwoFACode] = useState('');
 
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
@@ -456,6 +461,23 @@ function App() {
 
   const verifyEmailCode = () => {
     socket.emit('verify_email_code', { code: verifyCode, token: authToken });
+  };
+
+  const setup2FA = () => {
+    socket.emit('setup_2fa', { token: authToken });
+    setShow2FAModal(true);
+  };
+
+  const verify2FASetup = () => {
+    socket.emit('verify_2fa_setup', { code: twoFACode, token: authToken });
+  };
+
+  const disable2FA = () => {
+    socket.emit('disable_2fa', { code: twoFACode, token: authToken });
+  };
+
+  const load2FAStatus = () => {
+    socket.emit('get_2fa_status', { token: authToken });
   };
 
   // ── 6. ODA YONETIMI ──
@@ -1062,6 +1084,15 @@ function App() {
       if (data?.message) { setToast({ msg: data.message, sender: 'Doğrulama', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
       if (data?.success) { setShowVerifyModal(false); setVerifyCode(''); if (authUser) { const u = { ...authUser, email_verified: 1 }; setAuthUser(u); localStorage.setItem('cm_auth_user', JSON.stringify(u)); } }
     });
+    socket.on('two_factor_setup', (data) => {
+      if (data?.success) { setTwoFASecret(data.secret || ''); setTwoFAQR(data.qrCode || ''); }
+      if (data?.message) { setToast({ msg: data.message, sender: '2FA', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
+    });
+    socket.on('two_factor_result', (data) => {
+      if (data?.message) { setToast({ msg: data.message, sender: '2FA', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
+      if (data?.success) { setTwoFAEnabled(data.message?.includes('aktif')); setTwoFACode(''); setShow2FAModal(false); }
+    });
+    socket.on('two_factor_status', (data) => { setTwoFAEnabled(data?.enabled || false); });
 
     if ('Notification' in window && Notification.permission === 'default') {
       document.addEventListener('click', function reqNotif() {
@@ -1099,6 +1130,7 @@ function App() {
       socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
       socket.off('feed'); socket.off('suggested_follows');
       socket.off('notifications'); socket.off('reports_list'); socket.off('role_result'); socket.off('report_result'); socket.off('verify_result');
+      socket.off('two_factor_setup'); socket.off('two_factor_result'); socket.off('two_factor_status');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received'); socket.off('dm_status');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
@@ -1212,6 +1244,9 @@ function App() {
           verifyCode={verifyCode} setVerifyCode={setVerifyCode}
           verifySent={verifySent} setVerifySent={setVerifySent}
           sendVerificationEmail={sendVerificationEmail} verifyEmailCode={verifyEmailCode} authUser={authUser}
+          show2FAModal={show2FAModal} setShow2FAModal={setShow2FAModal} twoFAEnabled={twoFAEnabled}
+          setup2FA={setup2FA} disable2FA={disable2FA} twoFASecret={twoFASecret} twoFAQR={twoFAQR}
+          twoFACode={twoFACode} setTwoFACode={setTwoFACode} verify2FASetup={verify2FASetup}
         />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}

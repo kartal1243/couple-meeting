@@ -203,6 +203,13 @@ function initTables() {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_verify_user ON email_verifications(username, verified);
+
+    CREATE TABLE IF NOT EXISTS two_factor (
+      username TEXT PRIMARY KEY,
+      secret TEXT NOT NULL,
+      enabled INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
   `);
 
   // Migration: reset_token ve reset_expiry sütunları
@@ -901,6 +908,45 @@ function isEmailVerified(username) {
   return false;
 }
 
+function setupTwoFactor(username, secret) {
+  if (getDb()) {
+    db.prepare('INSERT OR REPLACE INTO two_factor (username, secret, enabled, created_at) VALUES (?, ?, 0, ?)').run(username, secret, Date.now());
+    return true;
+  }
+  return false;
+}
+
+function enableTwoFactor(username) {
+  if (getDb()) {
+    db.prepare('UPDATE two_factor SET enabled = 1 WHERE username = ?').run(username);
+    return true;
+  }
+  return false;
+}
+
+function disableTwoFactor(username) {
+  if (getDb()) {
+    db.prepare('DELETE FROM two_factor WHERE username = ?').run(username);
+    return true;
+  }
+  return false;
+}
+
+function getTwoFactor(username) {
+  if (getDb()) {
+    return db.prepare('SELECT * FROM two_factor WHERE username = ?').get(username) || null;
+  }
+  return null;
+}
+
+function isTwoFactorEnabled(username) {
+  if (getDb()) {
+    const row = db.prepare('SELECT enabled FROM two_factor WHERE username = ?').get(username);
+    return row?.enabled === 1;
+  }
+  return false;
+}
+
 loadJson();
 
 module.exports = {
@@ -919,5 +965,6 @@ module.exports = {
   createReport, getReports, updateReportStatus,
   getUserRole, setUserRole, getAllRoles, hasPermission,
   savePushSubscription, getPushSubscriptions, removePushSubscription,
-  createEmailVerification, verifyEmailCode, isEmailVerified
+  createEmailVerification, verifyEmailCode, isEmailVerified,
+  setupTwoFactor, enableTwoFactor, disableTwoFactor, getTwoFactor, isTwoFactorEnabled
 };

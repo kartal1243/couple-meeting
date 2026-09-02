@@ -120,7 +120,8 @@ export default function SocialModal({
   suggestedFollows, loadSuggestedFollows,
   notifications, unreadCount, loadNotifications, markNotifsRead, showNotifPanel, setShowNotifPanel,
   myRole, reportUser, showVerifyModal, setShowVerifyModal, verifyCode, setVerifyCode,
-  verifySent, setVerifySent, sendVerificationEmail, verifyEmailCode
+  verifySent, setVerifySent, sendVerificationEmail, verifyEmailCode,
+  show2FAModal, setShow2FAModal, twoFAEnabled, setup2FA, disable2FA, twoFASecret, twoFAQR, twoFACode, setTwoFACode, verify2FASetup
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
@@ -442,6 +443,19 @@ export default function SocialModal({
                         )}
                       </div>
                     </div>
+                    <div style={{ marginTop: 12, padding: 12, background: twoFAEnabled ? 'rgba(0,168,132,0.1)' : 'rgba(245,158,11,0.1)', borderRadius: 12, border: twoFAEnabled ? '1px solid rgba(0,168,132,0.3)' : '1px solid rgba(245,158,11,0.3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>{twoFAEnabled ? '🔐' : '⚠️'}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{twoFAEnabled ? '2FA Aktif' : '2FA Devre Dışı'}</div>
+                          <div style={{ color: '#7f8c98', fontSize: 10 }}>Google Authenticator ile hesabını koru</div>
+                        </div>
+                        <button type="button" onClick={twoFAEnabled ? () => { setShow2FAModal(true); setTwoFACode(''); } : setup2FA}
+                          style={{ background: twoFAEnabled ? '#ea0038' : '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>
+                          {twoFAEnabled ? 'Devre Dışı Bırak' : 'Aktif Et'}
+                        </button>
+                      </div>
+                    </div>
                     <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet ✓</button>
                   </div>
                 )}
@@ -540,6 +554,31 @@ export default function SocialModal({
               style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
             <button type="button" onClick={verifyEmailCode} style={{ width: '100%', background: '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14, marginBottom: 10 }}>Doğrula</button>
             <button type="button" onClick={() => { sendVerificationEmail(); }} style={{ width: '100%', background: 'transparent', color: '#00a884', border: '1px solid #00a884', padding: '10px', borderRadius: 12, fontWeight: 800, cursor: 'pointer', fontSize: 12 }}>Tekrar Gönder</button>
+          </div>
+        </div>
+      )}
+
+      {/* 2FA Modalı */}
+      {show2FAModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 23000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShow2FAModal(false)}>
+          <div style={{ width: 400, background: '#111b21', borderRadius: 18, padding: 24, border: '1px solid #25313a' }} onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 48, marginBottom: 10 }}>🔐</div>
+              <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>{twoFAEnabled ? '2FA Devre Dışı Bırak' : '2FA Kurulumu'}</div>
+              <div style={{ color: '#7f8c98', fontSize: 12, marginTop: 6 }}>{twoFAEnabled ? 'Devre dışı bırakmak için kodunu gir' : 'Google Authenticator ile tara'}</div>
+            </div>
+            {twoFAQR && !twoFAEnabled && (
+              <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                <img src={twoFAQR} alt="2FA QR" style={{ width: 180, height: 180, borderRadius: 12, background: '#fff', padding: 8 }} />
+                <div style={{ color: '#7f8c98', fontSize: 10, marginTop: 8 }}>Secret: <span style={{ color: '#f59e0b', fontFamily: 'monospace' }}>{twoFASecret}</span></div>
+              </div>
+            )}
+            <input value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} placeholder="6 haneli kod"
+              style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
+            <button type="button" onClick={twoFAEnabled ? disable2FA : verify2FASetup}
+              style={{ width: '100%', background: twoFAEnabled ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14 }}>
+              {twoFAEnabled ? 'Devre Dışı Bırak' : 'Doğrula ve Aktif Et'}
+            </button>
           </div>
         </div>
       )}

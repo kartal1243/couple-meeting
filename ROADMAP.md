@@ -1,5 +1,5 @@
 # Couple Meeting - GÜNCEL Yol Haritası (v2)
-## 📊 Durum: 17/20 Özellik Tamamlandı (%85)
+## 📊 Durum: 18/20 Özellik Tamamlandı (%90)
 
 ---
 
@@ -34,7 +34,7 @@
 - [x] 👮 **Admin Rol Sistemi** — user → mod → admin → superadmin + yetki bazlı kontrol
 - [x] 🚨 **Kullanıcı Raporlama** — Şikayet → admin paneli + bildirim
 - [x] 📧 **Email Doğrulama** — 6 haneli kod + nodemailer SMTP + profilde durum
-- [ ] 🔐 **İki Faktörlü Doğrulama** — Google Authenticator 2FA
+- [x] 🔐 **İki Faktörlü Doğrulama** — TOTP + QR kod + Google Authenticator
 
 ### 🔵 VİZYON (0/4)
 - [ ] 🏘️ **Topluluklar** — İlgi alanına göre topluluk
@@ -129,8 +129,8 @@ changePassword(cur, new) // Şifre değiştir
 | Veritabanı Tablosu | 14 |
 | Frontend Bileşeni | 20+ |
 | API Endpoint | 15 |
-| Tamamlanan | %85 |
-| Kalan | %15 |
+| Tamamlanan | %90 |
+| Kalan | %10 |
 
 ---
 

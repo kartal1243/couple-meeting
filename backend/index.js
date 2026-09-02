@@ -854,6 +854,60 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ── IKI FAKTORLU DOGRULAMA (2FA) ──
+  socket.on('setup_2fa', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const existing = db.getTwoFactor(user.username);
+    if (existing?.enabled) return socket.emit('two_factor_setup', { success: false, message: '2FA zaten aktif. Önce devre dışı bırak.' });
+    const OTPAuth = require('otpauth');
+    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.generate(20) });
+    db.setupTwoFactor(user.username, totp.secret.base32);
+    const QRCode = require('qrcode');
+    QRCode.toDataURL(totp.toString(), (err, url) => {
+      socket.emit('two_factor_setup', { success: true, secret: totp.secret.base32, qrCode: url || null });
+    });
+  });
+
+  socket.on('verify_2fa_setup', ({ code, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const tf = db.getTwoFactor(user.username);
+    if (!tf) return socket.emit('two_factor_result', { success: false, message: '2FA kurulumu bulunamadı.' });
+    const OTPAuth = require('otpauth');
+    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(tf.secret) });
+    const delta = totp.validate({ token: code, window: 2 });
+    if (delta !== null) {
+      db.enableTwoFactor(user.username);
+      socket.emit('two_factor_result', { success: true, message: '2FA başarıyla aktif edildi!' });
+    } else {
+      socket.emit('two_factor_result', { success: false, message: 'Geçersiz kod. Tekrar dene.' });
+    }
+  });
+
+  socket.on('disable_2fa', ({ code, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const tf = db.getTwoFactor(user.username);
+    if (!tf?.enabled) return socket.emit('two_factor_result', { success: false, message: '2FA zaten devre dışı.' });
+    const OTPAuth = require('otpauth');
+    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(tf.secret) });
+    const delta = totp.validate({ token: code, window: 2 });
+    if (delta !== null) {
+      db.disableTwoFactor(user.username);
+      socket.emit('two_factor_result', { success: true, message: '2FA devre dışı bırakıldı.' });
+    } else {
+      socket.emit('two_factor_result', { success: false, message: 'Geçersiz kod.' });
+    }
+  });
+
+  socket.on('get_2fa_status', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const tf = db.getTwoFactor(user.username);
+    socket.emit('two_factor_status', { enabled: tf?.enabled === 1 });
+  });
+
   // ──────────────────────────────────────────────────────
   // 7.3 ARKADASLIK SISTEMI
   // ──────────────────────────────────────────────────────
