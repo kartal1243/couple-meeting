@@ -1,4 +1,4 @@
-export default function Hero({ authUser, openAuth, handleQuickCreateRoom }) {
+export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpenSocial }) {
   return (
     <section className="cm-hero">
       {/* Pulse Hearts Logo */}
@@ -32,14 +32,33 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom }) {
         >
           🚀 Hemen Oda Oluştur
         </button>
-        <button
-          className="cm-big-btn"
-          onClick={() => openAuth(authUser ? 'login' : 'register')}
-          style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)' }}
-        >
-          👤 Hesapla Daha Fazlasını Yap
-        </button>
+        {authUser ? (
+          <button
+            className="cm-big-btn"
+            onClick={() => onOpenSocial('friends')}
+            style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)' }}
+          >
+            🤝 Arkadaşları Keşfet
+          </button>
+        ) : (
+          <button
+            className="cm-big-btn"
+            onClick={() => openAuth('register')}
+            style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)' }}
+          >
+            👤 Ücretsiz Hesap Aç
+          </button>
+        )}
       </div>
+
+      {authUser && (
+        <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button onClick={() => onOpenSocial('global')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>🌐 Global Sohbet</button>
+          <button onClick={() => onOpenSocial('dm')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>💬 Mesajlar</button>
+          <button onClick={() => onOpenSocial('groups')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>👥 Gruplar</button>
+          <button onClick={() => onOpenSocial('profile')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>👤 Profilim</button>
+        </div>
+      )}
 
       <div className="cm-hero-features">
         <span>✓ Misafir giriş</span>

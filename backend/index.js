@@ -519,10 +519,15 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
 
   socket.on('friend_search', ({ q, token }) => {
-    const term = sanitize(q, 20).toLowerCase();
+    const term = sanitize(q, 20);
     const current = db.getUserByToken(token)?.username;
     if (!term || term.length < 1) return socket.emit('friend_search_results', []);
-    socket.emit('friend_search_results', db.searchUsers(term, current));
+    const results = db.searchUsers(term, current).map(u => ({
+      username: u.username, avatar: u.avatar || '🐱',
+      isOnline: !!onlineUsers[u.username],
+      lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null
+    }));
+    socket.emit('friend_search_results', results);
   });
 
   socket.on('friend_request', ({ targetUsername, token }) => {
@@ -593,7 +598,7 @@ io.on('connection', (socket) => {
     if (!from) return;
     const cleanText = sanitize(text, 500);
     if (!cleanText) return;
-    const toUser = db.getUser(sanitize(to, 24));
+    const toUser = db.getUser(sanitize(to, 24)) || db.getUser(sanitize(to, 24).toLowerCase()) || db.getUser(sanitize(to, 24).toUpperCase());
     if (!toUser) return;
     if (!db.areFriends(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Sadece arkadaşlarınızla mesajlaşabilirsiniz.' });
     const msg = {

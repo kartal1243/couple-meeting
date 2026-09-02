@@ -819,7 +819,6 @@ function App() {
         setToast({ msg: data.message, sender: 'Sistem', id: Date.now() });
         setTimeout(() => setToast(null), 3000);
       }
-      socket.emit('social_sync', { token: authToken });
     });
     socket.on('friend_online_status', (data) => {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));

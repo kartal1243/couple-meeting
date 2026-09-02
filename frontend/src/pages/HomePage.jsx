@@ -11,16 +11,18 @@ import SocialPreview from '../Home/SocialPreview';
 export default function HomePage() {
   const {
     authUser, openAuth, publicRooms, globalMessages,
-    setShowSocialModal, setShowJoinModal, setJoinRoomTarget,
+    setShowSocialModal, setSocialTab, setShowJoinModal, setJoinRoomTarget,
     setShowQuickCreate
   } = useApp();
+
+  const openSocial = (tab) => { setSocialTab(tab); setShowSocialModal(true); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowY: 'auto' }}>
       <style>{HOME_CSS}</style>
       <Navbar onOpenAuth={openAuth} />
       <main className="cm-home-main" style={{ flex: 1 }}>
-        <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={() => setShowQuickCreate(true)} />
+        <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={() => setShowQuickCreate(true)} onOpenSocial={openSocial} />
         <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} onCreateRoom={() => setShowQuickCreate(true)} />
         <About />
         <Features />
