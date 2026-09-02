@@ -17,6 +17,7 @@ import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
 import FolderModal from './Modals/FolderModal';
 import SettingsModal from './Modals/SettingsModal';
+import ProfileModal from './Modals/ProfileModal';
 import VipModal from './Modals/VipModal';
 
 function App() {
@@ -85,6 +86,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [showVipModal, setShowVipModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
 
@@ -248,14 +250,17 @@ function App() {
     socket.emit('unfriend', { targetUsername, token: authToken });
   };
 
-  const saveProfile = () => {
+  const saveProfile = (data) => {
     if (!authUser) return;
     socket.emit('update_profile', {
       token: authToken,
-      bio: profileBioInput.trim().slice(0, 120),
-      status: profileStatusInput.trim().slice(0, 80),
-      avatar: myAvatar
+      bio: (data?.bio ?? profileBioInput).trim().slice(0, 150),
+      status: (data?.status ?? profileStatusInput).trim().slice(0, 80),
+      avatar: data?.avatar ?? myAvatar
     });
+    if (data?.avatar) { setMyAvatar(data.avatar); localStorage.setItem('cm_user_avatar', data.avatar); }
+    if (data?.bio) setProfileBioInput(data.bio);
+    if (data?.status) setProfileStatusInput(data.status);
   };
 
   // ── 6. ODA YONETIMI ──
@@ -654,6 +659,27 @@ function App() {
       }
     });
 
+    socket.on('room_sync_data', (data) => {
+      if (!data) return;
+      if (data.currentMedia) {
+        setMediaType(data.currentMedia.type || 'none');
+        setMediaSrc(data.currentMedia.src || '');
+        if (ytPlayerRef.current) {
+          try {
+            const elapsed = data.currentMedia.isPlaying ? (Date.now() - (data.currentMedia.lastUpdated || Date.now())) / 1000 : 0;
+            const seekTo = (data.currentMedia.time || 0) + elapsed;
+            ytPlayerRef.current.seekTo(seekTo, true);
+            if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo();
+            else ytPlayerRef.current.pauseVideo();
+          } catch {}
+        }
+      }
+      if (data.users) setRoomUsersList(data.users);
+      if (data.hostUserId) setHostUserId(data.hostUserId);
+      if (data.roomName) setRoomName(data.roomName);
+      if (data.roomTheme) setRoomTheme(data.roomTheme);
+    });
+
     socket.on('global_chat_history', (items) => setGlobalMessages(Array.isArray(items) ? items : []));
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
 
@@ -705,7 +731,13 @@ function App() {
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && socketRef.current) socketRef.current.connect();
+      if (document.visibilityState === 'visible' && socketRef.current) {
+        socketRef.current.connect();
+        // Re-sync player when tab becomes visible
+        if (currentRoomIdRef.current) {
+          socketRef.current.emit('request_room_sync', { roomId: currentRoomIdRef.current });
+        }
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -715,6 +747,7 @@ function App() {
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
       socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
+      socket.off('room_sync_data');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('vip_activated');
@@ -741,7 +774,7 @@ function App() {
     youtubeError, setYoutubeError, sidebarTab, setSidebarTab, showInstallBtn,
     showSettingsModal, setShowSettingsModal, showFolderModal, setShowFolderModal,
     showAuthModal, setShowAuthModal, showSocialModal, setShowSocialModal,
-    showVipModal, setShowVipModal, showQuickCreate, setShowQuickCreate,
+    showVipModal, setShowVipModal, showProfileModal, setShowProfileModal, showQuickCreate, setShowQuickCreate,
     showJoinModal, setShowJoinModal, authUser, authToken, authMode, authBusy,
     authForm, setAuthForm, friendSearch, setFriendSearch, friendSearchResults,
     friends, friendRequests, friendOnlineStatuses, globalMessages,
@@ -852,6 +885,9 @@ function App() {
       )}
       {showSettingsModal && (
         <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} />
+      )}
+      {showProfileModal && (
+        <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
       )}
     </AppContext.Provider>
   );

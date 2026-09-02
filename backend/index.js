@@ -390,6 +390,19 @@ io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
   socket.emit('global_chat_history', db.getGlobalMessages(100));
 
+  // Socket.IO rate limiting
+  const socketRateLimit = { chat: 0, join: 0, action: 0, lastReset: Date.now() };
+  const resetRateLimits = () => {
+    const now = Date.now();
+    if (now - socketRateLimit.lastReset > 10000) {
+      socketRateLimit.chat = 0;
+      socketRateLimit.join = 0;
+      socketRateLimit.action = 0;
+      socketRateLimit.lastReset = now;
+    }
+  };
+  const checkRate = (type, max) => { resetRateLimits(); socketRateLimit[type]++; return socketRateLimit[type] > max; };
+
   // ──────────────────────────────────────────────────────
   // 7.1 KIMLIK DOGRULAMA
   // ──────────────────────────────────────────────────────
@@ -687,6 +700,8 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
 
   socket.on('room_action', ({ roomId, type, payload }) => {
+    if (type === 'CHAT_MESSAGE' && checkRate('chat', 30)) return;
+    if (type !== 'CHAT_MESSAGE' && checkRate('action', 20)) return;
     const cleanRoomId = sanitize(roomId, 50);
     const room = rooms[cleanRoomId];
     if (room) {
@@ -727,6 +742,21 @@ io.on('connection', (socket) => {
 
   socket.on('screen_share_stop', ({ roomId }) => {
     if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
+  });
+
+  socket.on('request_room_sync', ({ roomId }) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    const room = rooms[cleanRoomId];
+    if (room) {
+      socket.emit('room_sync_data', {
+        currentMedia: room.currentMedia,
+        users: room.users.map(u => ({ username: u.username, avatar: u.avatar, userId: u.userId, isHost: u.userId === room.hostUserId })),
+        hostUserId: room.hostUserId,
+        roomName: room.name,
+        roomTheme: room.theme,
+        maxUsers: room.maxUsers
+      });
+    }
   });
 
   socket.on('leave_room', () => {

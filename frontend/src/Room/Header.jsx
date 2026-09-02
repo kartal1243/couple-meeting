@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 export default function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
-  handleInstallApp, setShowSettingsModal, authUser, myAvatar, handleLeaveRoom
+  handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom
 }) {
   const [showUsers, setShowUsers] = useState(false);
   const liveDotStyle = {
@@ -120,6 +120,12 @@ export default function Header({
           padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
           fontWeight: 800, fontSize: 13, transition: 'all 0.2s'
         }}>⚙️</button>
+        <button onClick={() => setShowProfileModal(true)} style={{
+          background: 'rgba(255,255,255,.05)', color: '#94a3b8',
+          border: '1px solid rgba(255,255,255,.08)',
+          padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
+          fontWeight: 800, fontSize: 13, transition: 'all 0.2s'
+        }}>👤</button>
         {authUser && (
           <div style={{
             background: 'linear-gradient(135deg, rgba(0,168,132,.1), rgba(0,168,132,.05))',

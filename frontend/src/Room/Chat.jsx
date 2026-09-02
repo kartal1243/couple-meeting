@@ -189,6 +189,11 @@ export default function Chat({
             </div>
           );
         })}
+        {displayMessages.length > 0 && displayMessages[displayMessages.length - 1]?.senderId === mySocketId && (
+          <div style={{ fontSize: 9, color: primary, textAlign: 'right', paddingRight: 4, marginTop: -2, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+            ✓✓ Okundu
+          </div>
+        )}
         <div ref={chatBottomRef} />
       </div>
 
