@@ -552,6 +552,123 @@ io.on('connection', (socket) => {
   });
 
   // ──────────────────────────────────────────────────────
+  // 6.5 ÖZEL MESAJ (DM) & GRUP SOHBETİ
+  // ──────────────────────────────────────────────────────
+  const dmMessages = {};
+  const chatGroups = {};
+
+  socket.on('dm_send', ({ to, text, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const cleanText = sanitize(text, 500);
+    if (!cleanText) return;
+    const toUser = db.getUser(sanitize(to, 24));
+    if (!toUser) return;
+    if (!db.areFriends(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Sadece arkadaşlarınızla mesajlaşabilirsiniz.' });
+    const msg = {
+      id: crypto.randomBytes(8).toString('hex'),
+      from: from.username, fromAvatar: from.avatar,
+      to: toUser.username, toAvatar: toUser.avatar,
+      text: cleanText,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now()
+    };
+    const key = [from.username, toUser.username].sort().join(':');
+    if (!dmMessages[key]) dmMessages[key] = [];
+    dmMessages[key].push(msg);
+    if (dmMessages[key].length > 200) dmMessages[key] = dmMessages[key].slice(-200);
+    emitToUser(toUser.username, 'dm_received', msg);
+    socket.emit('dm_sent', msg);
+  });
+
+  socket.on('dm_history', ({ withUser, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const key = [from.username, sanitize(withUser, 24)].sort().join(':');
+    socket.emit('dm_history', { messages: (dmMessages[key] || []).slice(-50), withUser: sanitize(withUser, 24) });
+  });
+
+  socket.on('dm_list', ({ token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const conversations = {};
+    for (const [key, msgs] of Object.entries(dmMessages)) {
+      if (key.includes(from.username) && msgs.length > 0) {
+        const last = msgs[msgs.length - 1];
+        const other = last.from === from.username ? last.to : last.from;
+        const otherUser = db.getUser(other);
+        conversations[other] = { username: other, avatar: otherUser?.avatar || '🐱', lastMessage: last.text, lastTime: last.time, unread: msgs.filter(m => m.to === from.username && !m.read).length };
+      }
+    }
+    socket.emit('dm_list', { conversations: Object.values(conversations).sort((a, b) => b.lastTime > a.lastTime ? 1 : -1) });
+  });
+
+  socket.on('dm_read', ({ withUser, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const key = [from.username, sanitize(withUser, 24)].sort().join(':');
+    if (dmMessages[key]) { dmMessages[key].forEach(m => { if (m.to === from.username) m.read = true; }); }
+  });
+
+  // Grup sohbeti
+  socket.on('group_create', ({ name, members, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const cleanName = sanitize(name, 30);
+    if (!cleanName) return;
+    const id = crypto.randomBytes(8).toString('hex');
+    const memberList = [from.username, ...(members || []).map(m => sanitize(m, 24)).filter(m => m && m !== from.username)].slice(0, 20);
+    chatGroups[id] = { id, name: cleanName, createdBy: from.username, members: memberList, messages: [], createdAt: Date.now() };
+    memberList.forEach(username => emitToUser(username, 'group_created', { id, name: cleanName, members: memberList, createdBy: from.username }));
+  });
+
+  socket.on('group_list', ({ token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const groups = Object.values(chatGroups).filter(g => g.members.includes(from.username));
+    socket.emit('group_list', { groups: groups.map(g => ({ id: g.id, name: g.name, members: g.members, createdBy: g.createdBy, lastMessage: g.messages[g.messages.length - 1] || null })) });
+  });
+
+  socket.on('group_send', ({ groupId, text, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const group = chatGroups[sanitize(groupId, 20)];
+    if (!group || !group.members.includes(from.username)) return;
+    const cleanText = sanitize(text, 500);
+    if (!cleanText) return;
+    const msg = {
+      id: crypto.randomBytes(8).toString('hex'),
+      from: from.username, fromAvatar: from.avatar,
+      text: cleanText,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now()
+    };
+    group.messages.push(msg);
+    if (group.messages.length > 200) group.messages = group.messages.slice(-200);
+    group.members.forEach(username => emitToUser(username, 'group_message', { groupId: group.id, msg }));
+  });
+
+  socket.on('group_history', ({ groupId, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const group = chatGroups[sanitize(groupId, 20)];
+    if (!group || !group.members.includes(from.username)) return;
+    socket.emit('group_history', { groupId: group.id, messages: group.messages.slice(-50) });
+  });
+
+  socket.on('group_invite', ({ groupId, username, token }) => {
+    const from = db.getUserByToken(token);
+    if (!from) return;
+    const group = chatGroups[sanitize(groupId, 20)];
+    if (!group || group.createdBy !== from.username) return;
+    const target = sanitize(username, 24);
+    if (!target || group.members.includes(target)) return;
+    group.members.push(target);
+    emitToUser(target, 'group_created', { id: group.id, name: group.name, members: group.members, createdBy: group.createdBy });
+    group.members.forEach(u => emitToUser(u, 'group_updated', { id: group.id, members: group.members }));
+  });
+
+  // ──────────────────────────────────────────────────────
   // 7.5 MÜZIK ARAMA
   // ──────────────────────────────────────────────────────
 

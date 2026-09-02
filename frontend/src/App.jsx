@@ -121,6 +121,17 @@ function App() {
   const [socialTab, setSocialTab] = useState('global');
   const [profileBioInput, setProfileBioInput] = useState('');
   const [profileStatusInput, setProfileStatusInput] = useState('');
+  const [dmConversations, setDmConversations] = useState([]);
+  const [dmActiveChat, setDmActiveChat] = useState(null);
+  const [dmMessages, setDmMessages] = useState([]);
+  const [dmInput, setDmInput] = useState('');
+  const [chatGroups, setChatGroups] = useState([]);
+  const [activeGroup, setActiveGroup] = useState(null);
+  const [groupMessages, setGroupMessages] = useState([]);
+  const [groupInput, setGroupInput] = useState('');
+  const [showGroupCreate, setShowGroupCreate] = useState(false);
+  const [groupNameInput, setGroupNameInput] = useState('');
+  const [groupMemberInput, setGroupMemberInput] = useState('');
 
   // ── 2. REFS & SOCKET ──
   const ytPlayerRef = useRef(null);
@@ -230,6 +241,41 @@ function App() {
     });
     setGlobalChatInput('');
   };
+
+  const sendDm = (to, text) => {
+    if (!text.trim() || !authToken) return;
+    socket.emit('dm_send', { to, text: text.trim(), token: authToken });
+  };
+
+  const openDm = (withUser) => {
+    setDmActiveChat(withUser);
+    socket.emit('dm_history', { withUser, token: authToken });
+    socket.emit('dm_read', { withUser, token: authToken });
+    setSocialTab('dm');
+  };
+
+  const loadDmList = () => { if (authToken) socket.emit('dm_list', { token: authToken }); };
+
+  const createGroup = () => {
+    if (!groupNameInput.trim() || !authToken) return;
+    const members = groupMemberInput.split(',').map(s => s.trim()).filter(Boolean);
+    socket.emit('group_create', { name: groupNameInput.trim(), members, token: authToken });
+    setGroupNameInput('');
+    setGroupMemberInput('');
+    setShowGroupCreate(false);
+  };
+
+  const openGroup = (groupId) => {
+    setActiveGroup(groupId);
+    socket.emit('group_history', { groupId, token: authToken });
+  };
+
+  const sendGroupMessage = (text) => {
+    if (!text.trim() || !activeGroup || !authToken) return;
+    socket.emit('group_send', { groupId: activeGroup, text: text.trim(), token: authToken });
+  };
+
+  const loadGroups = () => { if (authToken) socket.emit('group_list', { token: authToken }); };
 
   const searchFriends = () => {
     const q = friendSearch.trim();
@@ -692,6 +738,20 @@ function App() {
     socket.on('global_chat_history', (items) => setGlobalMessages(Array.isArray(items) ? items : []));
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
 
+    socket.on('dm_list', ({ conversations }) => setDmConversations(conversations || []));
+    socket.on('dm_history', ({ messages, withUser }) => { if (dmActiveChat === withUser) setDmMessages(messages || []); });
+    socket.on('dm_sent', (msg) => { setDmMessages((prev) => [...prev, msg]); loadDmList(); });
+    socket.on('dm_received', (msg) => {
+      if (dmActiveChat === msg.from) { setDmMessages((prev) => [...prev, msg]); socket.emit('dm_read', { withUser: msg.from, token: authToken }); }
+      loadDmList();
+    });
+
+    socket.on('group_list', ({ groups }) => setChatGroups(groups || []));
+    socket.on('group_created', (group) => { setChatGroups((prev) => [...prev, group]); });
+    socket.on('group_updated', (data) => { setChatGroups((prev) => prev.map(g => g.id === data.id ? { ...g, members: data.members } : g)); });
+    socket.on('group_history', ({ groupId, messages }) => { if (activeGroup === groupId) setGroupMessages(messages || []); });
+    socket.on('group_message', ({ groupId, msg }) => { if (activeGroup === groupId) setGroupMessages((prev) => [...prev, msg]); });
+
     socket.on('social_profile', (user) => {
       setAuthUser(user);
       localStorage.setItem('cm_auth_user', JSON.stringify(user));
@@ -760,6 +820,8 @@ function App() {
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('vip_activated');
+      socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received');
+      socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
   }, []);
 
@@ -803,8 +865,13 @@ function App() {
     setQuickMaxUsers, quickRoomName, quickRoomPass,
     quickMaxUsers, joinRoomTarget, joinModalPass,
     editRoomNameInput, setEditRoomNameInput, pendingMediaItem, setPendingMediaItem,
-    modalTargetCategory, setModalTargetCategory, playMessageSound
-  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta]);
+    modalTargetCategory, setModalTargetCategory, playMessageSound,
+    dmConversations, dmActiveChat, setDmActiveChat, dmMessages, dmInput, setDmInput,
+    sendDm, openDm, loadDmList,
+    chatGroups, activeGroup, setActiveGroup, groupMessages, groupInput, setGroupInput,
+    showGroupCreate, setShowGroupCreate, groupNameInput, setGroupNameInput,
+    groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups
+  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages]);
 
   // ── 11. RENDER ──
   return (
@@ -822,7 +889,10 @@ function App() {
         <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} />
       )}
       {showSocialModal && (
-        <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles} />
+        <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles}
+          dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} loadDmList={loadDmList}
+          chatGroups={chatGroups} activeGroup={activeGroup} setActiveGroup={setActiveGroup} groupMessages={groupMessages} groupInput={groupInput} setGroupInput={setGroupInput} showGroupCreate={showGroupCreate} setShowGroupCreate={setShowGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} createGroup={createGroup} openGroup={openGroup} sendGroupMessage={sendGroupMessage} loadGroups={loadGroups}
+        />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
 

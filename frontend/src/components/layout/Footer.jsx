@@ -35,6 +35,7 @@ export default function Footer() {
           <div>
             <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Destek</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <a href="mailto:support@couplemeeting.com.tr" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>✉️ support@couplemeeting.com.tr</a>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Geri Bildirim</span>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Gizlilik Politikası</span>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Kullanım Şartları</span>
