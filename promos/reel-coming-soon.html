@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Couple Meeting - Coming Soon</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Inter', sans-serif;
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Animated gradient background */
+.bg {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,58,237,0.4), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(16,185,129,0.25), transparent),
+    radial-gradient(ellipse 50% 50% at 20% 60%, rgba(236,72,153,0.2), transparent),
+    linear-gradient(180deg, #0a0118 0%, #0d0221 30%, #150538 50%, #0a0d2e 70%, #06101f 90%, #0a0118 100%);
+  animation: bgPulse 8s ease-in-out infinite;
+}
+
+@keyframes bgPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Grid lines */
+.grid-lines {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(60px); }
+}
+
+/* Floating orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  animation: orbFloat 12s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 500px; height: 500px;
+  background: rgba(124,58,237,0.3);
+  top: -150px; left: -100px;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 400px; height: 400px;
+  background: rgba(16,185,129,0.25);
+  bottom: -100px; right: -100px;
+  animation-delay: -4s;
+}
+
+.orb-3 {
+  width: 350px; height: 350px;
+  background: rgba(236,72,153,0.2);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -8s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(30px, -25px, 0) scale(1.05); }
+  66% { transform: translate3d(-20px, 20px, 0) scale(0.95); }
+}
+
+/* Particles */
+.particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% { transform: translateY(1920px) scale(0); opacity: 0; }
+  10% { opacity: 1; transform: translateY(1728px) scale(1); }
+  90% { opacity: 1; }
+  100% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+}
+
+/* Logo */
+.logo {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  animation: fadeInUp 1.2s ease-out;
+}
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(60px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.logo-icon {
+  width: 140px;
+  height: 140px;
+  border-radius: 36px;
+  background: linear-gradient(135deg, #10b981, #8b5cf6, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52px;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: 
+    0 0 60px rgba(16,185,129,0.4),
+    0 0 120px rgba(139,92,246,0.2),
+    0 20px 60px rgba(0,0,0,0.4);
+  animation: logoPulse 3s ease-in-out infinite;
+  position: relative;
+}
+
+.logo-icon::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 40px;
+  background: linear-gradient(135deg, #10b981, #8b5cf6, #ec4899);
+  z-index: -1;
+  opacity: 0.5;
+  filter: blur(20px);
+  animation: logoGlow 3s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes logoGlow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+/* Soundwave bars */
+.soundwave {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 40px;
+}
+
+.bar {
+  width: 5px;
+  border-radius: 99px;
+  background: linear-gradient(to top, #10b981, #8b5cf6);
+  animation: barPulse 1s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@keyframes barPulse {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+/* Title */
+.title {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  margin-top: 50px;
+  animation: fadeInUp 1.2s ease-out 0.3s both;
+}
+
+.title h1 {
+  font-size: 88px;
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -4px;
+  background: linear-gradient(180deg, #fff 0%, #c4b5fd 50%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 4px 30px rgba(124,58,237,0.3));
+}
+
+.title .line2 {
+  background: linear-gradient(180deg, #fff 0%, #6ee7b7 50%, #10b981 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Subtitle */
+.subtitle {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  margin-top: 30px;
+  animation: fadeInUp 1.2s ease-out 0.6s both;
+}
+
+.subtitle p {
+  font-size: 32px;
+  color: #94a3b8;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+/* Coming soon badge */
+.badge {
+  position: relative;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 50px;
+  padding: 18px 36px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(20px);
+  animation: fadeInUp 1.2s ease-out 0.9s both;
+}
+
+.badge .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); }
+  50% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+}
+
+.badge span {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 3px;
+}
+
+/* CTA */
+.cta {
+  position: relative;
+  z-index: 10;
+  margin-top: 50px;
+  display: flex;
+  gap: 20px;
+  animation: fadeInUp 1.2s ease-out 1.2s both;
+}
+
+.cta-btn {
+  padding: 22px 48px;
+  border-radius: 20px;
+  font-size: 26px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.3s;
+}
+
+.cta-primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 10px 40px rgba(16,185,129,0.3);
+}
+
+.cta-secondary {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* Bottom text */
+.bottom-text {
+  position: absolute;
+  bottom: 80px;
+  z-index: 10;
+  text-align: center;
+  animation: fadeInUp 1.2s ease-out 1.5s both;
+}
+
+.bottom-text .url {
+  font-size: 28px;
+  color: #64748b;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.bottom-text .date {
+  font-size: 22px;
+  color: #475569;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+/* Divider line */
+.divider {
+  position: relative;
+  z-index: 10;
+  width: 200px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #7c3aed, #10b981, transparent);
+  margin-top: 40px;
+  border-radius: 99px;
+  animation: fadeInUp 1.2s ease-out 0.8s both;
+}
+
+/* Floating hearts */
+.floating-hearts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.heart {
+  position: absolute;
+  font-size: 40px;
+  animation: heartFloat linear infinite;
+  opacity: 0;
+}
+
+@keyframes heartFloat {
+  0% { transform: translateY(1920px) rotate(0deg) scale(0.5); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-100px) rotate(360deg) scale(1); opacity: 0; }
+}
+
+/* Glitch effect on title */
+.glitch-container {
+  position: relative;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Background -->
+  <div class="bg"></div>
+  <div class="grid-lines"></div>
+
+  <!-- Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Particles -->
+  <div class="particles">
+    <div class="particle" style="left:10%; animation-duration:15s; animation-delay:0s;"></div>
+    <div class="particle" style="left:20%; animation-duration:18s; animation-delay:2s;"></div>
+    <div class="particle" style="left:35%; animation-duration:12s; animation-delay:1s;"></div>
+    <div class="particle" style="left:50%; animation-duration:20s; animation-delay:3s;"></div>
+    <div class="particle" style="left:65%; animation-duration:14s; animation-delay:0.5s;"></div>
+    <div class="particle" style="left:75%; animation-duration:16s; animation-delay:2.5s;"></div>
+    <div class="particle" style="left:85%; animation-duration:13s; animation-delay:1.5s;"></div>
+    <div class="particle" style="left:92%; animation-duration:17s; animation-delay:4s;"></div>
+    <div class="particle" style="left:5%; animation-duration:19s; animation-delay:3.5s;"></div>
+    <div class="particle" style="left:45%; animation-duration:11s; animation-delay:0.8s;"></div>
+    <div class="particle" style="left:55%; animation-duration:22s; animation-delay:5s;"></div>
+    <div class="particle" style="left:30%; animation-duration:16s; animation-delay:1.2s;"></div>
+  </div>
+
+  <!-- Floating hearts -->
+  <div class="floating-hearts">
+    <div class="heart" style="left:8%; animation-duration:20s; animation-delay:0s;">💜</div>
+    <div class="heart" style="left:25%; animation-duration:25s; animation-delay:3s;">💚</div>
+    <div class="heart" style="left:45%; animation-duration:18s; animation-delay:6s;">💗</div>
+    <div class="heart" style="left:65%; animation-duration:22s; animation-delay:2s;">💜</div>
+    <div class="heart" style="left:82%; animation-duration:19s; animation-delay:8s;">💚</div>
+    <div class="heart" style="left:15%; animation-duration:24s; animation-delay:5s;">✨</div>
+    <div class="heart" style="left:55%; animation-duration:21s; animation-delay:7s;">💜</div>
+    <div class="heart" style="left:72%; animation-duration:17s; animation-delay:1s;">💚</div>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon">CM</div>
+
+    <!-- Soundwave -->
+    <div class="soundwave">
+      <div class="bar" style="height:16px; animation-delay:0s;"></div>
+      <div class="bar" style="height:28px; animation-delay:0.1s;"></div>
+      <div class="bar" style="height:40px; animation-delay:0.2s;"></div>
+      <div class="bar" style="height:22px; animation-delay:0.3s;"></div>
+      <div class="bar" style="height:34px; animation-delay:0.4s;"></div>
+      <div class="bar" style="height:18px; animation-delay:0.5s;"></div>
+      <div class="bar" style="height:36px; animation-delay:0.6s;"></div>
+      <div class="bar" style="height:24px; animation-delay:0.7s;"></div>
+      <div class="bar" style="height:30px; animation-delay:0.8s;"></div>
+      <div class="bar" style="height:20px; animation-delay:0.9s;"></div>
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div class="glitch-container">
+    <div class="title">
+      <h1>BİRLİKTE<br><span class="line2">İZLE & DİNLE</span></h1>
+    </div>
+  </div>
+
+  <!-- Subtitle -->
+  <div class="subtitle">
+    <p>Müzik, video ve sohbet<br>artık bir tık uzağında.</p>
+  </div>
+
+  <!-- Divider -->
+  <div class="divider"></div>
+
+  <!-- Coming Soon -->
+  <div class="badge">
+    <div class="dot"></div>
+    <span>YAKINDA</span>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <button class="cta-btn cta-primary">Hemen Katıl</button>
+    <button class="cta-btn cta-secondary">Keşfet</button>
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom-text">
+    <div class="url">COUPLEMEETING.COM.TR</div>
+    <div class="date">2026</div>
+  </div>
+</div>
+</body>
+</html>
