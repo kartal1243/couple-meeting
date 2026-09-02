@@ -48,56 +48,66 @@ export default function SearchBar({
       ref={searchRef}
       className="cm-search-bar"
       style={{
-        padding: '12px 20px', background: currentTheme.cardBg,
+        padding: '8px 12px', background: currentTheme.cardBg,
         borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex',
-        gap: '10px', alignItems: 'center', position: 'relative'
+        gap: '6px', alignItems: 'center', position: 'relative'
       }}
     >
+      <style>{`
+        .cm-search-bar { gap: 6px !important; }
+        .cm-search-bar input { flex: 1; min-width: 0; padding: 8px 10px !important; font-size: 12px !important; border-radius: 8px !important; }
+        .cm-search-btn { padding: 7px 10px !important; font-size: 11px !important; font-weight: 800 !important; border-radius: 8px !important; white-space: nowrap !important; border: none !important; cursor: pointer !important; }
+        .cm-search-btn-play { background: ${currentTheme.primary} !important; color: #fff !important; }
+        .cm-search-btn-add { background: #008f6f !important; color: #fff !important; }
+        @media (max-width: 480px) {
+          .cm-search-bar { padding: 6px 8px !important; gap: 4px !important; }
+          .cm-search-bar input { padding: 7px 8px !important; font-size: 11px !important; }
+          .cm-search-btn { padding: 6px 8px !important; font-size: 10px !important; border-radius: 6px !important; }
+        }
+      `}</style>
+
       <input
         type="text"
-        placeholder="🔍 YouTube'dan Şarkı veya Video Aratın..."
+        placeholder="🔍 Ara..."
         value={searchInput}
         onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
         onFocus={() => setShowResults(true)}
-        style={{ ...styles.input, flex: 1 }}
       />
 
-      <button className="cm-action-btn" onClick={handlePlay}
-        style={{ ...styles.buttonPrimary, background: currentTheme.primary }}>▶ Oynat</button>
-      <button className="cm-action-btn" onClick={handleAddToPlaylist}
-        style={{ ...styles.buttonPrimary, background: '#008f6f' }}>➕ Listeye Ekle</button>
+      <button className="cm-search-btn cm-search-btn-play" onClick={handlePlay}>▶ Oynat</button>
+      <button className="cm-search-btn cm-search-btn-add" onClick={handleAddToPlaylist}>➕ Ekle</button>
 
       {showYouTubeResults && (
         <div className="cm-search-results" style={{
-          position: 'absolute', top: '62px', left: '20px', right: '20px',
-          ...styles.card, padding: '14px', zIndex: 9999,
-          display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: 340, overflowY: 'auto'
+          position: 'absolute', top: '52px', left: '8px', right: '8px',
+          ...styles.card, padding: '10px', zIndex: 9999,
+          display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: 320, overflowY: 'auto'
         }}>
-          {isSearching && <div style={{ color: currentTheme.primary, fontSize: '13px', fontWeight: 'bold' }}>⚡ Aranıyor...</div>}
+          {isSearching && <div style={{ color: currentTheme.primary, fontSize: '12px', fontWeight: 'bold' }}>⚡ Aranıyor...</div>}
           {searchResults.map((song) => (
             <div key={song.id} className="cm-search-result-row"
               style={{
-                display: 'flex', alignItems: 'center', gap: '14px',
+                display: 'flex', alignItems: 'center', gap: '10px',
                 background: addedId === song.id ? 'rgba(0,168,132,.15)' : '#111b21',
-                padding: '8px 12px', borderRadius: '10px',
+                padding: '6px 10px', borderRadius: '8px',
                 border: addedId === song.id ? '1px solid rgba(0,168,132,.3)' : '1px solid #222d34',
                 cursor: 'pointer', transition: 'all 0.2s'
               }}
               onClick={() => handleSelectResult(song, true)}
               onMouseEnter={(e) => { if (addedId !== song.id) e.currentTarget.style.background = '#1a2634'; }}
               onMouseLeave={(e) => { if (addedId !== song.id) e.currentTarget.style.background = '#111b21'; }}>
-              <img src={song.thumbnail} alt={song.title} style={{ width: '60px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{song.title}</div>
-                <div style={{ fontSize: '11px', color: '#7f8c98', marginTop: 2 }}>{song.timestamp}</div>
+              <img src={song.thumbnail} alt={song.title} style={{ width: '50px', height: '30px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
+              <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{song.title}</div>
+                <div style={{ fontSize: '10px', color: '#7f8c98', marginTop: 1 }}>{song.timestamp}</div>
               </div>
-              <div className="cm-result-actions" style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+              <div className="cm-result-actions" style={{ display: 'flex', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 {addedId === song.id ? (
-                  <span style={{ color: '#00a884', fontSize: '12px', fontWeight: 800, padding: '6px 12px' }}>✓ Eklendi</span>
+                  <span style={{ color: '#00a884', fontSize: '11px', fontWeight: 800, padding: '4px 8px' }}>✓</span>
                 ) : (
                   <>
-                    <button onClick={() => handleSelectResult(song, true)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px' }}>▶ Çal</button>
-                    <button onClick={() => handleSelectResult(song, false)} style={{ ...styles.buttonPrimary, padding: '6px 12px', fontSize: '12px', background: '#008f6f' }}>+ Ekle</button>
+                    <button onClick={() => handleSelectResult(song, true)} className="cm-search-btn cm-search-btn-play" style={{ padding: '4px 8px', fontSize: '10px' }}>▶</button>
+                    <button onClick={() => handleSelectResult(song, false)} className="cm-search-btn cm-search-btn-add" style={{ padding: '4px 8px', fontSize: '10px' }}>+</button>
                   </>
                 )}
               </div>

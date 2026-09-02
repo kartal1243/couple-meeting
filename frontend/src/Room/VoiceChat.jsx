@@ -4,7 +4,7 @@ const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { u
 
 export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted }) {
   const [voiceActive, setVoiceActive] = useState(false);
-  const [voiceCount, setVoiceCount] = useState(0);
+  const [voiceUsers, setVoiceUsers] = useState([]);
   const localStreamRef = useRef(null);
   const peersRef = useRef({});
   const audioContainerRef = useRef(null);
@@ -23,7 +23,7 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
     Object.values(peersRef.current).forEach(pc => { try { pc.close(); } catch {} });
     peersRef.current = {};
     setVoiceActive(false);
-    setVoiceCount(0);
+    setVoiceUsers([]);
     if (audioContainerRef.current) audioContainerRef.current.innerHTML = '';
     if (socket) socket.emit('voice_leave', { roomId });
   }, [socket, roomId]);
@@ -31,9 +31,13 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
   const toggleMute = useCallback(() => {
     if (localStreamRef.current) {
       const track = localStreamRef.current.getAudioTracks()[0];
-      if (track) { track.enabled = !track.enabled; setIsMuted(!track.enabled); }
+      if (track) {
+        track.enabled = !track.enabled;
+        setIsMuted(!track.enabled);
+        if (socket) socket.emit('voice_mute', { roomId, isMuted: track.enabled === false });
+      }
     }
-  }, [setIsMuted]);
+  }, [setIsMuted, socket, roomId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -56,7 +60,7 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
     };
     const onJoin = ({ socketId }) => { if (socketId !== mySocketId && localStreamRef.current) createPeer(socketId, true); };
     const onLeave = ({ socketId }) => { try { peersRef.current[socketId]?.close(); } catch {} delete peersRef.current[socketId]; document.getElementById(`v-${socketId}`)?.remove(); };
-    const onUsers = ({ users }) => setVoiceCount((users || []).length);
+    const onUsers = ({ users }) => setVoiceUsers(users || []);
     const onSignal = async ({ fromId, signal }) => {
       if (!localStreamRef.current) return;
       if (signal.type === 'offer') {
@@ -80,6 +84,33 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
   return (
     <>
       <div ref={audioContainerRef} style={{ display: 'none' }} />
+
+      {/* Voice user indicators */}
+      {voiceActive && voiceUsers.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginRight: 6 }}>
+          {voiceUsers.map((u, i) => (
+            <div key={u.socketId || i} title={u.username} style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: `linear-gradient(135deg, ${u.isMuted ? '#475569' : '#22c55e'}, ${u.isMuted ? '#334155' : '#16a34a'})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 900, color: '#fff', border: '2px solid rgba(0,0,0,.4)',
+              boxShadow: u.isMuted ? 'none' : '0 0 10px rgba(34,197,94,.5), 0 0 20px rgba(34,197,94,.2)',
+              animation: u.isMuted ? 'none' : 'cmVoicePulse 2s ease infinite',
+              flexShrink: 0
+            }}>
+              {u.username?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+          ))}
+          <style>{`
+            @keyframes cmVoicePulse {
+              0%, 100% { box-shadow: 0 0 8px rgba(34,197,94,.4); }
+              50% { box-shadow: 0 0 16px rgba(34,197,94,.7), 0 0 24px rgba(34,197,94,.3); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Voice controls */}
       {!voiceActive ? (
         <button onClick={startVoice} title="Sesli Sohbet" style={{
           background: 'rgba(34,197,94,.12)', color: '#22c55e',
@@ -97,7 +128,6 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
             borderRadius: 8, padding: '6px 8px', fontSize: 12, fontWeight: 800,
             cursor: 'pointer', transition: 'all 0.2s', lineHeight: 1
           }}>{isMuted ? '🔇' : '🎤'}</button>
-          {voiceCount > 0 && <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 800 }}>+{voiceCount}</span>}
           <button onClick={stopVoice} style={{
             background: 'rgba(239,68,68,.12)', color: '#ef4444',
             border: '1px solid rgba(239,68,68,.2)', borderRadius: 8,

@@ -767,20 +767,31 @@ io.on('connection', (socket) => {
   socket.on('voice_join', ({ roomId }) => {
     const cleanRoomId = sanitize(roomId, 50);
     if (!rooms[cleanRoomId]) return;
-    if (!rooms[cleanRoomId].voiceUsers) rooms[cleanRoomId].voiceUsers = [];
-    if (!rooms[cleanRoomId].voiceUsers.includes(socket.id)) rooms[cleanRoomId].voiceUsers.push(socket.id);
+    if (!rooms[cleanRoomId].voiceUsers) rooms[cleanRoomId].voiceUsers = {};
+    const roomUser = rooms[cleanRoomId].users?.find(u => u.socketId === socket.id);
+    rooms[cleanRoomId].voiceUsers[socket.id] = { username: roomUser?.username || 'Anonim', isMuted: false };
     socket.to(cleanRoomId).emit('voice_join', { socketId: socket.id });
-    socket.emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
-    socket.to(cleanRoomId).emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
+    const vu = Object.entries(rooms[cleanRoomId].voiceUsers).map(([sid, u]) => ({ socketId: sid, username: u.username, isMuted: u.isMuted }));
+    socket.emit('voice_users', { users: vu });
+    socket.to(cleanRoomId).emit('voice_users', { users: vu });
   });
 
   socket.on('voice_leave', ({ roomId }) => {
     const cleanRoomId = sanitize(roomId, 50);
     if (!rooms[cleanRoomId]) return;
-    rooms[cleanRoomId].voiceUsers = (rooms[cleanRoomId].voiceUsers || []).filter(id => id !== socket.id);
+    if (rooms[cleanRoomId].voiceUsers) delete rooms[cleanRoomId].voiceUsers[socket.id];
     socket.to(cleanRoomId).emit('voice_leave', { socketId: socket.id });
-    socket.emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
-    socket.to(cleanRoomId).emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
+    const vu = rooms[cleanRoomId].voiceUsers ? Object.entries(rooms[cleanRoomId].voiceUsers).map(([sid, u]) => ({ socketId: sid, username: u.username, isMuted: u.isMuted })) : [];
+    socket.emit('voice_users', { users: vu });
+    socket.to(cleanRoomId).emit('voice_users', { users: vu });
+  });
+
+  socket.on('voice_mute', ({ roomId, isMuted }) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]?.voiceUsers?.[socket.id]) return;
+    rooms[cleanRoomId].voiceUsers[socket.id].isMuted = isMuted;
+    const vu = Object.entries(rooms[cleanRoomId].voiceUsers).map(([sid, u]) => ({ socketId: sid, username: u.username, isMuted: u.isMuted }));
+    socket.to(cleanRoomId).emit('voice_users', { users: vu });
   });
 
   socket.on('voice_signal', ({ targetId, signal }) => {
