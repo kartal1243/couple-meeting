@@ -424,10 +424,11 @@ function saveDmMessage(msg) {
 function getDmHistory(user1, user2, limit = 100) {
   if (getDb()) {
     return db.prepare(`
-      SELECT * FROM dm_messages 
+      SELECT id, from_username as "from", from_username, to_username as "to", to_username, text, time, created_at as "createdAt", read
+      FROM dm_messages 
       WHERE (from_username = ? AND to_username = ?) OR (from_username = ? AND to_username = ?) 
-      ORDER BY created_at DESC LIMIT ?
-    `).all(user1, user2, user2, user1, limit).reverse();
+      ORDER BY created_at ASC LIMIT ?
+    `).all(user1, user2, user2, user1, limit);
   }
   return [];
 }
@@ -468,6 +469,7 @@ function getDmConversations(username) {
           avatar: otherUser?.avatar || '🐱',
           lastMessage: r.text,
           lastTime: r.time,
+          lastCreatedAt: r.created_at || 0,
           lastSeen: otherUser?.last_seen || 0,
           unread: 0
         };

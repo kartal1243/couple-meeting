@@ -39,7 +39,8 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingU
       <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henüz mesaj yok. İlk mesajı sen gönder!</div>}
         {messages.map((m, i) => {
-          const isMe = m.from !== activeChat.username;
+          const msgFrom = m.from || m.from_username;
+          const isMe = msgFrom !== activeChat.username;
           return (
             <div key={m.id || i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
               <div style={{ maxWidth: '75%', padding: '8px 12px', borderRadius: 14, background: isMe ? '#005c4b' : '#1f2c34', borderBottomRightRadius: isMe ? 4 : 14, borderBottomLeftRadius: isMe ? 14 : 4 }}>

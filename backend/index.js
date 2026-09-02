@@ -807,7 +807,7 @@ io.on('connection', (socket) => {
     for (const conv of dbConvs) {
       conversations[conv.username] = {
         username: conv.username, avatar: conv.avatar || '🐱',
-        lastMessage: conv.lastMessage, lastTime: conv.lastTime,
+        lastMessage: conv.lastMessage, lastTime: conv.lastTime, lastCreatedAt: conv.lastCreatedAt || 0,
         unread: conv.unread, isOnline: !!onlineUsers[conv.username],
         lastSeen: onlineUsers[conv.username]?.lastSeen || conv.lastSeen || null
       };
@@ -819,11 +819,11 @@ io.on('connection', (socket) => {
         const other = last.from === from.username ? last.to : last.from;
         const otherUser = db.getUser(other);
         const existing = conversations[other];
-        const memLastTime = last.time;
-        if (!existing || memLastTime > existing.lastTime) {
+        const memCreatedAt = last.createdAt || 0;
+        if (!existing || memCreatedAt > (existing.lastCreatedAt || 0)) {
           conversations[other] = {
             username: other, avatar: otherUser?.avatar || '🐱',
-            lastMessage: last.text, lastTime: memLastTime,
+            lastMessage: last.text, lastTime: last.time, lastCreatedAt: memCreatedAt,
             unread: msgs.filter(m => m.to === from.username && !m.read).length,
             isOnline: !!onlineUsers[other],
             lastSeen: onlineUsers[other]?.lastSeen || otherUser?.lastSeen || null
@@ -831,7 +831,7 @@ io.on('connection', (socket) => {
         }
       }
     }
-    socket.emit('dm_list', { conversations: Object.values(conversations).sort((a, b) => b.lastTime > a.lastTime ? 1 : -1) });
+    socket.emit('dm_list', { conversations: Object.values(conversations).sort((a, b) => (b.lastCreatedAt || 0) - (a.lastCreatedAt || 0)) });
   });
 
   socket.on('dm_read', ({ withUser, token }) => {
