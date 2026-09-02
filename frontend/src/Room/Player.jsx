@@ -9,7 +9,7 @@ function extractVideoId(src) {
 }
 
 export default function Player({
-  mediaType, mediaSrc, youtubeError, ytPlayerRef, mediaMeta,
+  mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
   screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId
 }) {
@@ -27,7 +27,17 @@ export default function Player({
 
   const handleYTReady = useCallback((e) => {
     ytPlayerRef.current = e.target;
-  }, [ytPlayerRef]);
+    if (pendingSyncRef.current) {
+      try {
+        const sync = pendingSyncRef.current;
+        const elapsed = sync.isPlaying ? (Date.now() - (sync.lastUpdated || Date.now())) / 1000 : 0;
+        const seekTo = (sync.time || 0) + elapsed;
+        e.target.seekTo(seekTo, true);
+        if (sync.isPlaying) e.target.playVideo(); else e.target.pauseVideo();
+      } catch {}
+      pendingSyncRef.current = null;
+    }
+  }, [ytPlayerRef, pendingSyncRef]);
 
   const endedRef = useRef(false);
 

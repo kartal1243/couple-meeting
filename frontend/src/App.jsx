@@ -166,6 +166,7 @@ function App() {
 
   // ── 2. REFS & SOCKET ──
   const ytPlayerRef = useRef(null);
+  const pendingSyncRef = useRef(null);
 
   const socketRef = useRef(null);
   const handleMediaEndRef = useRef(null);
@@ -906,6 +907,8 @@ function App() {
             if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo();
             else ytPlayerRef.current.pauseVideo();
           } catch {}
+        } else {
+          pendingSyncRef.current = data.currentMedia;
         }
       }
       if (data.users) setRoomUsersList(data.users);
@@ -1162,7 +1165,7 @@ function App() {
     friends, friendRequests, friendOnlineStatuses, globalMessages,
     globalChatInput, setGlobalChatInput, socialTab, setSocialTab,
     profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
-    ytPlayerRef, currentTheme, cssVars, styles, filteredPlaylist,
+    ytPlayerRef, pendingSyncRef, currentTheme, cssVars, styles, filteredPlaylist,
     openAuth, submitAuth, handleLogout, sendGlobalMessage, searchFriends,
     sendFriendRequest, respondFriendRequest, unfriendUser, saveProfile,
     handleQuickCreateSubmit, handleJoinRoomFromModal, handleLeaveRoom,

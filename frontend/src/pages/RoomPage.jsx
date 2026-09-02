@@ -26,7 +26,7 @@ export default function RoomPage() {
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars,
     toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
-    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList
+    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef
   } = app;
 
   const isHost = hostUserId === userId;
@@ -178,7 +178,7 @@ export default function RoomPage() {
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
-            ytPlayerRef={ytPlayerRef} reactions={reactions}
+            ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
             openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
             screenSharing={screenSharing} setScreenSharing={setScreenSharing}
