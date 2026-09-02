@@ -4,6 +4,7 @@
     "@vercel/analytics": "^2.0.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "puppeteer": "^25.9.0",
     "socket.io": "^4.8.3",
     "yt-search": "^2.13.1"
   }

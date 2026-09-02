@@ -117,7 +117,9 @@ export default function SocialModal({
   followCounts, isFollowingUser, followersList, followingList,
   showFollowersModal, setShowFollowersModal, showFollowingModal, setShowFollowingModal,
   feedItems, loadFeed, showFeedModal, setShowFeedModal,
-  suggestedFollows, loadSuggestedFollows
+  suggestedFollows, loadSuggestedFollows,
+  notifications, unreadCount, loadNotifications, markNotifsRead, showNotifPanel, setShowNotifPanel,
+  myRole, reportUser
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
@@ -142,6 +144,13 @@ export default function SocialModal({
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>🌍 Topluluk</div>
           </div>
           <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+            {authUser && (
+              <button type="button" onClick={() => { if (showNotifPanel) { setShowNotifPanel(false); } else { loadNotifications(); markNotifsRead(); } }}
+                style={{ position: 'relative', background: showNotifPanel ? '#00a884' : '#202c33', color: '#fff', border: '1px solid #2c3b44', padding: '8px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
+                🔔
+                {unreadCount > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: '#fff', borderRadius: 10, padding: '1px 5px', fontSize: 9, fontWeight: 900 }}>{unreadCount}</span>}
+              </button>
+            )}
             {authUser && !authUser.isVip && (
               <button type="button" onClick={() => { setShowSocialModal(false); setShowVipModal(true); }} style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none', padding: '8px 10px', borderRadius: 10, fontWeight: 900, cursor: 'pointer', fontSize: 11 }}>⭐ VIP Ol</button>
             )}
@@ -476,6 +485,30 @@ export default function SocialModal({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bildirim Paneli */}
+      {showNotifPanel && (
+        <div style={{ position: 'fixed', top: 70, right: 30, zIndex: 21000, width: 360, maxHeight: 500, background: '#111b21', borderRadius: 18, border: '1px solid #25313a', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>🔔 Bildirimler</span>
+            <button onClick={() => setShowNotifPanel(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 14, cursor: 'pointer' }}>✕</button>
+          </div>
+          <div style={{ overflowY: 'auto', maxHeight: 420, padding: 8 }}>
+            {notifications.length === 0 ? (
+              <div style={{ color: '#7f8c98', textAlign: 'center', padding: 30, fontSize: 12 }}>Henüz bildirimin yok.</div>
+            ) : notifications.map(n => (
+              <div key={n.id} style={{ padding: '10px 12px', background: n.read ? 'transparent' : 'rgba(0,168,132,0.08)', borderRadius: 12, marginBottom: 4, borderLeft: n.read ? '3px solid transparent' : '3px solid #00a884' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 14 }}>{n.type === 'follow' ? '👆' : n.type === 'report' ? '🚨' : n.type === 'role' ? '👮' : '🔔'}</span>
+                  <span style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{n.title}</span>
+                </div>
+                <div style={{ color: '#94a3b8', fontSize: 11 }}>{n.body}</div>
+                <div style={{ color: '#475569', fontSize: 9, marginTop: 4 }}>{new Date(n.created_at).toLocaleString('tr')}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}

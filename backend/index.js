@@ -692,6 +692,7 @@ io.on('connection', (socket) => {
     if (ok) {
       db.addFeedItem(user.username, 'follow', { following: target });
       emitToUser(target, 'followed_you', { username: user.username, avatar: user.avatar });
+      db.createNotification(target, 'follow', user.username, 'Yeni Takipçi', `${user.username} seni takip etti!`, { follower: user.username });
     }
     const counts = db.getFollowCounts(target);
     socket.emit('follow_result', { success: ok, following: ok, target, ...counts });
@@ -745,6 +746,83 @@ io.on('connection', (socket) => {
     if (!user) return;
     const suggestions = db.getSuggestedFollows(user.username, 10);
     socket.emit('suggested_follows', { suggestions });
+  });
+
+  // ── BILDIRIM SISTEMI ──
+  socket.on('get_notifications', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const notifs = db.getNotifications(user.username);
+    const unread = db.getUnreadNotifCount(user.username);
+    socket.emit('notifications', { notifications: notifs, unread });
+  });
+
+  socket.on('mark_notifications_read', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.markNotifsRead(user.username);
+    socket.emit('notifications', { notifications: db.getNotifications(user.username), unread: 0 });
+  });
+
+  // ── KULLANICI RAPORLAMA ──
+  socket.on('report_user', ({ targetUsername, reason, details, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    if (targetUsername === user.username) return socket.emit('report_result', { success: false, message: 'Kendini raporlayamazsın.' });
+    const target = db.getUser(sanitize(targetUsername, 20));
+    if (!target) return socket.emit('report_result', { success: false, message: 'Kullanıcı bulunamadı.' });
+    db.createReport(user.username, target.username, sanitize(reason, 50), sanitize(details, 500));
+    socket.emit('report_result', { success: true, message: 'Raporun alındı. Teşekkürler!' });
+    const adminRole = db.getUserRole('admin');
+    if (adminRole === 'admin' || adminRole === 'superadmin') {
+      db.createNotification('admin', 'report', user.username, 'Yeni Rapor', `${user.username} → ${target.username}: ${reason}`, { reported: target.username });
+    }
+  });
+
+  socket.on('get_reports', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user || !db.hasPermission(user.username, 'report_view')) return;
+    const reports = db.getReports('pending');
+    socket.emit('reports_list', { reports });
+  });
+
+  socket.on('resolve_report', ({ reportId, action, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user || !db.hasPermission(user.username, 'ban')) return;
+    db.updateReportStatus(reportId, action === 'dismiss' ? 'dismissed' : 'resolved');
+    socket.emit('report_result', { success: true, message: 'Rapor güncellendi.' });
+  });
+
+  // ── ADMIN ROL SISTEMI ──
+  socket.on('set_role', ({ targetUsername, role, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    if (!db.hasPermission(user.username, 'role_manage')) return socket.emit('role_result', { success: false, message: 'Yetkin yok.' });
+    const validRoles = ['user', 'mod', 'admin'];
+    if (!validRoles.includes(role)) return socket.emit('role_result', { success: false, message: 'Geçersiz rol.' });
+    if (role === 'admin' && !db.hasPermission(user.username, 'admin_manage')) return socket.emit('role_result', { success: false, message: 'Admin atama yetkin yok.' });
+    const target = db.getUser(sanitize(targetUsername, 20));
+    if (!target) return socket.emit('role_result', { success: false, message: 'Kullanıcı bulunamadı.' });
+    db.setUserRole(target.username, role, user.username);
+    db.createNotification(target.username, 'role', user.username, 'Rol Değişikliği', `Rolün ${role} olarak değiştirildi.`, { role });
+    socket.emit('role_result', { success: true, message: `${target.username} → ${role}` });
+  });
+
+  socket.on('get_all_roles', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user || !db.hasPermission(user.username, 'role_manage')) return;
+    socket.emit('roles_list', { roles: db.getAllRoles() });
+  });
+
+  // ── PUSH BILDIRIM KAYDI ──
+  socket.on('save_push_subscription', ({ token, endpoint, p256dh, auth }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.savePushSubscription(user.username, endpoint, p256dh, auth);
+  });
+
+  socket.on('remove_push_subscription', ({ endpoint }) => {
+    db.removePushSubscription(endpoint);
   });
 
   // ──────────────────────────────────────────────────────
@@ -850,6 +928,7 @@ io.on('connection', (socket) => {
     dmMessages[key].push(msg);
     if (dmMessages[key].length > 200) dmMessages[key] = dmMessages[key].slice(-200);
     emitToUser(toUser.username, 'dm_received', msg);
+    db.createNotification(toUser.username, 'dm', user.username, 'Yeni Mesaj', `${user.username}: ${text.slice(0, 80)}`, { from: user.username });
     socket.emit('dm_sent', msg);
   });
 

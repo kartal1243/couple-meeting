@@ -115,6 +115,16 @@ function App() {
   const [showFeedModal, setShowFeedModal] = useState(false);
   const [suggestedFollows, setSuggestedFollows] = useState([]);
 
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [myRole, setMyRole] = useState('user');
+  const [reportsList, setReportsList] = useState([]);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTarget, setReportTarget] = useState('');
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
   });
@@ -396,6 +406,44 @@ function App() {
   const loadSuggestedFollows = () => {
     if (!authUser) return;
     socket.emit('get_suggested_follows', { token: authToken });
+  };
+
+  // ── BILDIRIM SISTEMI ──
+  const loadNotifications = () => {
+    if (!authUser) return;
+    socket.emit('get_notifications', { token: authToken });
+    setShowNotifPanel(true);
+  };
+
+  const markNotifsRead = () => {
+    socket.emit('mark_notifications_read', { token: authToken });
+    setUnreadCount(0);
+  };
+
+  const reportUser = (target) => {
+    setReportTarget(target || '');
+    setReportReason('');
+    setReportDetails('');
+    setShowReportModal(true);
+  };
+
+  const submitReport = () => {
+    if (!reportReason.trim()) return;
+    socket.emit('report_user', { targetUsername: reportTarget, reason: reportReason, details: reportDetails, token: authToken });
+    setShowReportModal(false);
+  };
+
+  const loadReports = () => {
+    socket.emit('get_reports', { token: authToken });
+  };
+
+  const resolveReport = (reportId, action) => {
+    socket.emit('resolve_report', { reportId, action, token: authToken });
+    loadReports();
+  };
+
+  const setRole = (target, role) => {
+    socket.emit('set_role', { targetUsername: target, role, token: authToken });
   };
 
   // ── 6. ODA YONETIMI ──
@@ -986,6 +1034,19 @@ function App() {
     socket.on('feed', (data) => { if (data?.items) setFeedItems(data.items); });
     socket.on('suggested_follows', (data) => { if (data?.suggestions) setSuggestedFollows(data.suggestions); });
 
+    socket.on('notifications', (data) => {
+      if (data?.notifications) setNotifications(data.notifications);
+      if (data?.unread !== undefined) setUnreadCount(data.unread);
+    });
+
+    socket.on('reports_list', (data) => { if (data?.reports) setReportsList(data.reports); });
+    socket.on('role_result', (data) => {
+      if (data?.message) { setToast({ msg: data.message, sender: 'Sistem', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
+    });
+    socket.on('report_result', (data) => {
+      if (data?.message) { setToast({ msg: data.message, sender: 'Sistem', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
+    });
+
     if ('Notification' in window && Notification.permission === 'default') {
       document.addEventListener('click', function reqNotif() {
         Notification.requestPermission();
@@ -1021,6 +1082,7 @@ function App() {
       socket.off('follow_result'); socket.off('follow_counts'); socket.off('follow_counts_update');
       socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
       socket.off('feed'); socket.off('suggested_follows');
+      socket.off('notifications'); socket.off('reports_list'); socket.off('role_result'); socket.off('report_result');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received'); socket.off('dm_status');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
@@ -1127,6 +1189,9 @@ function App() {
           showFollowingModal={showFollowingModal} setShowFollowingModal={setShowFollowingModal}
           feedItems={feedItems} loadFeed={loadFeed} showFeedModal={showFeedModal} setShowFeedModal={setShowFeedModal}
           suggestedFollows={suggestedFollows} loadSuggestedFollows={loadSuggestedFollows}
+          notifications={notifications} unreadCount={unreadCount} loadNotifications={loadNotifications}
+          markNotifsRead={markNotifsRead} showNotifPanel={showNotifPanel} setShowNotifPanel={setShowNotifPanel}
+          myRole={myRole} reportUser={reportUser}
         />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}

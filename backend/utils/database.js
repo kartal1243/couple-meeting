@@ -152,6 +152,46 @@ function initTables() {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_feed_user ON feed_items(username, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      type TEXT NOT NULL,
+      from_user TEXT DEFAULT '',
+      title TEXT NOT NULL,
+      body TEXT DEFAULT '',
+      data TEXT DEFAULT '{}',
+      read INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(username, read, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS user_reports (
+      id TEXT PRIMARY KEY,
+      reporter TEXT NOT NULL,
+      reported TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      details TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_report_status ON user_reports(status, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS user_roles (
+      username TEXT PRIMARY KEY,
+      role TEXT DEFAULT 'user',
+      granted_by TEXT DEFAULT '',
+      granted_at INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(username);
   `);
 
   // Migration: reset_token ve reset_expiry sütunları
@@ -704,6 +744,119 @@ function getSuggestedFollows(username, limit = 10) {
   return [];
 }
 
+function createNotification(username, type, fromUser, title, body, data) {
+  if (getDb()) {
+    const id = crypto.randomUUID();
+    db.prepare('INSERT INTO notifications (id, username, type, from_user, title, body, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(id, username, type, fromUser || '', title, body || '', JSON.stringify(data || {}), Date.now());
+    return id;
+  }
+  return null;
+}
+
+function getNotifications(username, unreadOnly = false) {
+  if (getDb()) {
+    const where = unreadOnly ? 'WHERE username = ? AND read = 0' : 'WHERE username = ?';
+    return db.prepare(`SELECT * FROM notifications ${where} ORDER BY created_at DESC LIMIT 50`).all(username);
+  }
+  return [];
+}
+
+function getUnreadNotifCount(username) {
+  if (getDb()) {
+    return db.prepare('SELECT COUNT(*) as c FROM notifications WHERE username = ? AND read = 0').get(username)?.c || 0;
+  }
+  return 0;
+}
+
+function markNotifsRead(username) {
+  if (getDb()) {
+    db.prepare('UPDATE notifications SET read = 1 WHERE username = ? AND read = 0').run(username);
+    return true;
+  }
+  return false;
+}
+
+function createReport(reporter, reported, reason, details) {
+  if (getDb()) {
+    const id = crypto.randomUUID();
+    db.prepare('INSERT INTO user_reports (id, reporter, reported, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, reporter, reported, reason, details || '', Date.now());
+    return id;
+  }
+  return null;
+}
+
+function getReports(status = 'pending') {
+  if (getDb()) {
+    return db.prepare('SELECT * FROM user_reports WHERE status = ? ORDER BY created_at DESC').all(status);
+  }
+  return [];
+}
+
+function updateReportStatus(id, status) {
+  if (getDb()) {
+    db.prepare('UPDATE user_reports SET status = ? WHERE id = ?').run(status, id);
+    return true;
+  }
+  return false;
+}
+
+function getUserRole(username) {
+  if (getDb()) {
+    const row = db.prepare('SELECT role FROM user_roles WHERE username = ?').get(username);
+    return row?.role || 'user';
+  }
+  return 'user';
+}
+
+function setUserRole(username, role, grantedBy) {
+  if (getDb()) {
+    db.prepare('INSERT OR REPLACE INTO user_roles (username, role, granted_by, granted_at) VALUES (?, ?, ?, ?)').run(username, role, grantedBy || '', Date.now());
+    return true;
+  }
+  return false;
+}
+
+function getAllRoles() {
+  if (getDb()) {
+    return db.prepare('SELECT * FROM user_roles').all();
+  }
+  return [];
+}
+
+function savePushSubscription(username, endpoint, p256dh, auth) {
+  if (getDb()) {
+    db.prepare('INSERT OR REPLACE INTO push_subscriptions (endpoint, username, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)').run(endpoint, username, p256dh, auth, Date.now());
+    return true;
+  }
+  return false;
+}
+
+function getPushSubscriptions(username) {
+  if (getDb()) {
+    return db.prepare('SELECT * FROM push_subscriptions WHERE username = ?').all(username);
+  }
+  return [];
+}
+
+function removePushSubscription(endpoint) {
+  if (getDb()) {
+    db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint);
+    return true;
+  }
+  return false;
+}
+
+function hasPermission(username, permission) {
+  const role = getUserRole(username);
+  const perms = {
+    user: ['chat', 'dm', 'follow'],
+    mod: ['chat', 'dm', 'follow', 'kick', 'mute', 'report_view'],
+    admin: ['chat', 'dm', 'follow', 'kick', 'mute', 'report_view', 'ban', 'role_manage', 'settings'],
+    superadmin: ['chat', 'dm', 'follow', 'kick', 'mute', 'report_view', 'ban', 'role_manage', 'settings', 'admin_manage']
+  };
+  return (perms[role] || perms.user).includes(permission);
+}
+
 loadJson();
 
 module.exports = {
@@ -717,5 +870,9 @@ module.exports = {
   blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
   addReaction, removeReaction, getReactions,
   followUser, unfollowUser, isFollowing, getFollowers, getFollowing, getFollowCounts,
-  addFeedItem, getFeedForUser, getMutualFollowers, getSuggestedFollows
+  addFeedItem, getFeedForUser, getMutualFollowers, getSuggestedFollows,
+  createNotification, getNotifications, getUnreadNotifCount, markNotifsRead,
+  createReport, getReports, updateReportStatus,
+  getUserRole, setUserRole, getAllRoles, hasPermission,
+  savePushSubscription, getPushSubscriptions, removePushSubscription
 };
