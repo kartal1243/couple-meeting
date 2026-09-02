@@ -21,7 +21,7 @@ export default function HomePage() {
       <Navbar onOpenAuth={openAuth} />
       <main className="cm-home-main" style={{ flex: 1 }}>
         <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={() => setShowQuickCreate(true)} />
-        <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} />
+        <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} onCreateRoom={() => setShowQuickCreate(true)} />
         <About />
         <Features />
         <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />

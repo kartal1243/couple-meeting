@@ -524,7 +524,8 @@ io.on('connection', (socket) => {
 
   socket.on('friend_request', ({ targetUsername, token }) => {
     const from = db.getUserByToken(token);
-    const target = db.getUser(sanitize(targetUsername, 20).toLowerCase());
+    const cleanTarget = sanitize(targetUsername, 20);
+    const target = db.getUser(cleanTarget) || db.getUser(cleanTarget.toLowerCase()) || db.getUser(cleanTarget.toUpperCase());
     if (!from) return socket.emit('friend_request_status', { message: 'Giris yapmalisin.' });
     if (!target) return socket.emit('friend_request_status', { message: 'Kullanici bulunamadi.' });
     if (target.username === from.username) return socket.emit('friend_request_status', { message: 'Kendine istek gonderemezsin.' });

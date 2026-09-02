@@ -289,9 +289,9 @@ function hasPendingRequest(from, to) {
 
 function searchUsers(query, exclude) {
   if (getDb()) {
-    return db.prepare('SELECT * FROM users WHERE username LIKE ? AND username != ? LIMIT 20').all(`%${query}%`, exclude || '').map(formatUser);
+    return db.prepare('SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?) AND username != ? LIMIT 20').all(`%${query}%`, exclude || '').map(formatUser);
   }
-  return Object.values(jsonFallback.users).filter(u => u.username.includes(query) && u.username !== exclude).slice(0, 20);
+  return Object.values(jsonFallback.users).filter(u => u.username.toLowerCase().includes(query.toLowerCase()) && u.username !== exclude).slice(0, 20);
 }
 
 // ═══════════════════════════════════════════════════════════

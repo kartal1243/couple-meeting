@@ -1,4 +1,4 @@
-export default function PublicRooms({ publicRooms, onJoinRoom }) {
+export default function PublicRooms({ publicRooms, onJoinRoom, onCreateRoom }) {
   return (
     <section className="cm-section" style={{ marginTop: 32 }}>
       <div className="cm-section-head">
@@ -60,7 +60,7 @@ export default function PublicRooms({ publicRooms, onJoinRoom }) {
           <div className="cm-empty-icon">🎶</div>
           <div className="cm-empty-title">Henüz açık oda yok</div>
           <div className="cm-empty-desc">İlk odayı sen oluştur ve burayı hareketlendir!</div>
-          <button onClick={() => {}} style={{ marginTop:16, padding:'12px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:13, fontWeight:800, cursor:'pointer' }}>🚀 Oda Oluştur</button>
+          <button onClick={onCreateRoom} style={{ marginTop:16, padding:'12px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:13, fontWeight:800, cursor:'pointer' }}>🚀 Oda Oluştur</button>
         </div>
       )}
     </section>

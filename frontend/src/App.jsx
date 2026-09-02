@@ -283,6 +283,12 @@ function App() {
     socket.emit('friend_search', { q, token: authToken });
   };
 
+  useEffect(() => {
+    if (!friendSearch.trim()) { setFriendSearchResults([]); return; }
+    const t = setTimeout(() => { socket.emit('friend_search', { q: friendSearch.trim(), token: authToken }); }, 300);
+    return () => clearTimeout(t);
+  }, [friendSearch]);
+
   const sendFriendRequest = (targetUsername) => {
     if (!authUser) return openAuth('register');
     socket.emit('friend_request', { targetUsername, token: authToken });
