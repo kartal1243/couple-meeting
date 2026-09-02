@@ -743,6 +743,13 @@ function App() {
     socket.on('dm_sent', (msg) => { setDmMessages((prev) => [...prev, msg]); loadDmList(); });
     socket.on('dm_received', (msg) => {
       if (dmActiveChat === msg.from) { setDmMessages((prev) => [...prev, msg]); socket.emit('dm_read', { withUser: msg.from, token: authToken }); }
+      else {
+        setToast({ msg: `${msg.from}: ${msg.text}`, sender: msg.from, id: Date.now() });
+        setTimeout(() => setToast(null), 4000);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('💬 Yeni Mesaj', { body: `${msg.from}: ${msg.text}` });
+        }
+      }
       loadDmList();
     });
 
@@ -780,7 +787,14 @@ function App() {
       setFriendRequests(Array.isArray(data?.requests) ? data.requests : []);
     });
     socket.on('friend_search_results', (items) => setFriendSearchResults(Array.isArray(items) ? items : []));
-    socket.on('friend_request_received', (data) => setFriendRequests((prev) => [data, ...prev.filter((x) => x.id !== data.id)]));
+    socket.on('friend_request_received', (data) => {
+      setFriendRequests((prev) => [data, ...prev.filter((x) => x.id !== data.id)]);
+      setToast({ msg: `${data.fromUsername} sana arkadaşlık isteği gönderdi!`, sender: data.fromUsername, id: Date.now() });
+      setTimeout(() => setToast(null), 4000);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🤝 Yeni Arkadaşlık İsteği!', { body: `${data.fromUsername} sana istek gönderdi`, icon: data.avatar || '🐱' });
+      }
+    });
     socket.on('friend_request_status', (data) => {
       if (data?.message) setErrorMessage(data.message);
       socket.emit('social_sync', { token: authToken });
@@ -797,7 +811,12 @@ function App() {
       });
     });
 
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+    if ('Notification' in window && Notification.permission === 'default') {
+      document.addEventListener('click', function reqNotif() {
+        Notification.requestPermission();
+        document.removeEventListener('click', reqNotif);
+      });
+    }
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && socketRef.current) {
@@ -886,7 +905,7 @@ function App() {
 
       {/* Global Modals */}
       {showAuthModal && (
-        <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} />
+        <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} socket={socket} />
       )}
       {showSocialModal && (
         <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles}

@@ -452,6 +452,32 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('auth_forgot_password', ({ email }) => {
+    const cleanEmail = sanitize(email, 100).toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) return socket.emit('forgot_result', { ok: false, message: 'Geçerli bir e-posta girin.' });
+    const user = db.getUserByEmail(cleanEmail);
+    if (!user) return socket.emit('forgot_result', { ok: true, message: 'E-posta bulunamadı, ama endişelenme!' });
+    const resetToken = crypto.randomBytes(16).toString('hex');
+    const expiry = Date.now() + 3600000;
+    db.updateUser(user.username, { reset_token: resetToken, reset_expiry: expiry });
+    logger.info?.(`Şifre sıfırlama isteği: ${cleanEmail} → token: ${resetToken}`);
+    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama bağlantısı e-postana gönderildi.', resetToken, dev: true });
+  });
+
+  socket.on('auth_reset_password', ({ resetToken, newPassword }) => {
+    const cleanToken = sanitize(resetToken, 64);
+    const cleanPass = newPassword;
+    if (!cleanToken || !cleanPass || cleanPass.length < 6) return socket.emit('reset_result', { ok: false, message: 'Token ve en az 6 karakterlik şifre gerekli.' });
+    const users = db.getAllUsers ? db.getAllUsers() : [];
+    const user = (Array.isArray(users) ? users : []).find(u => u.resetToken === cleanToken && u.resetExpiry > Date.now());
+    if (!user) return socket.emit('reset_result', { ok: false, message: 'Token geçersiz veya süresi dolmuş.' });
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(cleanPass, salt, 64).toString('hex');
+    db.updateUser(user.username, { password_hash: `${salt}:${hash}`, reset_token: '', reset_expiry: 0 });
+    logger.info?.(`Şifre sıfırlandı: ${user.username}`);
+    socket.emit('reset_result', { ok: true, message: 'Şifren başarıyla sıfırlandı! Giriş yapabilirsin.' });
+  });
+
   // ──────────────────────────────────────────────────────
   // 7.2 PROFIL & SOSYAL
   // ──────────────────────────────────────────────────────

@@ -1,7 +1,13 @@
 import { useApp } from '../../contexts/AppContext';
+import ProfileDropdown from './ProfileDropdown';
 
 export default function Navbar({ onOpenAuth }) {
-  const { authUser, myAvatar, setShowSocialModal } = useApp();
+  const {
+    authUser, myAvatar, setShowSocialModal, handleLogout,
+    friendRequests, friends, friendOnlineStatuses, socialTab, setSocialTab
+  } = useApp();
+
+  const openSocial = (tab) => { setSocialTab(tab); setShowSocialModal(true); };
 
   return (
     <header className="cm-home-nav">
@@ -18,11 +24,17 @@ export default function Navbar({ onOpenAuth }) {
       </div>
       <div className="cm-nav-actions">
         {authUser ? (
-          <button onClick={() => setShowSocialModal(true)} className="cm-nav-btn cm-nav-btn-green">{authUser.avatar || myAvatar} {authUser.username}</button>
+          <ProfileDropdown
+            authUser={authUser} myAvatar={myAvatar}
+            friendRequests={friendRequests} friends={friends}
+            friendOnlineStatuses={friendOnlineStatuses}
+            onOpenSocial={openSocial} onOpenAuth={onOpenAuth}
+            onLogout={handleLogout}
+          />
         ) : (
           <>
-            <button onClick={() => onOpenAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giris Yap</button>
-            <button onClick={() => onOpenAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ucretsiz Katil</button>
+            <button onClick={() => onOpenAuth('login')} className="cm-nav-btn cm-nav-btn-ghost">Giriş Yap</button>
+            <button onClick={() => onOpenAuth('register')} className="cm-nav-btn cm-nav-btn-green">Ücretsiz Katıl</button>
           </>
         )}
       </div>
