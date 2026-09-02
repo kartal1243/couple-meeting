@@ -74,6 +74,25 @@ export default function ProfileModal({ authUser, setShowProfileModal, saveProfil
 
         {/* Content */}
         <div style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 200px)' }}>
+          {/* Kullanıcı Adı */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, display: 'block', marginBottom: 6, letterSpacing: 0.5 }}>
+              KULLANICI ADI
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
+                borderRadius: 12, color: '#e2e8f0', padding: '10px 14px', fontSize: 13,
+                outline: 'none', transition: 'all 0.2s'
+              }}
+            />
+            <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>3-20 karakter, sadece harf, sayı ve _</div>
+          </div>
+
           {/* Avatar Seçimi */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, display: 'block', marginBottom: 8, letterSpacing: 0.5 }}>

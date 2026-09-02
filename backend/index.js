@@ -469,11 +469,19 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('update_profile', ({ token, bio, status, avatar }) => {
+  socket.on('update_profile', ({ token, bio, status, avatar, username }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
-    db.updateUser(user.username, { bio: sanitize(bio, 120), status: sanitize(status, 80), avatar: sanitize(avatar, 10) || user.avatar || '🐱' });
-    socket.emit('social_profile', publicUser(db.getUser(user.username)));
+    const updates = { bio: sanitize(bio, 150), status: sanitize(status, 80), avatar: sanitize(avatar, 10) || user.avatar || '🐱' };
+    if (username && username !== user.username) {
+      const cleanName = sanitize(username, 20).toLowerCase();
+      if (/^[a-z0-9_]{3,20}$/.test(cleanName) && !db.getUser(cleanName)) {
+        updates.username = cleanName;
+      }
+    }
+    db.updateUser(user.username, updates);
+    const updated = db.getUser(updates.username || user.username);
+    socket.emit('social_profile', publicUser(updated));
   });
 
   // ──────────────────────────────────────────────────────
