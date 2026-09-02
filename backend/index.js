@@ -51,6 +51,41 @@ app.use('/api/', apiLimiter);
 app.use('/api/vip/create-checkout', authLimiter);
 app.use('/api/vip/admin-grant', authLimiter);
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `avatar_${Date.now()}_${Math.random().toString(36).slice(2,8)}${ext}`);
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 }, fileFilter: (req, file, cb) => {
+  const allowed = /\.(jpg|jpeg|png|gif|webp)$/i;
+  if (allowed.test(path.extname(file.originalname)) && file.mimetype.startsWith('image/')) cb(null, true);
+  else cb(new Error('Sadece resim dosyaları yüklenebilir.'));
+}});
+
+app.use('/uploads', express.static(uploadsDir));
+
+app.post('/api/upload-avatar', (req, res) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) return res.status(400).json({ ok: false, message: err.message });
+    if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadı.' });
+    const token = req.body.token;
+    if (!token) return res.status(401).json({ ok: false, message: 'Token gerekli.' });
+    const user = db.getUserByToken(token);
+    if (!user) return res.status(401).json({ ok: false, message: 'Geçersiz token.' });
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    db.updateUser(user.username, { avatar: avatarUrl });
+    res.json({ ok: true, avatar: avatarUrl });
+  });
+});
+
 // ═══════════════════════════════════════════════════════════
 // 2. YARDIMCI FONKSİYONLAR
 // ═══════════════════════════════════════════════════════════
@@ -531,6 +566,108 @@ io.on('connection', (socket) => {
     socket.emit('social_profile', publicUser(updated));
   });
 
+  // ── ŞİFRE DEĞİŞTİRME ──
+  socket.on('change_password', ({ token, currentPassword, newPassword }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return socket.emit('change_password_result', { success: false, message: 'Kullanıcı bulunamadı.' });
+    const crypto = require('crypto');
+    const [salt, hash] = user.passwordHash.split(':');
+    const newHash = crypto.scryptSync(currentPassword, salt, 64).toString('hex');
+    if (hash !== newHash) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' });
+    if (!newPassword || newPassword.length < 6) return socket.emit('change_password_result', { success: false, message: 'Yeni şifre en az 6 karakter olmalı.' });
+    const newSalt = crypto.randomBytes(16).toString('hex');
+    const newHashFull = crypto.scryptSync(newPassword, newSalt, 64).toString('hex');
+    db.updateUser(user.username, { passwordHash: `${newSalt}:${newHashFull}` });
+    socket.emit('change_password_result', { success: true, message: 'Şifre başarıyla değiştirildi.' });
+  });
+
+  // ── YAZMA İNDİKATÖRÜ ──
+  socket.on('typing_start', ({ to, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    emitToUser(sanitize(to, 24), 'typing_indicator', { from: user.username, typing: true });
+  });
+  socket.on('typing_stop', ({ to, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    emitToUser(sanitize(to, 24), 'typing_indicator', { from: user.username, typing: false });
+  });
+
+  // ── KULLANICI ENGELLEME ──
+  socket.on('block_user', ({ targetUsername, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(targetUsername, 20);
+    if (target === user.username) return;
+    db.blockUser(user.username, target);
+    socket.emit('block_result', { success: true, blocked: target });
+    sendFriendsUpdate(user.username);
+  });
+  socket.on('unblock_user', ({ targetUsername, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.unblockUser(user.username, sanitize(targetUsername, 20));
+    socket.emit('unblock_result', { success: true, unblocked: sanitize(targetUsername, 20) });
+    sendFriendsUpdate(user.username);
+  });
+  socket.on('get_blocked_users', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    socket.emit('blocked_users_list', { blocked: db.getBlockedUsers(user.username) });
+  });
+
+  // ── MESAJ SİLME / DÜZENLEME ──
+  socket.on('dm_delete', ({ messageId, withUser, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const key = [user.username, sanitize(withUser, 24)].sort().join(':');
+    if (dmMessages[key]) {
+      dmMessages[key] = dmMessages[key].filter(m => m.id !== messageId);
+    }
+    emitToUser(sanitize(withUser, 24), 'dm_deleted', { messageId, from: user.username });
+    socket.emit('dm_deleted', { messageId, from: user.username });
+  });
+  socket.on('dm_edit', ({ messageId, withUser, newText, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const cleanText = sanitize(newText, 500);
+    if (!cleanText) return;
+    const key = [user.username, sanitize(withUser, 24)].sort().join(':');
+    if (dmMessages[key]) {
+      const msg = dmMessages[key].find(m => m.id === messageId && m.from === user.username);
+      if (msg) { msg.text = cleanText; msg.edited = true; }
+    }
+    emitToUser(sanitize(withUser, 24), 'dm_edited', { messageId, text: cleanText, from: user.username });
+    socket.emit('dm_edited', { messageId, text: cleanText, from: user.username });
+  });
+
+  // ── MESAJ TEPKİLERİ ──
+  socket.on('add_reaction', ({ messageId, messageType, emoji, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.addReaction(messageId, messageType || 'dm', user.username, emoji);
+    const reactions = db.getReactions(messageId, messageType || 'dm');
+    io.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+  });
+  socket.on('remove_reaction', ({ messageId, messageType, emoji, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.removeReaction(messageId, messageType || 'dm', user.username, emoji);
+    const reactions = db.getReactions(messageId, messageType || 'dm');
+    io.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+  });
+
+  // ── ODA DAVETİ ──
+  socket.on('invite_to_room', ({ targetUsername, roomId, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const target = sanitize(targetUsername, 20);
+    const room = rooms[roomId];
+    if (!room) return socket.emit('room_invite_result', { success: false, message: 'Oda bulunamadı.' });
+    emitToUser(target, 'room_invite', { from: user.username, fromAvatar: user.avatar, roomId, roomName: room.name || roomId });
+    socket.emit('room_invite_result', { success: true, message: `${target} kullanıcısına davet gönderildi.` });
+  });
+
   // ──────────────────────────────────────────────────────
   // 7.3 ARKADASLIK SISTEMI
   // ──────────────────────────────────────────────────────
@@ -618,6 +755,8 @@ io.on('connection', (socket) => {
     const toUser = db.getUser(sanitize(to, 24)) || db.getUser(sanitize(to, 24).toLowerCase()) || db.getUser(sanitize(to, 24).toUpperCase());
     if (!toUser) return;
     if (!db.areFriends(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Sadece arkadaşlarınızla mesajlaşabilirsiniz.' });
+    if (db.isBlocked(toUser.username, from.username)) return socket.emit('dm_status', { message: 'Bu kullanıcı sizi engelledi.' });
+    if (db.isBlocked(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Bu kullanıcıyı engellediniz. Engellemek için kaldırın.' });
     const msg = {
       id: crypto.randomBytes(8).toString('hex'),
       from: from.username, fromAvatar: from.avatar,
@@ -626,6 +765,7 @@ io.on('connection', (socket) => {
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now()
     };
+    db.saveDmMessage(msg);
     const key = [from.username, toUser.username].sort().join(':');
     if (!dmMessages[key]) dmMessages[key] = [];
     dmMessages[key].push(msg);
@@ -637,8 +777,13 @@ io.on('connection', (socket) => {
   socket.on('dm_history', ({ withUser, token }) => {
     const from = db.getUserByToken(token);
     if (!from) return;
-    const key = [from.username, sanitize(withUser, 24)].sort().join(':');
-    socket.emit('dm_history', { messages: (dmMessages[key] || []).slice(-50), withUser: sanitize(withUser, 24) });
+    const other = sanitize(withUser, 24);
+    const dbMessages = db.getDmHistory(from.username, other, 50);
+    const key = [from.username, other].sort().join(':');
+    const memMessages = dmMessages[key] || [];
+    const allMessages = [...dbMessages, ...memMessages.filter(m => !dbMessages.find(d => d.id === m.id))];
+    allMessages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    socket.emit('dm_history', { messages: allMessages.slice(-50), withUser: other });
   });
 
   socket.on('dm_list', ({ token }) => {
@@ -665,8 +810,11 @@ io.on('connection', (socket) => {
   socket.on('dm_read', ({ withUser, token }) => {
     const from = db.getUserByToken(token);
     if (!from) return;
-    const key = [from.username, sanitize(withUser, 24)].sort().join(':');
+    const other = sanitize(withUser, 24);
+    const key = [from.username, other].sort().join(':');
     if (dmMessages[key]) { dmMessages[key].forEach(m => { if (m.to === from.username) m.read = true; }); }
+    db.markDmRead(other, from.username);
+    emitToUser(other, 'dm_read_receipt', { from: from.username, readBy: from.username, time: Date.now() });
   });
 
   // Grup sohbeti
@@ -706,6 +854,7 @@ io.on('connection', (socket) => {
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now()
     };
+    db.saveGroupMessage({ ...msg, groupId: group.id });
     group.messages.push(msg);
     if (group.messages.length > 200) group.messages = group.messages.slice(-200);
     group.members.forEach(username => emitToUser(username, 'group_message', { groupId: group.id, msg }));
@@ -716,7 +865,11 @@ io.on('connection', (socket) => {
     if (!from) return;
     const group = chatGroups[sanitize(groupId, 20)];
     if (!group || !group.members.includes(from.username)) return;
-    socket.emit('group_history', { groupId: group.id, messages: group.messages.slice(-50) });
+    const dbMessages = db.getGroupHistory(group.id, 50);
+    const memMessages = group.messages || [];
+    const allMessages = [...dbMessages, ...memMessages.filter(m => !dbMessages.find(d => d.id === m.id))];
+    allMessages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    socket.emit('group_history', { groupId: group.id, messages: allMessages.slice(-50) });
   });
 
   socket.on('group_invite', ({ groupId, username, token }) => {

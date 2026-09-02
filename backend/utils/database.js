@@ -94,6 +94,46 @@ function initTables() {
     );
     CREATE INDEX IF NOT EXISTS idx_conn_logs_time ON connection_logs(created_at);
     CREATE INDEX IF NOT EXISTS idx_conn_logs_room ON connection_logs(room_id);
+
+    CREATE TABLE IF NOT EXISTS dm_messages (
+      id TEXT PRIMARY KEY,
+      from_username TEXT NOT NULL,
+      to_username TEXT NOT NULL,
+      text TEXT NOT NULL,
+      time TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      read INTEGER DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_dm_from ON dm_messages(from_username);
+    CREATE INDEX IF NOT EXISTS idx_dm_to ON dm_messages(to_username);
+    CREATE INDEX IF NOT EXISTS idx_dm_conv ON dm_messages(from_username, to_username);
+
+    CREATE TABLE IF NOT EXISTS group_messages (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      from_username TEXT NOT NULL,
+      text TEXT NOT NULL,
+      time TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_group_msg ON group_messages(group_id);
+
+    CREATE TABLE IF NOT EXISTS blocked_users (
+      blocker TEXT NOT NULL,
+      blocked TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (blocker, blocked)
+    );
+
+    CREATE TABLE IF NOT EXISTS message_reactions (
+      message_id TEXT NOT NULL,
+      message_type TEXT NOT NULL DEFAULT 'dm',
+      username TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (message_id, message_type, username, emoji)
+    );
+    CREATE INDEX IF NOT EXISTS idx_reactions_msg ON message_reactions(message_id, message_type);
   `);
 
   // Migration: reset_token ve reset_expiry sütunları
@@ -368,6 +408,144 @@ function getLogStats() {
   return { totalLogs: 0, todayLogs: 0, uniqueIps: 0 };
 }
 
+// ═══════════════════════════════════════════════════════════
+// DM MESAJLARI
+// ═══════════════════════════════════════════════════════════
+
+function saveDmMessage(msg) {
+  if (getDb()) {
+    try {
+      db.prepare('INSERT INTO dm_messages (id, from_username, to_username, text, time, created_at, read) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(msg.id, msg.from, msg.to, msg.text, msg.time, msg.createdAt, msg.read ? 1 : 0);
+    } catch {}
+  }
+}
+
+function getDmHistory(user1, user2, limit = 100) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT * FROM dm_messages 
+      WHERE (from_username = ? AND to_username = ?) OR (from_username = ? AND to_username = ?) 
+      ORDER BY created_at DESC LIMIT ?
+    `).all(user1, user2, user2, user1, limit).reverse();
+  }
+  return [];
+}
+
+function markDmRead(from, to) {
+  if (getDb()) {
+    try {
+      db.prepare('UPDATE dm_messages SET read = 1 WHERE from_username = ? AND to_username = ? AND read = 0').run(from, to);
+    } catch {}
+  }
+}
+
+function getUnreadDmCount(username) {
+  if (getDb()) {
+    const result = db.prepare('SELECT COUNT(*) as count FROM dm_messages WHERE to_username = ? AND read = 0').get(username);
+    return result?.count || 0;
+  }
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GRUP MESAJLARI
+// ═══════════════════════════════════════════════════════════
+
+function saveGroupMessage(msg) {
+  if (getDb()) {
+    try {
+      db.prepare('INSERT INTO group_messages (id, group_id, from_username, text, time, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(msg.id, msg.groupId, msg.from, msg.text, msg.time, msg.createdAt);
+    } catch {}
+  }
+}
+
+function getGroupHistory(groupId, limit = 100) {
+  if (getDb()) {
+    return db.prepare('SELECT * FROM group_messages WHERE group_id = ? ORDER BY created_at DESC LIMIT ?').all(groupId, limit).reverse();
+  }
+  return [];
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENGELLEME
+// ═══════════════════════════════════════════════════════════
+
+function blockUser(blocker, blocked) {
+  if (getDb()) {
+    try {
+      db.prepare('INSERT OR IGNORE INTO blocked_users (blocker, blocked, created_at) VALUES (?, ?, ?)').run(blocker, blocked, Date.now());
+    } catch {}
+  }
+}
+
+function unblockUser(blocker, blocked) {
+  if (getDb()) {
+    try {
+      db.prepare('DELETE FROM blocked_users WHERE blocker = ? AND blocked = ?').run(blocker, blocked);
+    } catch {}
+  }
+}
+
+function isBlocked(blocker, blocked) {
+  if (getDb()) {
+    const row = db.prepare('SELECT 1 FROM blocked_users WHERE blocker = ? AND blocked = ?').get(blocker, blocked);
+    return !!row;
+  }
+  return false;
+}
+
+function getBlockedUsers(username) {
+  if (getDb()) {
+    return db.prepare('SELECT blocked FROM blocked_users WHERE blocker = ?').all(username).map(r => r.blocked);
+  }
+  return [];
+}
+
+function isBlockedBy(blocked, blocker) {
+  if (getDb()) {
+    const row = db.prepare('SELECT 1 FROM blocked_users WHERE blocker = ? AND blocked = ?').get(blocker, blocked);
+    return !!row;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MESAJ TEPKİLERİ
+// ═══════════════════════════════════════════════════════════
+
+function addReaction(messageId, messageType, username, emoji) {
+  if (getDb()) {
+    try {
+      db.prepare('INSERT OR IGNORE INTO message_reactions (message_id, message_type, username, emoji, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(messageId, messageType, username, emoji, Date.now());
+    } catch {}
+  }
+}
+
+function removeReaction(messageId, messageType, username, emoji) {
+  if (getDb()) {
+    try {
+      db.prepare('DELETE FROM message_reactions WHERE message_id = ? AND message_type = ? AND username = ? AND emoji = ?')
+        .run(messageId, messageType, username, emoji);
+    } catch {}
+  }
+}
+
+function getReactions(messageId, messageType) {
+  if (getDb()) {
+    const rows = db.prepare('SELECT username, emoji FROM message_reactions WHERE message_id = ? AND message_type = ?').all(messageId, messageType);
+    const reactions = {};
+    for (const r of rows) {
+      if (!reactions[r.emoji]) reactions[r.emoji] = [];
+      reactions[r.emoji].push(r.username);
+    }
+    return reactions;
+  }
+  return {};
+}
+
 loadJson();
 
 module.exports = {
@@ -375,5 +553,9 @@ module.exports = {
   createToken, cleanOldTokens, sendFriendRequest, getPendingFriendRequests, getFriendRequest,
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
   searchUsers, addGlobalMessage, getGlobalMessages, getAllUsers, closeDb,
-  addConnectionLog, getConnectionLogs, getLogStats
+  addConnectionLog, getConnectionLogs, getLogStats,
+  saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount,
+  saveGroupMessage, getGroupHistory,
+  blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
+  addReaction, removeReaction, getReactions
 };

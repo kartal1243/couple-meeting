@@ -48,6 +48,9 @@ function App() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
   const [toast, setToast] = useState(null);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [messageReactions, setMessageReactions] = useState({});
+  const [blockedUsers, setBlockedUsers] = useState([]);
 
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
@@ -246,6 +249,17 @@ function App() {
     if (!text.trim() || !authToken) return;
     socket.emit('dm_send', { to, text: text.trim(), token: authToken });
   };
+
+  const sendDmTyping = (to) => { if (authToken) socket.emit('typing_start', { to, token: authToken }); };
+  const sendDmStopTyping = (to) => { if (authToken) socket.emit('typing_stop', { to, token: authToken }); };
+  const deleteDm = (messageId, withUser) => { if (authToken) socket.emit('dm_delete', { messageId, withUser, token: authToken }); };
+  const editDm = (messageId, withUser, newText) => { if (authToken) socket.emit('dm_edit', { messageId, withUser, newText, token: authToken }); };
+  const addReaction = (messageId, emoji, messageType = 'dm') => { if (authToken) socket.emit('add_reaction', { messageId, messageType, emoji, token: authToken }); };
+  const removeReaction = (messageId, emoji, messageType = 'dm') => { if (authToken) socket.emit('remove_reaction', { messageId, messageType, emoji, token: authToken }); };
+  const blockUser = (targetUsername) => { if (authToken) socket.emit('block_user', { targetUsername, token: authToken }); };
+  const unblockUser = (targetUsername) => { if (authToken) socket.emit('unblock_user', { targetUsername, token: authToken }); };
+  const inviteToRoom = (targetUsername, roomId) => { if (authToken) socket.emit('invite_to_room', { targetUsername, roomId, token: authToken }); };
+  const changePassword = (currentPassword, newPassword) => { if (authToken) socket.emit('change_password', { token: authToken, currentPassword, newPassword }); };
 
   const openDm = (withUser) => {
     setDmActiveChat(withUser);
@@ -836,6 +850,38 @@ function App() {
       setFriendOnlineStatuses((prev) => ({ ...prev, [data.username]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
     });
 
+    socket.on('typing_indicator', (data) => {
+      setTypingUsers(prev => {
+        const next = { ...prev };
+        if (data.typing) { next[data.from] = Date.now(); } else { delete next[data.from]; }
+        return next;
+      });
+      if (data.typing) {
+        setTimeout(() => { setTypingUsers(prev => { const next = { ...prev }; if (next[data.from] && Date.now() - next[data.from] > 3000) delete next[data.from]; return next; }); }, 4000);
+      }
+    });
+
+    socket.on('dm_read_receipt', (data) => {
+      setDmMessages(prev => prev.map(m => m.from === data.from && !m.read ? { ...m, read: true } : m));
+    });
+
+    socket.on('dm_deleted', (data) => {
+      setDmMessages(prev => prev.filter(m => m.id !== data.messageId));
+    });
+
+    socket.on('dm_edited', (data) => {
+      setDmMessages(prev => prev.map(m => m.id === data.messageId ? { ...m, text: data.text, edited: true } : m));
+    });
+
+    socket.on('reactions_update', (data) => {
+      setMessageReactions(prev => ({ ...prev, [data.messageId]: data.reactions }));
+    });
+
+    socket.on('room_invite', (data) => {
+      setToast({ msg: `${data.from} seni "${data.roomName}" odasına davet etti!`, sender: data.from, id: Date.now() });
+      setTimeout(() => setToast(null), 5000);
+    });
+
     socket.on('vip_activated', (data) => {
       setAuthUser((prev) => {
         const updated = { ...prev, isVip: data.isVip, vipExpiry: data.vipExpiry };
@@ -873,6 +919,8 @@ function App() {
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('global_online_update'); socket.off('vip_activated');
+      socket.off('typing_indicator'); socket.off('dm_read_receipt'); socket.off('dm_deleted'); socket.off('dm_edited');
+      socket.off('reactions_update'); socket.off('room_invite');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
@@ -923,8 +971,12 @@ function App() {
     sendDm, openDm, loadDmList,
     chatGroups, activeGroup, setActiveGroup, groupMessages, groupInput, setGroupInput,
     showGroupCreate, setShowGroupCreate, groupNameInput, setGroupNameInput,
-    groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups
-  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages]);
+    groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups,
+    typingUsers, sendDmTyping, sendDmStopTyping,
+    messageReactions, addReaction, removeReaction,
+    blockedUsers, blockUser, unblockUser,
+    deleteDm, editDm, inviteToRoom, changePassword
+  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers]);
 
   // ── 11. RENDER ──
   return (
