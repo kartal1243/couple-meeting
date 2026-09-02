@@ -256,11 +256,17 @@ function App() {
       token: authToken,
       bio: (data?.bio ?? profileBioInput).trim().slice(0, 150),
       status: (data?.status ?? profileStatusInput).trim().slice(0, 80),
-      avatar: data?.avatar ?? myAvatar
+      avatar: data?.avatar ?? myAvatar,
+      username: data?.username ?? authUser.username
     });
-    if (data?.avatar) { setMyAvatar(data.avatar); localStorage.setItem('cm_user_avatar', data.avatar); }
-    if (data?.bio) setProfileBioInput(data.bio);
-    if (data?.status) setProfileStatusInput(data.status);
+    // Update local state immediately
+    const updated = { ...authUser };
+    if (data?.avatar) { updated.avatar = data.avatar; setMyAvatar(data.avatar); localStorage.setItem('cm_user_avatar', data.avatar); }
+    if (data?.bio !== undefined) { updated.bio = data.bio; setProfileBioInput(data.bio); }
+    if (data?.status !== undefined) { updated.status = data.status; setProfileStatusInput(data.status); }
+    if (data?.username && data.username !== authUser.username) { updated.username = data.username; setUsername(data.username); localStorage.setItem('cm_username', data.username); }
+    setAuthUser(updated);
+    localStorage.setItem('cm_auth_user', JSON.stringify(updated));
   };
 
   // ── 6. ODA YONETIMI ──
