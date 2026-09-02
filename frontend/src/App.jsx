@@ -146,6 +146,7 @@ function App() {
   const playlistRef = useRef(playlist);
   const playModeRef = useRef(playMode);
   const mediaSrcRef = useRef(mediaSrc);
+  const authTokenRef = useRef(authToken);
 
   if (!socketRef.current) {
     socketRef.current = io(BACKEND_URL, { transports: ['polling', 'websocket'], autoConnect: true });
@@ -157,6 +158,13 @@ function App() {
   useEffect(() => { playModeRef.current = playMode; }, [playMode]);
   useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
   useEffect(() => { mySocketIdRef.current = mySocketId; }, [mySocketId]);
+  useEffect(() => { authTokenRef.current = authToken; }, [authToken]);
+
+  useEffect(() => {
+    if (authToken && socket.connected) {
+      socket.emit('social_sync', { token: authToken });
+    }
+  }, [authToken]);
   useEffect(() => { handleMediaEndRef.current = handleMediaEnd; }, []);
 
   // ── 3. YARDIMCI FONKSIYONLAR ──
@@ -626,12 +634,14 @@ function App() {
 
     socket.on('connect', () => {
       setIsConnected(true);
-      if (authToken) socket.emit('social_sync', { token: authToken });
+      const token = authTokenRef.current;
+      if (token) socket.emit('social_sync', { token });
     });
     socket.on('disconnect', () => setIsConnected(false));
     socket.on('reconnect', () => {
-      if (authToken) socket.emit('social_sync', { token: authToken });
-      if (roomId) socket.emit('request_room_sync', { roomId, token: authToken });
+      const token = authTokenRef.current;
+      if (token) socket.emit('social_sync', { token });
+      if (roomId) socket.emit('request_room_sync', { roomId, token });
     });
 
     const heartbeatInterval = setInterval(() => {
@@ -904,10 +914,11 @@ function App() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && socketRef.current) {
+        const token = authTokenRef.current;
         socketRef.current.connect();
-        // Re-sync player when tab becomes visible
+        if (token) socketRef.current.emit('social_sync', { token });
         if (currentRoomIdRef.current) {
-          socketRef.current.emit('request_room_sync', { roomId: currentRoomIdRef.current });
+          socketRef.current.emit('request_room_sync', { roomId: currentRoomIdRef.current, token });
         }
       }
     };
