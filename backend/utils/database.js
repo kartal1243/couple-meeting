@@ -192,11 +192,23 @@ function initTables() {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(username);
+
+    CREATE TABLE IF NOT EXISTS email_verifications (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      verified INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_verify_user ON email_verifications(username, verified);
   `);
 
   // Migration: reset_token ve reset_expiry sütunları
   try { db.exec(`ALTER TABLE users ADD COLUMN reset_token TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN reset_expiry INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0`); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -857,6 +869,38 @@ function hasPermission(username, permission) {
   return (perms[role] || perms.user).includes(permission);
 }
 
+function createEmailVerification(username, email, code) {
+  if (getDb()) {
+    const id = crypto.randomUUID();
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+    db.prepare('DELETE FROM email_verifications WHERE username = ? AND verified = 0').run(username);
+    db.prepare('INSERT INTO email_verifications (id, username, email, code, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, username, email, code, expiresAt, Date.now());
+    return id;
+  }
+  return null;
+}
+
+function verifyEmailCode(username, code) {
+  if (getDb()) {
+    const row = db.prepare('SELECT * FROM email_verifications WHERE username = ? AND code = ? AND verified = 0 AND expires_at > ?').get(username, code, Date.now());
+    if (row) {
+      db.prepare('UPDATE email_verifications SET verified = 1 WHERE id = ?').run(row.id);
+      db.prepare('UPDATE users SET email_verified = 1 WHERE username = ?').run(username);
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+function isEmailVerified(username) {
+  if (getDb()) {
+    const user = db.prepare('SELECT email_verified FROM users WHERE username = ?').get(username);
+    return user?.email_verified === 1;
+  }
+  return false;
+}
+
 loadJson();
 
 module.exports = {
@@ -874,5 +918,6 @@ module.exports = {
   createNotification, getNotifications, getUnreadNotifCount, markNotifsRead,
   createReport, getReports, updateReportStatus,
   getUserRole, setUserRole, getAllRoles, hasPermission,
-  savePushSubscription, getPushSubscriptions, removePushSubscription
+  savePushSubscription, getPushSubscriptions, removePushSubscription,
+  createEmailVerification, verifyEmailCode, isEmailVerified
 };

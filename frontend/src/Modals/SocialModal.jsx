@@ -119,7 +119,8 @@ export default function SocialModal({
   feedItems, loadFeed, showFeedModal, setShowFeedModal,
   suggestedFollows, loadSuggestedFollows,
   notifications, unreadCount, loadNotifications, markNotifsRead, showNotifPanel, setShowNotifPanel,
-  myRole, reportUser
+  myRole, reportUser, showVerifyModal, setShowVerifyModal, verifyCode, setVerifyCode,
+  verifySent, setVerifySent, sendVerificationEmail, verifyEmailCode
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
@@ -428,7 +429,20 @@ export default function SocialModal({
                         <button key={a} type="button" onClick={() => { setMyAvatar(a); localStorage.setItem('cm_user_avatar', a); }} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, cursor: 'pointer', background: myAvatar === a ? '#00a884' : '#111b21', border: myAvatar === a ? '2px solid #53e6bc' : '1px solid #2a3942' }}>{a}</button>
                       ))}
                     </div>
-                    <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%' }}>Profili Kaydet ✓</button>
+                    <div style={{ marginTop: 12, padding: 12, background: authUser?.email_verified ? 'rgba(0,168,132,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 12, border: authUser?.email_verified ? '1px solid rgba(0,168,132,0.3)' : '1px solid rgba(239,68,68,0.3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>{authUser?.email_verified ? '✅' : '⚠️'}</span>
+                        <div>
+                          <div style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{authUser?.email_verified ? 'Email Doğrulanmış' : 'Email Doğrulanmamış'}</div>
+                          <div style={{ color: '#7f8c98', fontSize: 10 }}>{authUser?.email}</div>
+                        </div>
+                        {!authUser?.email_verified && (
+                          <button type="button" onClick={() => { sendVerificationEmail(); setShowVerifyModal(true); }}
+                            style={{ marginLeft: 'auto', background: '#00a884', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Doğrula</button>
+                        )}
+                      </div>
+                    </div>
+                    <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet ✓</button>
                   </div>
                 )}
               </div>
@@ -509,6 +523,23 @@ export default function SocialModal({
                 <div style={{ color: '#475569', fontSize: 9, marginTop: 4 }}>{new Date(n.created_at).toLocaleString('tr')}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Email Doğrulama Modalı */}
+      {showVerifyModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 22000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowVerifyModal(false)}>
+          <div style={{ width: 380, background: '#111b21', borderRadius: 18, padding: 24, border: '1px solid #25313a' }} onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 48, marginBottom: 10 }}>📧</div>
+              <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>Email Doğrulama</div>
+              <div style={{ color: '#7f8c98', fontSize: 12, marginTop: 6 }}>6 haneli doğrulama kodunu gir</div>
+            </div>
+            <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="000000"
+              style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
+            <button type="button" onClick={verifyEmailCode} style={{ width: '100%', background: '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14, marginBottom: 10 }}>Doğrula</button>
+            <button type="button" onClick={() => { sendVerificationEmail(); }} style={{ width: '100%', background: 'transparent', color: '#00a884', border: '1px solid #00a884', padding: '10px', borderRadius: 12, fontWeight: 800, cursor: 'pointer', fontSize: 12 }}>Tekrar Gönder</button>
           </div>
         </div>
       )}

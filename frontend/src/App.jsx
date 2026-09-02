@@ -124,6 +124,9 @@ function App() {
   const [reportTarget, setReportTarget] = useState('');
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifySent, setVerifySent] = useState(false);
 
   const [authUser, setAuthUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cm_auth_user')) || null; } catch { return null; }
@@ -444,6 +447,15 @@ function App() {
 
   const setRole = (target, role) => {
     socket.emit('set_role', { targetUsername: target, role, token: authToken });
+  };
+
+  const sendVerificationEmail = () => {
+    socket.emit('send_verification_email', { token: authToken });
+    setVerifySent(true);
+  };
+
+  const verifyEmailCode = () => {
+    socket.emit('verify_email_code', { code: verifyCode, token: authToken });
   };
 
   // ── 6. ODA YONETIMI ──
@@ -1046,6 +1058,10 @@ function App() {
     socket.on('report_result', (data) => {
       if (data?.message) { setToast({ msg: data.message, sender: 'Sistem', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
     });
+    socket.on('verify_result', (data) => {
+      if (data?.message) { setToast({ msg: data.message, sender: 'Doğrulama', id: Date.now() }); setTimeout(() => setToast(null), 4000); }
+      if (data?.success) { setShowVerifyModal(false); setVerifyCode(''); if (authUser) { const u = { ...authUser, email_verified: 1 }; setAuthUser(u); localStorage.setItem('cm_auth_user', JSON.stringify(u)); } }
+    });
 
     if ('Notification' in window && Notification.permission === 'default') {
       document.addEventListener('click', function reqNotif() {
@@ -1082,7 +1098,7 @@ function App() {
       socket.off('follow_result'); socket.off('follow_counts'); socket.off('follow_counts_update');
       socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
       socket.off('feed'); socket.off('suggested_follows');
-      socket.off('notifications'); socket.off('reports_list'); socket.off('role_result'); socket.off('report_result');
+      socket.off('notifications'); socket.off('reports_list'); socket.off('role_result'); socket.off('report_result'); socket.off('verify_result');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received'); socket.off('dm_status');
       socket.off('group_list'); socket.off('group_created'); socket.off('group_updated'); socket.off('group_history'); socket.off('group_message');
     };
@@ -1192,6 +1208,10 @@ function App() {
           notifications={notifications} unreadCount={unreadCount} loadNotifications={loadNotifications}
           markNotifsRead={markNotifsRead} showNotifPanel={showNotifPanel} setShowNotifPanel={setShowNotifPanel}
           myRole={myRole} reportUser={reportUser}
+          showVerifyModal={showVerifyModal} setShowVerifyModal={setShowVerifyModal}
+          verifyCode={verifyCode} setVerifyCode={setVerifyCode}
+          verifySent={verifySent} setVerifySent={setVerifySent}
+          sendVerificationEmail={sendVerificationEmail} verifyEmailCode={verifyEmailCode} authUser={authUser}
         />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}

@@ -3,6 +3,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+let nodemailer;
+try { nodemailer = require('nodemailer'); } catch { nodemailer = null; }
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -823,6 +825,33 @@ io.on('connection', (socket) => {
 
   socket.on('remove_push_subscription', ({ endpoint }) => {
     db.removePushSubscription(endpoint);
+  });
+
+  // ── EMAIL DOGRULAMA ──
+  socket.on('send_verification_email', ({ token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    if (db.isEmailVerified(user.username)) return socket.emit('verify_result', { success: false, message: 'Email zaten doğrulanmış.' });
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    db.createEmailVerification(user.username, user.email, code);
+    const transporter = nodemailer?.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: parseInt(process.env.SMTP_PORT) || 587, secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
+    if (transporter && process.env.SMTP_USER) {
+      transporter.sendMail({ from: process.env.SMTP_FROM || 'noreply@couplemeeting.com', to: user.email, subject: 'Couple Meeting - Email Doğrulama', text: `Doğrulama kodun: ${code}`, html: `<div style="font-family:sans-serif;text-align:center;padding:40px"><h2 style="color:#00a884">Couple Meeting</h2><p>Email doğrulama kodun:</p><h1 style="font-size:32px;letter-spacing:8px;color:#00a884">${code}</h1><p style="color:#666">Bu kod 15 dakika geçerlidir.</p></div>` }).catch(e => logger.warn?.('Email gönderilemedi: ' + e.message));
+      socket.emit('verify_result', { success: true, message: 'Doğrulama emaili gönderildi.' });
+    } else {
+      socket.emit('verify_result', { success: true, message: `Doğrulama kodun: ${code}` });
+    }
+  });
+
+  socket.on('verify_email_code', ({ code, token }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const ok = db.verifyEmailCode(user.username, code);
+    socket.emit('verify_result', { success: ok, message: ok ? 'Email doğrulandı!' : 'Geçersiz veya süresi dolmuş kod.' });
+    if (ok) {
+      const updated = { ...user, email_verified: 1 };
+      socket.emit('social_profile', updated);
+    }
   });
 
   // ──────────────────────────────────────────────────────

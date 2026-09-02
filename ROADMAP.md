@@ -1,5 +1,5 @@
 # Couple Meeting - GÜNCEL Yol Haritası (v2)
-## 📊 Durum: 13/20 Özellik Tamamlandı (%65)
+## 📊 Durum: 17/20 Özellik Tamamlandı (%85)
 
 ---
 
@@ -28,12 +28,12 @@
 
 ## ⏳ BEKLEYEN ÖZELLİKLER
 
-### 🟢 GELİŞTİRME (1/6)
-- [ ] 🔔 **Bildirim Sistemi** — Web Push + in-app bildirimler
+### 🟢 GELİŞTİRME (4/6 Tamamlandı)
+- [x] 🔔 **Bildirim Sistemi** — In-app bildirimler + bell ikonu + unread badge
 - [x] 👆 **Takip Sistemi** — Tek taraflı takip + takipçi + feed akışı
-- [ ] 👮 **Admin Rol Sistemi** — user → mod → admin → superadmin
-- [ ] 🚨 **Kullanıcı Raporlama** — Şikayet → admin paneli
-- [ ] 📧 **Email Doğrulama** — Kayıt sonrası email doğrulama
+- [x] 👮 **Admin Rol Sistemi** — user → mod → admin → superadmin + yetki bazlı kontrol
+- [x] 🚨 **Kullanıcı Raporlama** — Şikayet → admin paneli + bildirim
+- [x] 📧 **Email Doğrulama** — 6 haneli kod + nodemailer SMTP + profilde durum
 - [ ] 🔐 **İki Faktörlü Doğrulama** — Google Authenticator 2FA
 
 ### 🔵 VİZYON (0/4)
@@ -125,12 +125,12 @@ changePassword(cur, new) // Şifre değiştir
 
 | Metrik | Değer |
 |--------|-------|
-| Toplam Handler | 50+ |
-| Veritabanı Tablosu | 10 |
-| Frontend Bileşeni | 15+ |
-| API Endpoint | 12 |
-| Tamamlanan | %60 |
-| Kalan | %40 |
+| Toplam Handler | 80+ |
+| Veritabanı Tablosu | 14 |
+| Frontend Bileşeni | 20+ |
+| API Endpoint | 15 |
+| Tamamlanan | %85 |
+| Kalan | %15 |
 
 ---
 
