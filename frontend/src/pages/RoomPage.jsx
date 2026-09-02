@@ -5,12 +5,15 @@ import Player from '../Room/Player';
 import Controls from '../Room/Controls';
 import Chat from '../Room/Chat';
 import Playlist from '../Room/Playlist';
+import VoiceChat from '../Room/VoiceChat';
+import Tombala from '../Room/Tombala';
 import { useState } from 'react';
 
 export default function RoomPage() {
   const app = useApp();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const {
     roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
     handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
@@ -182,6 +185,9 @@ export default function RoomPage() {
             socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId}
           />
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef} />
+          <div style={{ padding: '4px 20px', background: 'rgba(0,0,0,.3)', borderTop: '1px solid rgba(255,255,255,.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} roomUsersList={roomUsersList} isMuted={isMuted} setIsMuted={setIsMuted} />
+          </div>
         </div>
 
         <div className="cm-sidebar" style={{ background: chatTheme.bg }}>
@@ -207,11 +213,24 @@ export default function RoomPage() {
                 borderBottom: sidebarTab === 'playlist' ? `2px solid ${chatTheme.primary}` : '2px solid transparent',
                 transition: 'all 0.25s ease'
               }}
-            >📚 Kitaplık {playlist && playlist.length > 0 && <span style={{ background: `${chatTheme.primary}33`, color: chatTheme.primary, padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 900, marginLeft: 4 }}>{playlist.length}</span>}</button>
+            >📚 Kitaplık</button>
+            <button
+              onClick={() => setSidebarTab('tombala')}
+              style={{
+                padding: '12px 10px', border: 'none',
+                background: sidebarTab === 'tombala' ? 'rgba(245,158,11,.12)' : 'transparent',
+                color: sidebarTab === 'tombala' ? '#f59e0b' : '#64748b',
+                fontWeight: 800, cursor: 'pointer', fontSize: 13,
+                borderBottom: sidebarTab === 'tombala' ? '2px solid #f59e0b' : '2px solid transparent',
+                transition: 'all 0.25s ease', whiteSpace: 'nowrap'
+              }}
+            >🎲</button>
           </div>
 
           {sidebarTab === 'chat' ? (
             <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
+          ) : sidebarTab === 'tombala' ? (
+            <Tombala socket={socket} roomId={roomId} mySocketId={mySocketId} userId={userId} hostUserId={hostUserId} roomUsersList={roomUsersList} />
           ) : (
             <Playlist
               categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}

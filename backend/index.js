@@ -763,6 +763,31 @@ io.on('connection', (socket) => {
     if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
   });
 
+  // Voice chat
+  socket.on('voice_join', ({ roomId }) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]) return;
+    if (!rooms[cleanRoomId].voiceUsers) rooms[cleanRoomId].voiceUsers = [];
+    if (!rooms[cleanRoomId].voiceUsers.includes(socket.id)) rooms[cleanRoomId].voiceUsers.push(socket.id);
+    socket.to(cleanRoomId).emit('voice_join', { socketId: socket.id });
+    socket.emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
+    socket.to(cleanRoomId).emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
+  });
+
+  socket.on('voice_leave', ({ roomId }) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]) return;
+    rooms[cleanRoomId].voiceUsers = (rooms[cleanRoomId].voiceUsers || []).filter(id => id !== socket.id);
+    socket.to(cleanRoomId).emit('voice_leave', { socketId: socket.id });
+    socket.emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
+    socket.to(cleanRoomId).emit('voice_users', { users: rooms[cleanRoomId].voiceUsers });
+  });
+
+  socket.on('voice_signal', ({ targetId, signal }) => {
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) targetSocket.emit('voice_signal', { fromId: socket.id, signal });
+  });
+
   socket.on('request_room_sync', ({ roomId }) => {
     const cleanRoomId = sanitize(roomId, 50);
     const room = rooms[cleanRoomId];
@@ -776,6 +801,73 @@ io.on('connection', (socket) => {
         maxUsers: room.maxUsers
       });
     }
+  });
+
+  // ── TOMBALA ──
+  const tombalaGames = {};
+
+  function generateTombalaCard() {
+    const card = [];
+    const cols = [[1,10],[11,20],[21,30],[31,40],[41,50]];
+    for (let c = 0; c < 5; c++) {
+      const colNums = [];
+      while (colNums.length < 5) { const n = Math.floor(Math.random() * (cols[c][1] - cols[c][0] + 1)) + cols[c][0]; if (!colNums.includes(n)) colNums.push(n); }
+      colNums.sort((a, b) => a - b);
+      card.push(...colNums);
+    }
+    return card;
+  }
+
+  socket.on('tombala_start', ({ roomId }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room || room.hostUserId !== socket.userId) return;
+    const game = { active: true, calledNumbers: [], currentNumber: null, players: {}, winner: null };
+    room.users.forEach(u => { game.players[u.socketId] = { userId: u.userId, username: u.username, card: generateTombalaCard(), lineDone: false }; });
+    tombalaGames[roomId] = game;
+    io.to(roomId).emit('tombala_game_state', { active: true, calledNumbers: [], currentNumber: null, players: Object.values(game.players).map(p => ({ userId: p.userId, username: p.username })) });
+    Object.entries(game.players).forEach(([sid, p]) => { io.to(sid).emit('tombala_your_card', { card: p.card }); });
+  });
+
+  socket.on('tombala_call', ({ roomId }) => {
+    const game = tombalaGames[sanitize(roomId, 50)];
+    if (!game || !game.active) return;
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room || room.hostUserId !== socket.userId) return;
+    const available = [];
+    for (let i = 1; i <= 50; i++) { if (!game.calledNumbers.includes(i)) available.push(i); }
+    if (available.length === 0) return;
+    const num = available[Math.floor(Math.random() * available.length)];
+    game.calledNumbers.push(num);
+    game.currentNumber = num;
+    io.to(roomId).emit('tombala_number', { number: num, calledNumbers: game.calledNumbers });
+  });
+
+  socket.on('tombala_claim', ({ roomId, type }) => {
+    const game = tombalaGames[sanitize(roomId, 50)];
+    if (!game || !game.active) return;
+    const player = game.players[socket.id];
+    if (!player || game.winner) return;
+    if (type === 'line' && player.lineDone) return;
+    const hasLine = (() => {
+      const rows = [[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24]];
+      return rows.some(row => row.every(i => game.calledNumbers.includes(player.card[i])));
+    })();
+    const hasFull = player.card.every(n => game.calledNumbers.includes(n));
+    if (type === 'line' && hasLine) {
+      player.lineDone = true;
+      io.to(roomId).emit('tombala_line', { username: player.username, socketId: socket.id });
+    }
+    if (type === 'full' && hasFull) {
+      game.winner = player.username;
+      io.to(roomId).emit('tombala_winner', { username: player.username, type: 'full' });
+    }
+  });
+
+  socket.on('tombala_end', ({ roomId }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room || room.hostUserId !== socket.userId) return;
+    delete tombalaGames[roomId];
+    io.to(roomId).emit('tombala_end');
   });
 
   socket.on('leave_room', () => {
