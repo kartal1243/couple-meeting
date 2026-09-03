@@ -1,4 +1,5 @@
 export const processUrl = (url) => {
+  if (!url || typeof url !== 'string') return { type: 'iframe', src: '' };
   const trimmed = url.trim();
   if (trimmed.includes('youtu.be/') || trimmed.includes('watch?v=')) {
     const id = trimmed.includes('youtu.be/')

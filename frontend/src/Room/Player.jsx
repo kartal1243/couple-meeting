@@ -16,6 +16,7 @@ export default function Player({
   const videoId = extractVideoId(mediaSrc);
   const screenVideoRef = useRef(null);
   const screenStreamRef = useRef(null);
+  const screenDomVideoRef = useRef(null);
   const remoteCanvasRef = useRef(null);
   const frameIntervalRef = useRef(null);
   const [remoteScreen, setRemoteScreen] = useState(false);
@@ -73,6 +74,7 @@ export default function Player({
       video.muted = true;
       video.style.display = 'none';
       document.body.appendChild(video);
+      screenDomVideoRef.current = video;
 
       const canvas = document.createElement('canvas');
       canvas.width = 640;
@@ -100,6 +102,7 @@ export default function Player({
   const stopScreenShare = () => {
     if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
     if (screenStreamRef.current) { screenStreamRef.current.getTracks().forEach(t => t.stop()); screenStreamRef.current = null; }
+    if (screenDomVideoRef.current) { screenDomVideoRef.current.remove(); screenDomVideoRef.current = null; }
     setScreenSharing(false);
     if (socket) socket.emit('screen_share_stop', { roomId: mediaMeta?.roomId });
   };
@@ -129,6 +132,7 @@ export default function Player({
     return () => {
       if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
       if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop());
+      if (screenDomVideoRef.current) screenDomVideoRef.current.remove();
     };
   }, []);
 

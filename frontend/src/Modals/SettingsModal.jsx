@@ -12,13 +12,13 @@ export default function SettingsModal({
   hostUserId, userId, editRoomNameInput, setEditRoomNameInput, roomName,
   roomTheme, setRoomTheme, handleSaveSettings, roomUsersList,
   handleTransferAdmin, handleKickUser, setShowSettingsModal, currentTheme, styles, authUser,
-  socket, roomId
+  socket, roomId, currentRoomInfo
 }) {
   const isHost = hostUserId === userId;
   const isVip = authUser?.isVip;
   const [tab, setTab] = useState('settings');
   const [newPassword, setNewPassword] = useState('');
-  const [maxUsers, setMaxUsers] = useState(2);
+  const [maxUsers, setMaxUsers] = useState(currentRoomInfo?.maxUsers || 2);
   const [saveMsg, setSaveMsg] = useState('');
 
   const getThemeLabel = (key) => {
@@ -34,20 +34,16 @@ export default function SettingsModal({
   };
 
   const handlePasswordChange = async () => {
-    try {
-      const token = localStorage.getItem('cm_auth_token');
-      await fetch(`/api/rooms/${encodeURIComponent(roomId)}/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pass: 'admin123', newPassword: newPassword.trim(), token })
-      });
-      localStorage.setItem('cm_saved_pass', newPassword.trim());
-      setSaveMsg('✓ Şifre güncellendi!');
+    if (!newPassword.trim() || newPassword.trim().length < 4) {
+      setSaveMsg('✗ Şifre en az 4 karakter olmalı');
       setTimeout(() => setSaveMsg(''), 2000);
-      setNewPassword('');
-    } catch {
-      setSaveMsg('✗ Bir hata oluştu');
+      return;
     }
+    socket.emit('update_room_settings', { roomId, newPassword: newPassword.trim() });
+    localStorage.setItem('cm_saved_pass', newPassword.trim());
+    setSaveMsg('✓ Şifre güncellendi!');
+    setTimeout(() => setSaveMsg(''), 2000);
+    setNewPassword('');
   };
 
   const handleMaxUsersChange = () => {

@@ -93,26 +93,7 @@ export default function RoomPage() {
         }
       `}</style>
 
-      {/* Toast Notification */}
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
-          background: 'linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,41,59,.95))',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255,255,255,.1)',
-          padding: '10px 20px', borderRadius: 14, zIndex: 99999,
-          boxShadow: '0 10px 40px rgba(0,0,0,.5)',
-          display: 'flex', alignItems: 'center', gap: 10,
-          animation: 'cmToastIn 0.3s ease'
-        }}>
-          <span style={{ fontSize: 16 }}>💬</span>
-          <div>
-            <span style={{ fontWeight: 800, color: chatTheme.primary, fontSize: 12 }}>{toast.sender}</span>
-            <span style={{ color: '#94a3b8', fontSize: 12, marginLeft: 6 }}>{toast.msg}</span>
-          </div>
-          <style>{`@keyframes cmToastIn { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }`}</style>
-        </div>
-      )}
+      {/* Toast Notification - App.jsx tarafında render ediliyor */}
 
       {/* Admin Leave Modal */}
       {showLeaveModal && (
@@ -166,6 +147,7 @@ export default function RoomPage() {
             handleInstallApp={handleInstallApp} setShowSettingsModal={setShowSettingsModal}
             setShowProfileModal={setShowProfileModal}
             authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveClick}
+            roomUsersList={roomUsersList} hostUserId={hostUserId}
           />
         </div>
 

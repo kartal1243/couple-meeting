@@ -2,7 +2,8 @@ import { useState } from 'react';
 
 export default function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
-  handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom
+  handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
+  roomUsersList, hostUserId
 }) {
   const [showUsers, setShowUsers] = useState(false);
   const liveDotStyle = {
@@ -71,7 +72,7 @@ export default function Header({
           <span style={liveDotStyle} />
           <span>👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}</span>
 
-          {showUsers && currentRoomInfo.users && (
+          {showUsers && roomUsersList && roomUsersList.length > 0 && (
             <div style={{
               position: 'absolute', top: 32, left: 0, minWidth: 220,
               background: 'rgba(15,23,42,.95)', backdropFilter: 'blur(20px)',
@@ -79,17 +80,17 @@ export default function Header({
               padding: 8, zIndex: 9999, boxShadow: '0 20px 50px rgba(0,0,0,.6)'
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, padding: '4px 8px', marginBottom: 4 }}>
-                ODA KİŞİLERİ ({currentRoomInfo.users.length})
+                ODA KİŞİLERİ ({roomUsersList.length})
               </div>
-              {currentRoomInfo.users.map((u, i) => (
-                <div key={i} style={{
+              {roomUsersList.map((u) => (
+                <div key={u.userId || u.socketId} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '6px 8px', borderRadius: 8, fontSize: 12,
                   background: 'rgba(255,255,255,.03)', marginBottom: 2
                 }}>
                   <span style={{ fontSize: 16 }}>{u.avatar || '🐱'}</span>
                   <span style={{ color: '#e2e8f0', fontWeight: 700, flex: 1 }}>{u.username || 'İzleyici'}</span>
-                  {u.userId === currentRoomInfo.hostUserId && (
+                  {u.userId === hostUserId && (
                     <span style={{
                       fontSize: 9, background: 'linear-gradient(135deg, rgba(234,179,8,.15), rgba(251,191,36,.1))',
                       color: '#eab308', padding: '2px 8px', borderRadius: 6, fontWeight: 800,

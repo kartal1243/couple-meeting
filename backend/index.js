@@ -356,6 +356,7 @@ const io = new Server(server, {
 const rooms = {};
 const globalDmMessages = {};
 const globalChatGroups = {};
+const tombalaGames = {};
 const onlineUsers = {};
 
 // --- Yardimci Fonksiyonlar ---
@@ -492,6 +493,7 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
 
   socket.on('auth_register', ({ username, email, password, bio, avatar }) => {
+    if (checkRate('auth', 5)) return socket.emit('auth_result', { ok: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const cleanUsername = sanitize(username, 20).toLowerCase();
     const cleanEmail = sanitize(email, 100).toLowerCase();
     if (!cleanUsername || !cleanEmail || !password) return socket.emit('auth_result', { ok: false, message: 'Kullanici adi, e-posta ve sifre gerekli.' });
@@ -513,6 +515,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('auth_login', ({ email, password }) => {
+    if (checkRate('auth', 5)) return socket.emit('auth_result', { ok: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const cleanEmail = sanitize(email, 100).toLowerCase();
     const user = db.getUserByEmail(cleanEmail);
     if (!user) return socket.emit('auth_result', { ok: false, message: 'E-posta veya sifre hatali.' });
@@ -537,6 +540,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('auth_forgot_password', ({ email }) => {
+    if (checkRate('auth', 5)) return socket.emit('forgot_result', { ok: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const cleanEmail = sanitize(email, 100).toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) return socket.emit('forgot_result', { ok: false, message: 'Geçerli bir e-posta girin.' });
     const user = db.getUserByEmail(cleanEmail);
@@ -545,7 +549,7 @@ io.on('connection', (socket) => {
     const expiry = Date.now() + 3600000;
     db.updateUser(user.username, { reset_token: resetToken, reset_expiry: expiry });
     logger.info?.(`Şifre sıfırlama isteği: ${cleanEmail} → token: ${resetToken}`);
-    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama bağlantısı e-postana gönderildi.', resetToken, dev: true });
+    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama bağlantısı e-postana gönderildi.', ...(isProd ? {} : { resetToken, dev: true }) });
   });
 
   socket.on('auth_reset_password', ({ resetToken, newPassword }) => {
@@ -1037,7 +1041,7 @@ io.on('connection', (socket) => {
     dmMessages[key].push(msg);
     if (dmMessages[key].length > 200) dmMessages[key] = dmMessages[key].slice(-200);
     emitToUser(toUser.username, 'dm_received', msg);
-    db.createNotification(toUser.username, 'dm', user.username, 'Yeni Mesaj', `${user.username}: ${text.slice(0, 80)}`, { from: user.username });
+    db.createNotification(toUser.username, 'dm', from.username, 'Yeni Mesaj', `${from.username}: ${cleanText.slice(0, 80)}`, { from: from.username });
     socket.emit('dm_sent', msg);
   });
 
@@ -1254,13 +1258,14 @@ io.on('connection', (socket) => {
     updateRoomUsers(cleanRoomId); broadcastRooms();
   });
 
-  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers }) => {
+  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword }) => {
     const room = rooms[sanitize(roomId, 50)];
     if (room && room.hostUserId === socket.userId) {
       if (newName && newName.trim()) room.name = sanitize(newName, 50);
       if (newTheme) room.theme = newTheme;
-      if (newHostUserId) room.hostUserId = newHostUserId;
+      if (newHostUserId && room.users.find(u => u.userId === newHostUserId)) room.hostUserId = newHostUserId;
       if (newMaxUsers) room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), 8);
+      if (typeof newPassword === 'string') room.password = newPassword;
       io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId, maxUsers: room.maxUsers });
       broadcastRooms();
     }
@@ -1442,7 +1447,6 @@ io.on('connection', (socket) => {
   });
 
   // ── TOMBALA ──
-  const tombalaGames = {};
 
   function generateTombalaCard() {
     const card = [];
@@ -1536,6 +1540,7 @@ io.on('connection', (socket) => {
       const rId = socket.currentRoom; const sid = socket.id;
       if (rooms[rId]) {
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
+        if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
         rooms[rId].lastActivityAt = Date.now();
 
         if (rooms[rId].users.length === 0) {

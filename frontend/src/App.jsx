@@ -172,6 +172,7 @@ function App() {
   const handleMediaEndRef = useRef(null);
   const mySocketIdRef = useRef('');
   const currentRoomIdRef = useRef(roomId);
+  const mediaTypeRef = useRef(mediaType);
   const playlistRef = useRef(playlist);
   const playModeRef = useRef(playMode);
   const mediaSrcRef = useRef(mediaSrc);
@@ -183,6 +184,7 @@ function App() {
   const socket = socketRef.current;
 
   useEffect(() => { currentRoomIdRef.current = roomId; }, [roomId]);
+  useEffect(() => { mediaTypeRef.current = mediaType; }, [mediaType]);
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { playModeRef.current = playMode; }, [playMode]);
   useEffect(() => { mediaSrcRef.current = mediaSrc; }, [mediaSrc]);
@@ -220,13 +222,15 @@ function App() {
     setTimeout(() => setReactions((prev) => prev.filter((r) => r.id !== reaction.id)), 2000);
   };
 
+  const toastTimeoutRef = useRef(null);
   const showToast = (msg, sender) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToast({ msg, sender, id: Date.now() });
-    setTimeout(() => setToast(null), 3000);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
   };
 
   const sendAction = (type, payload) => {
-    if (socket) socket.emit('room_action', { roomId: currentRoomIdRef.current, type, payload: { ...payload, mediaType } });
+    if (socket) socket.emit('room_action', { roomId: currentRoomIdRef.current, type, payload: { ...payload, mediaType: mediaTypeRef.current } });
   };
 
   const saveToRecentRooms = (targetRoomId) => {
@@ -299,6 +303,7 @@ function App() {
   const changePassword = (currentPassword, newPassword) => { if (authToken) socket.emit('change_password', { token: authToken, currentPassword, newPassword }); };
 
   const openDm = (withUser) => {
+    if (!authToken) return;
     setDmActiveChat(withUser);
     const username = typeof withUser === 'string' ? withUser : withUser?.username;
     socket.emit('dm_history', { withUser: username, token: authToken });
@@ -792,7 +797,8 @@ function App() {
     socket.on('reconnect', () => {
       const token = authTokenRef.current;
       if (token) socket.emit('social_sync', { token });
-      if (roomId) socket.emit('request_room_sync', { roomId, token });
+      const rid = currentRoomIdRef.current;
+      if (rid) socket.emit('request_room_sync', { roomId: rid, token });
     });
 
     const heartbeatInterval = setInterval(() => {
@@ -1138,7 +1144,7 @@ function App() {
     return () => {
       clearInterval(heartbeatInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      socket.off('connect'); socket.off('disconnect'); socket.off('public_rooms_update');
+      socket.off('connect'); socket.off('disconnect'); socket.off('reconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
       socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
@@ -1340,7 +1346,7 @@ function App() {
         <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
       )}
       {showSettingsModal && (
-        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} />
+        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} />
       )}
       {showProfileModal && (
         <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
