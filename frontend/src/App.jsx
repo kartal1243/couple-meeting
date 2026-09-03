@@ -515,6 +515,7 @@ function App() {
   };
 
   const handleLeaveRoom = () => {
+    const rid = currentRoomIdRef.current;
     socket.emit('leave_room');
     setInRoom(false);
     setMediaType('none');
@@ -523,6 +524,13 @@ function App() {
     setReplyTo(null);
     localStorage.removeItem('cm_saved_room');
     localStorage.removeItem('cm_saved_pass');
+    if (rid) {
+      localStorage.removeItem(`cm_room_msgs_${rid}`);
+      try {
+        const recent = JSON.parse(localStorage.getItem('cm_recent_rooms')) || [];
+        localStorage.setItem('cm_recent_rooms', JSON.stringify(recent.filter(r => r !== rid)));
+      } catch {}
+    }
     navigate('/');
   };
 
@@ -798,10 +806,9 @@ function App() {
       if (data.playMode) setPlayMode(data.playMode);
 
       const serverMsgs = Array.isArray(data.messages) ? data.messages : [];
-      const localMsgs = loadRoomMessages(data.roomId);
-      const mergedMsgs = serverMsgs.length > 0 ? serverMsgs : localMsgs;
+      const mergedMsgs = serverMsgs;
       setMessages(mergedMsgs);
-      saveRoomMessages(data.roomId, mergedMsgs);
+      if (serverMsgs.length > 0) saveRoomMessages(data.roomId, mergedMsgs);
 
       localStorage.setItem('cm_saved_room', data.roomId);
       saveToRecentRooms(data.roomId);
