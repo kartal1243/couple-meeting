@@ -76,6 +76,19 @@ app.use('/uploads', express.static(uploadsDir));
 
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla dosya yükleme.' } });
 
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.mp4';
+    cb(null, `video_${Date.now()}_${Math.random().toString(36).slice(2,8)}${ext}`);
+  }
+});
+const videoUpload = multer({ storage: videoStorage, limits: { fileSize: 100 * 1024 * 1024 }, fileFilter: (req, file, cb) => {
+  const allowed = /\.(mp4|webm|ogg|mov)$/i;
+  if (allowed.test(path.extname(file.originalname)) && (file.mimetype.startsWith('video/') || file.mimetype === 'application/octet-stream')) cb(null, true);
+  else cb(new Error('Sadece video dosyaları yüklenebilir (mp4, webm, ogg, mov).'));
+}});
+
 app.post('/api/upload-avatar', uploadLimiter, (req, res) => {
   upload.single('avatar')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, message: err.message });
@@ -87,6 +100,19 @@ app.post('/api/upload-avatar', uploadLimiter, (req, res) => {
     const avatarUrl = `/uploads/${req.file.filename}`;
     db.updateUser(user.username, { avatar: avatarUrl });
     res.json({ ok: true, avatar: avatarUrl });
+  });
+});
+
+app.post('/api/upload-video', uploadLimiter, (req, res) => {
+  videoUpload.single('video')(req, res, (err) => {
+    if (err) return res.status(400).json({ ok: false, message: err.message });
+    if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadı.' });
+    const token = req.body.token;
+    if (!token) return res.status(401).json({ ok: false, message: 'Token gerekli.' });
+    const user = db.getUserByToken(token);
+    if (!user) return res.status(401).json({ ok: false, message: 'Geçersiz token.' });
+    const videoUrl = `/uploads/${req.file.filename}`;
+    res.json({ ok: true, url: videoUrl, filename: req.file.originalname, size: req.file.size });
   });
 });
 

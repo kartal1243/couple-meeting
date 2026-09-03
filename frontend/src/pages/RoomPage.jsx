@@ -24,7 +24,7 @@ export default function RoomPage() {
     setChatInput, handleSendMessage, replyTo, setReplyTo, sidebarTab, setSidebarTab,
     playlist, categories, selectedCategory, setSelectedCategory, newCategoryInput,
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
-    handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars,
+    handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars, handleVideoUpload,
     toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
     messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef
   } = app;
@@ -175,6 +175,7 @@ export default function RoomPage() {
             searchResults={searchResults} isSearching={isSearching}
             currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
+            handleVideoUpload={handleVideoUpload}
           />
           <Player
             mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}

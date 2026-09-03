@@ -132,7 +132,7 @@ export default function Player({
     };
   }, []);
 
-  const showPlayer = mediaType !== 'none' && videoId && !youtubeError;
+  const showPlayer = mediaType !== 'none' && mediaSrc && !youtubeError;
   const isHost = hostUserId === userId;
 
   return (
@@ -151,9 +151,38 @@ export default function Player({
 
       {showPlayer && !screenSharing && !remoteScreen && (
         <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', overflow: 'hidden' }}>
-          <YouTube videoId={videoId} opts={ytOpts}
-            style={{ width: '100%', height: '100%', maxWidth: '100%', overflow: 'hidden' }}
-            onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
+          {mediaType === 'youtube' && (
+            <YouTube videoId={videoId} opts={ytOpts}
+              style={{ width: '100%', height: '100%', maxWidth: '100%', overflow: 'hidden' }}
+              onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
+          )}
+          {mediaType === 'vimeo' && (
+            <iframe
+              src={`https://player.vimeo.com/video/${mediaSrc}?autoplay=1&title=0&byline=0&portrait=0`}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              title="Vimeo Player"
+            />
+          )}
+          {mediaType === 'custom_video' && (
+            <video
+              src={mediaSrc}
+              controls
+              autoPlay
+              style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+              onEnded={handleMediaEnd}
+            />
+          )}
+          {mediaType === 'iframe' && (
+            <iframe
+              src={mediaSrc}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              title="Embedded Content"
+            />
+          )}
         </div>
       )}
 
@@ -192,7 +221,7 @@ export default function Player({
           <button onClick={openYouTubeExternally} style={{
             background: 'linear-gradient(135deg, #ff0033 0%, #cc0000 100%)',
             color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer'
-          }}>▶ YouTube'da Aç</button>
+          }}>▶ {mediaType === 'youtube' ? "YouTube'da Aç" : mediaType === 'vimeo' ? "Vimeo'da Aç" : "Dışarıda Aç"}</button>
         </div>
       )}
 

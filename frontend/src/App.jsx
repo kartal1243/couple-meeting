@@ -591,6 +591,14 @@ function App() {
     sendAction('CHANGE_MEDIA', media);
   };
 
+  const handleVideoUpload = (url, filename) => {
+    setYoutubeError(null);
+    setMediaType('custom_video');
+    setMediaSrc(url);
+    setMediaMeta({ title: filename, artist: username });
+    sendAction('CHANGE_MEDIA', { type: 'custom_video', src: url, title: filename });
+  };
+
   const handleSelectSearchResult = (song, playImmediately = true) => {
     if (!song) return;
     if (playImmediately) {
@@ -698,7 +706,11 @@ function App() {
   };
 
   const openYouTubeExternally = () => {
-    if (mediaSrc) window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
+    if (!mediaSrc) return;
+    if (mediaType === 'youtube') window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
+    else if (mediaType === 'vimeo') window.open(`https://vimeo.com/${mediaSrc}`, '_blank', 'noopener,noreferrer');
+    else if (mediaType === 'custom_video') window.open(mediaSrc, '_blank', 'noopener,noreferrer');
+    else window.open(mediaSrc, '_blank', 'noopener,noreferrer');
   };
 
   const handleInstallApp = async () => {
@@ -1177,7 +1189,7 @@ function App() {
     sendFriendRequest, respondFriendRequest, unfriendUser, saveProfile,
     handleQuickCreateSubmit, handleJoinRoomFromModal, handleLeaveRoom,
     handleSaveSettings, handleKickUser, handleTransferAdmin,
-    handlePlay, handlePause, handleMediaEnd, handleDirectPlay,
+    handlePlay, handlePause, handleMediaEnd, handleDirectPlay, handleVideoUpload,
     handleSelectSearchResult, handleOpenAddModal, confirmAddToPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, handleModeChange,
     handleCreateCategory, handleSendMessage, sendReaction, sendAction,

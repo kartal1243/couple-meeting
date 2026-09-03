@@ -3,12 +3,14 @@ import { useState, useRef, useEffect } from 'react';
 
 export default function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
-  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult
+  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult, handleVideoUpload
 }) {
   const styles = getStyles(currentTheme);
   const [showResults, setShowResults] = useState(false);
   const [addedId, setAddedId] = useState(null);
   const searchRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const handleOutside = (e) => {
@@ -39,6 +41,28 @@ export default function SearchBar({
       setAddedId(song.id);
       setTimeout(() => setAddedId(null), 1200);
     }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('cm_auth_token');
+      const formData = new FormData();
+      formData.append('video', file);
+      formData.append('token', token);
+      const res = await fetch('/api/upload-video', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.ok && data.url) {
+        handleVideoUpload(data.url, file.name);
+        setSearchInput(data.url);
+      } else {
+        alert(data.message || 'Yükleme başarısız!');
+      }
+    } catch { alert('Yükleme hatası!'); }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const showYouTubeResults = showResults && (searchResults.length > 0 || isSearching);
@@ -76,6 +100,11 @@ export default function SearchBar({
 
       <button className="cm-search-btn cm-search-btn-play" onClick={handlePlay}>▶ Oynat</button>
       <button className="cm-search-btn cm-search-btn-add" onClick={handleAddToPlaylist}>➕ Ekle</button>
+      <input ref={fileInputRef} type="file" accept="video/mp4,video/webm,video/ogg,video/mov" style={{ display: 'none' }} onChange={handleFileChange} />
+      <button className="cm-search-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+        style={{ background: '#6366f1', color: '#fff', padding: '7px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '8px', whiteSpace: 'nowrap', border: 'none', cursor: uploading ? 'wait' : 'pointer' }}>
+        {uploading ? '⏳' : '📁'}
+      </button>
 
       {showYouTubeResults && (
         <div className="cm-search-results" style={{
