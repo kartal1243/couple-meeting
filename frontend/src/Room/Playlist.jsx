@@ -1,4 +1,6 @@
-export default function Playlist({
+import { memo } from 'react';
+
+function Playlist({
   categories, selectedCategory, setSelectedCategory,
   newCategoryInput, setNewCategoryInput, handleCreateCategory,
   playMode, handleModeChange, filteredPlaylist, mediaSrc,
@@ -102,3 +104,5 @@ export default function Playlist({
     </div>
   );
 }
+
+export default memo(Playlist);

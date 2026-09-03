@@ -7,6 +7,7 @@ import Chat from '../Room/Chat';
 import Playlist from '../Room/Playlist';
 import VoiceChat from '../Room/VoiceChat';
 import Tombala from '../Room/Tombala';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { useState } from 'react';
 
 export default function RoomPage() {
@@ -58,41 +59,6 @@ export default function RoomPage() {
 
   return (
     <div style={{ display: 'contents', ...cssVars }}>
-      <style>{`
-        .cm-room-root {
-          display: grid;
-          grid-template-rows: 60px 1fr;
-          grid-template-columns: 1fr 380px;
-          height: 100vh; width: 100vw; overflow: hidden;
-          background: linear-gradient(180deg, #0a0e14 0%, #0f172a 50%, #0a0e14 100%);
-        }
-        .cm-room-header { grid-row: 1; grid-column: 1 / -1; }
-        .cm-player-col {
-          grid-row: 2; grid-column: 1;
-          display: flex; flex-direction: column;
-          min-height: 0; overflow: hidden; background: #000;
-        }
-        .cm-sidebar {
-          grid-row: 2; grid-column: 2;
-          display: flex; flex-direction: column;
-          min-height: 0; overflow: hidden;
-          border-left: 1px solid rgba(255,255,255,.06);
-        }
-        .cm-player-col > * { min-height: 0; }
-        .cm-sidebar > * { min-height: 0; }
-        @media (max-width: 900px) {
-          .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 52px 1fr auto; }
-          .cm-sidebar { grid-row: 3; grid-column: 1; border-left: none; border-top: 1px solid rgba(255,255,255,.06); max-height: 45vh; overflow: hidden; }
-        }
-        @media (max-width: 480px) {
-          .cm-room-root { grid-template-rows: 46px 1fr auto; }
-        }
-        @media (orientation: landscape) and (max-height: 500px) {
-          .cm-room-root { grid-template-rows: 44px 1fr; grid-template-columns: 1fr 320px; }
-          .cm-sidebar { grid-row: 2; grid-column: 2; }
-        }
-      `}</style>
-
       {/* Toast Notification - App.jsx tarafında render ediliyor */}
 
       {/* Admin Leave Modal */}
@@ -159,15 +125,17 @@ export default function RoomPage() {
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
             handleVideoUpload={handleVideoUpload}
           />
-          <Player
-            mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
-            ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
-            openYouTubeExternally={openYouTubeExternally}
-            handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-            screenSharing={screenSharing} setScreenSharing={setScreenSharing}
-            socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken}
-          />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} />}           />
+          <ErrorBoundary fallbackMessage="Oynatıcı yüklenirken bir hata oluştu.">
+            <Player
+              mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
+              ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
+              openYouTubeExternally={openYouTubeExternally}
+              handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
+              screenSharing={screenSharing} setScreenSharing={setScreenSharing}
+              socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken}
+            />
+          </ErrorBoundary>
+          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />
         </div>
 
         <div className="cm-sidebar" style={{ background: chatTheme.bg }}>
@@ -208,9 +176,13 @@ export default function RoomPage() {
           </div>
 
           {sidebarTab === 'chat' ? (
-            <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
+            <ErrorBoundary fallbackMessage="Sohbet yüklenirken bir hata oluştu.">
+              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
+            </ErrorBoundary>
           ) : sidebarTab === 'tombala' ? (
-            <Tombala socket={socket} roomId={roomId} mySocketId={mySocketId} userId={userId} hostUserId={hostUserId} roomUsersList={roomUsersList} token={authToken} />
+            <ErrorBoundary fallbackMessage="Tombala yüklenirken bir hata oluştu.">
+              <Tombala socket={socket} roomId={roomId} mySocketId={mySocketId} userId={userId} hostUserId={hostUserId} roomUsersList={roomUsersList} token={authToken} />
+            </ErrorBoundary>
           ) : (
             <Playlist
               categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}

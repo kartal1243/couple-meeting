@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
-export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
+function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
   const [voiceActive, setVoiceActive] = useState(false);
   const [voiceUsers, setVoiceUsers] = useState([]);
   const localStreamRef = useRef(null);
@@ -138,3 +138,5 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
     </>
   );
 }
+
+export default memo(VoiceChat);

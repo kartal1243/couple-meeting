@@ -1,5 +1,5 @@
 import { AVATARS } from '../constants';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 
 function formatLastSeen(ts) {
   if (!ts) return '';
@@ -10,7 +10,7 @@ function formatLastSeen(ts) {
   return `${Math.floor(diff / 86400000)} gün önce`;
 }
 
-function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser }) {
+const DmChat = memo(function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser }) {
   const endRef = useRef(null);
   const typingTimeout = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -64,9 +64,9 @@ function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingU
       </form>
     </div>
   );
-}
+});
 
-function GroupChat({ group, messages, input, setInput, onSend, onBack }) {
+const GroupChat = memo(function GroupChat({ group, messages, input, setInput, onSend, onBack }) {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   return (
@@ -97,9 +97,9 @@ function GroupChat({ group, messages, input, setInput, onSend, onBack }) {
       </form>
     </div>
   );
-}
+});
 
-export default function SocialModal({
+function SocialModal({
   authUser, socialTab, setSocialTab, globalMessages, globalChatInput, setGlobalChatInput,
   sendGlobalMessage, friendSearch, setFriendSearch, searchFriends, friendSearchResults,
   sendFriendRequest, friendRequests, respondFriendRequest, friends,
@@ -585,3 +585,5 @@ export default function SocialModal({
     </div>
   );
 }
+
+export default memo(SocialModal);

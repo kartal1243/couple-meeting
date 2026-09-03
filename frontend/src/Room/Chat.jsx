@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
 function getAvatarColor(name) {
@@ -7,7 +7,7 @@ function getAvatarColor(name) {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-export default function Chat({
+function Chat({
   messages, mySocketId, username, chatInput, setChatInput,
   handleSendMessage, currentTheme, replyTo, setReplyTo,
   messagesSearch, setMessagesSearch, filteredMessages
@@ -268,3 +268,5 @@ export default function Chat({
     </div>
   );
 }
+
+export default memo(Chat);

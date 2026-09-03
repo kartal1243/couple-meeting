@@ -320,6 +320,7 @@ app.delete('/api/admin/rooms/:roomId', adminAuth, (req, res) => {
     io.sockets.sockets.get(u.socketId)?.leave(roomId);
   }
   delete rooms[roomId];
+  delete tombalaGames[roomId];
   broadcastRooms();
   logger.info(`[ADMIN] Oda kapatildi: ${roomId}`);
   res.json({ ok: true, message: 'Oda kapatildi' });
@@ -463,7 +464,7 @@ setInterval(() => {
   const now = Date.now(); let cleaned = 0;
   for (const [id, room] of Object.entries(rooms)) {
     if (room.users.length === 0 && !room.password && !room.isVip && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
-      delete rooms[id]; cleaned++;
+      delete rooms[id]; delete tombalaGames[id]; cleaned++;
     }
   }
   if (cleaned > 0) { logger.info(`${cleaned} bos oda temizlendi.`); broadcastRooms(); }
@@ -1375,6 +1376,7 @@ io.on('connection', (socket) => {
           io.sockets.sockets.get(u.socketId)?.leave(cleanRoomId);
         }
         delete rooms[cleanRoomId];
+        delete tombalaGames[cleanRoomId];
         broadcastRooms();
         logger.info(`Oda kapatildi (yönetici): ${cleanRoomId}`);
         return;
@@ -1492,6 +1494,16 @@ io.on('connection', (socket) => {
 
   // ── TOMBALA ──
 
+  // ──────────────────────────────────────────────────────
+  // 7.10 TOPLULUKLAR (COMMUNITIES)
+  // ──────────────────────────────────────────────────────
+  const registerCommunityHandlers = require('./communities');
+  registerCommunityHandlers(io, socket, db, sanitize, emitToUser, crypto);
+
+  // ── ETKINLIKLER (EVENTS) ──
+  const registerEventHandlers = require('./events');
+  registerEventHandlers(io, socket, db, sanitize, crypto);
+
   function generateTombalaCard() {
     const card = [];
     const cols = [[1,10],[11,20],[21,30],[31,40],[41,50]];
@@ -1573,6 +1585,7 @@ io.on('connection', (socket) => {
 
       if (rooms[rId].users.length === 0) {
         delete rooms[rId];
+        delete tombalaGames[rId];
         logger.info(`Oda silindi (bos): ${rId}`);
       } else {
         updateRoomUsers(rId);
@@ -1597,6 +1610,7 @@ io.on('connection', (socket) => {
 
         if (rooms[rId].users.length === 0) {
           delete rooms[rId];
+          delete tombalaGames[rId];
           logger.info(`Oda silindi (disconnect, bos): ${rId}`);
         } else {
           updateRoomUsers(rId);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 
 function generateCard() {
   const nums = [];
@@ -27,7 +27,7 @@ function checkFull(card, called) {
   return card.every(n => called.includes(n));
 }
 
-export default function Tombala({ socket, roomId, mySocketId, userId, hostUserId, roomUsersList, token }) {
+function Tombala({ socket, roomId, mySocketId, userId, hostUserId, roomUsersList, token }) {
   const isHost = hostUserId === userId;
   const [gameActive, setGameActive] = useState(false);
   const [myCard, setMyCard] = useState([]);
@@ -206,3 +206,5 @@ export default function Tombala({ socket, roomId, mySocketId, userId, hostUserId
     </div>
   );
 }
+
+export default memo(Tombala);

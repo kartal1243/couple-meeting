@@ -1,5 +1,5 @@
 import { THEMES } from '../constants';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
 function getAvatarColor(name) {
@@ -8,7 +8,7 @@ function getAvatarColor(name) {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-export default function SettingsModal({
+function SettingsModal({
   hostUserId, userId, editRoomNameInput, setEditRoomNameInput, roomName,
   roomTheme, setRoomTheme, handleSaveSettings, roomUsersList,
   handleTransferAdmin, handleKickUser, setShowSettingsModal, currentTheme, styles, authUser,
@@ -384,3 +384,5 @@ export default function SettingsModal({
     </div>
   );
 }
+
+export default memo(SettingsModal);

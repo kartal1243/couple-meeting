@@ -1,5 +1,5 @@
 import YouTube from 'react-youtube';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, memo } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -8,7 +8,7 @@ function extractVideoId(src) {
   return m ? m[1] : src;
 }
 
-export default function Player({
+function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
   screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId, token
@@ -257,3 +257,5 @@ export default function Player({
     </div>
   );
 }
+
+export default memo(Player);

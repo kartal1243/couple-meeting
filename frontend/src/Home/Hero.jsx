@@ -1,4 +1,7 @@
+import { useNavigate } from 'react-router-dom';
+
 export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpenSocial }) {
+  const navigate = useNavigate();
   return (
     <section className="cm-hero">
       {/* Pulse Hearts Logo */}
@@ -59,6 +62,11 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
           <button onClick={() => onOpenSocial('profile')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>👤 Profilim</button>
         </div>
       )}
+
+      <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => navigate('/communities')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'rgba(0,168,132,.13)', color: '#00a884', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>🏘️ Topluluklar</button>
+        <button onClick={() => navigate('/events')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'rgba(168,85,247,.13)', color: '#a855f7', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>📅 Etkinlikler</button>
+      </div>
 
       <div className="cm-hero-features">
         <span>✓ Misafir giriş</span>

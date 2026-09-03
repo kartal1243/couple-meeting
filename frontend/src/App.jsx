@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 
-import { BACKEND_URL, THEMES, GLOBAL_CSS, HOME_CSS } from './constants';
+import { BACKEND_URL, THEMES, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
@@ -12,6 +12,8 @@ import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminPage from './pages/AdminPage';
+import Communities from './pages/Communities';
+import Events from './pages/Events';
 
 import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
@@ -1216,8 +1218,6 @@ function App() {
   // ── 11. RENDER ──
   return (
     <AppContext.Provider value={contextValue}>
-      <style>{GLOBAL_CSS}</style>
-
       {/* Global Toast */}
       {toast && (
         <div style={{
@@ -1234,7 +1234,7 @@ function App() {
             <span style={{ fontWeight: 800, color: '#00a884', fontSize: 12 }}>{toast.sender}</span>
             <span style={{ color: '#94a3b8', fontSize: 12, marginLeft: 6 }}>{toast.msg}</span>
           </div>
-          <style>{`@keyframes cmGlobalToastIn { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }`}</style>
+
         </div>
       )}
 
@@ -1242,6 +1242,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/room/:roomIdParam" element={<RoomPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />
+        <Route path="/events" element={<Events currentTheme={currentTheme} token={authToken} username={authUser?.username} socket={socket} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 

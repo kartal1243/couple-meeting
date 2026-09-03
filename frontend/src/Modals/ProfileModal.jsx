@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 
 const AVATARS = ['🐱', '🐶', '🦊', '🐻', '🐼', '🐨', '🦁', '🐸', '🐵', '🦄', '🐰', '🐲', '🤖', '👻', '🎃', '💀', '🎃', '👽', '🧙', '🧛', '🦸', '🧑‍🚀', '🧑‍🎤', '🧑‍💻'];
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
 
-export default function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnlineStatuses, friends }) {
+function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnlineStatuses, friends }) {
   const [username, setUsername] = useState(authUser?.username || '');
   const [bio, setBio] = useState(authUser?.bio || '');
   const [avatar, setAvatar] = useState(authUser?.avatar || '🐱');
@@ -222,3 +222,5 @@ export default function ProfileModal({ authUser, setShowProfileModal, saveProfil
     </div>
   );
 }
+
+export default memo(ProfileModal);

@@ -210,6 +210,72 @@ function initTables() {
       enabled INTEGER DEFAULT 0,
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS communities (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      icon TEXT DEFAULT '👥',
+      created_by TEXT NOT NULL,
+      member_count INTEGER DEFAULT 1,
+      created_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_communities_name ON communities(name);
+    CREATE INDEX IF NOT EXISTS idx_communities_creator ON communities(created_by);
+
+    CREATE TABLE IF NOT EXISTS community_members (
+      community_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      role TEXT DEFAULT 'member',
+      joined_at INTEGER,
+      PRIMARY KEY (community_id, username)
+    );
+    CREATE INDEX IF NOT EXISTS idx_comm_members_user ON community_members(username);
+
+    CREATE TABLE IF NOT EXISTS community_posts (
+      id TEXT PRIMARY KEY,
+      community_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      text TEXT DEFAULT '',
+      image_url TEXT DEFAULT '',
+      likes INTEGER DEFAULT 0,
+      created_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_comm_posts_community ON community_posts(community_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS community_comments (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      text TEXT NOT NULL,
+      created_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_comm_comments_post ON community_comments(post_id);
+
+    CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      date TEXT NOT NULL,
+      time TEXT DEFAULT '',
+      location TEXT DEFAULT '',
+      created_by TEXT NOT NULL,
+      community_id TEXT,
+      max_attendees INTEGER DEFAULT 0,
+      created_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_events_community ON events(community_id);
+    CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by);
+    CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
+
+    CREATE TABLE IF NOT EXISTS event_attendees (
+      event_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      status TEXT DEFAULT 'going',
+      joined_at INTEGER,
+      PRIMARY KEY (event_id, username)
+    );
+    CREATE INDEX IF NOT EXISTS idx_event_attendees_user ON event_attendees(username);
   `);
 
   // Migration: reset_token ve reset_expiry sütunları

@@ -1,7 +1,7 @@
 import { getStyles } from '../styles';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 
-export default function SearchBar({
+function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
   currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult, handleVideoUpload
 }) {
@@ -147,3 +147,5 @@ export default function SearchBar({
     </div>
   );
 }
+
+export default memo(SearchBar);

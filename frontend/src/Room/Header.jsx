@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 
-export default function Header({
+function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
   roomUsersList, hostUserId
@@ -148,10 +148,8 @@ export default function Header({
         }}>✕ Çıkış</button>
       </div>
 
-      <style>{`
-        @keyframes cmGradientFlow { 0%{background-position:0% 50%} 100%{background-position:300% 50%} }
-        @keyframes cmPulseLive { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.85)} }
-      `}</style>
     </header>
   );
 }
+
+export default memo(Header);
