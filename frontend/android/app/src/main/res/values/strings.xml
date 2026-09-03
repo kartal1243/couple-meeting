@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Couple Meeting</string>
-    <string name="title_activity_main">Couple Meeting</string>
-    <string name="package_name">com.couplemeeting.app</string>
-    <string name="custom_url_scheme">com.couplemeeting.app</string>
-</resources>

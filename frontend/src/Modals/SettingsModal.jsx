@@ -14,7 +14,7 @@ function SettingsModal({
   handleTransferAdmin, handleKickUser, setShowSettingsModal, currentTheme, styles, authUser,
   socket, roomId, currentRoomInfo
 }) {
-  const isHost = hostUserId === userId;
+  const isHost = hostUserId === userId || hostUserId === authUser?.username || hostUserId === localStorage.getItem('cm_username');
   const isVip = authUser?.isVip;
   const [tab, setTab] = useState('settings');
   const [newPassword, setNewPassword] = useState('');

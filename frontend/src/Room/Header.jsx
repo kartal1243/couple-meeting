@@ -109,11 +109,15 @@ function Header({
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         {showInstallBtn && (
           <button onClick={handleInstallApp} style={{
-            background: 'rgba(34,197,94,.1)', color: '#22c55e',
-            border: '1px solid rgba(34,197,94,.2)',
-            padding: '6px 12px', borderRadius: 10, cursor: 'pointer',
-            fontWeight: 800, fontSize: 11, transition: 'all 0.2s'
-          }}>📲 İndir</button>
+            background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff',
+            border: 'none',
+            padding: '6px 14px', borderRadius: 10, cursor: 'pointer',
+            fontWeight: 800, fontSize: 11, transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(34,197,94,.3)'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Uygulamayı İndir
+          </button>
         )}
         <button onClick={() => setShowSettingsModal(true)} style={{
           background: 'rgba(255,255,255,.05)', color: '#94a3b8',
