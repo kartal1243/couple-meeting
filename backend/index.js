@@ -322,6 +322,7 @@ app.delete('/api/admin/rooms/:roomId', adminAuth, (req, res) => {
   delete rooms[roomId];
   delete tombalaGames[roomId];
   broadcastRooms();
+  broadcastAdminActivity('room_close', { roomId, message: `Oda kapatıldı: ${roomId}` });
   logger.info(`[ADMIN] Oda kapatildi: ${roomId}`);
   res.json({ ok: true, message: 'Oda kapatildi' });
 });
@@ -340,6 +341,113 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
     createdAt: u.createdAt, lastSeen: u.lastSeen
   }));
   res.json({ ok: true, users });
+});
+
+// Admin: Search users
+app.get('/api/admin/users/search', adminAuth, (req, res) => {
+  const q = sanitize(req.query.q || '', 50).toLowerCase();
+  const users = db.getAllUsers().filter(u => 
+    u.username.toLowerCase().includes(q) || (u.email && u.email.toLowerCase().includes(q))
+  ).map(u => ({
+    username: u.username, email: u.email, avatar: u.avatar,
+    isVip: u.isVip, vipExpiry: u.vipExpiry, vipPlan: u.vipPlan,
+    role: u.role || 'user', isBanned: u.isBanned || false,
+    createdAt: u.createdAt, lastSeen: u.lastSeen
+  }));
+  res.json({ ok: true, users });
+});
+
+// Admin: Set VIP for user
+app.post('/api/admin/users/vip', adminAuth, (req, res) => {
+  const { username, isVip, vipPlan, vipDays } = req.body;
+  const uname = sanitize(username, 30);
+  if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
+  const expiry = isVip ? Date.now() + (parseInt(vipDays) || 30) * 86400000 : null;
+  db.updateUser(uname, { isVip: !!isVip, vipPlan: isVip ? (vipPlan || 'yearly') : null, vipExpiry: expiry });
+  logger.info(`[ADMIN] VIP degistirildi: ${uname} -> ${isVip}`);
+  res.json({ ok: true });
+});
+
+// Admin: Ban/unban user
+app.post('/api/admin/users/ban', adminAuth, (req, res) => {
+  const { username, isBanned } = req.body;
+  const uname = sanitize(username, 30);
+  if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
+  db.updateUser(uname, { isBanned: !!isBanned });
+  logger.info(`[ADMIN] Ban degistirildi: ${uname} -> ${isBanned}`);
+  res.json({ ok: true });
+});
+
+// Admin: Delete user
+app.delete('/api/admin/users/:username', adminAuth, (req, res) => {
+  const uname = sanitize(req.params.username, 30);
+  if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
+  try {
+    db.getDb().prepare('DELETE FROM users WHERE username = ?').run(uname);
+    logger.info(`[ADMIN] Kullanici silindi: ${uname}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
+// Admin: System health
+app.get('/api/admin/system', adminAuth, (req, res) => {
+  const uptime = process.uptime();
+  const mem = process.memoryUsage();
+  res.json({
+    ok: true,
+    uptime: Math.floor(uptime),
+    memory: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024)
+    },
+    nodeVersion: process.version,
+    platform: process.platform,
+    pid: process.pid,
+    activeRooms: Object.keys(rooms).length,
+    totalSockets: io.engine ? io.engine.clientsCount : 0
+  });
+});
+
+// Admin: Get reports
+app.get('/api/admin/reports', adminAuth, (req, res) => {
+  try {
+    const reports = db.getDb().prepare('SELECT * FROM user_reports ORDER BY created_at DESC LIMIT 100').all();
+    res.json({ ok: true, reports });
+  } catch (e) {
+    res.json({ ok: true, reports: [] });
+  }
+});
+
+// Admin: Broadcast message
+app.post('/api/admin/broadcast', adminAuth, (req, res) => {
+  const { message } = req.body;
+  const msg = sanitize(message, 500);
+  if (!msg) return res.status(400).json({ ok: false, message: 'Mesaj bos olamaz' });
+  io.emit('global_chat_message', {
+    id: 'admin_' + Date.now(),
+    sender: 'Admin',
+    senderId: 'admin',
+    avatar: '🛡️',
+    text: msg,
+    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    isAdmin: true
+  });
+  logger.info(`[ADMIN] Broadcast: ${msg}`);
+  res.json({ ok: true });
+});
+
+// Admin: Maintenance mode
+let maintenanceMode = false;
+app.post('/api/admin/maintenance', adminAuth, (req, res) => {
+  maintenanceMode = !!req.body.enabled;
+  io.emit('system_maintenance', { enabled: maintenanceMode });
+  res.json({ ok: true, maintenanceMode });
+});
+app.get('/api/admin/maintenance', adminAuth, (req, res) => {
+  res.json({ ok: true, maintenanceMode });
 });
 
 
@@ -361,6 +469,7 @@ const globalDmMessages = {};
 const globalChatGroups = {};
 const tombalaGames = {};
 const onlineUsers = {};
+const adminSocketIds = new Set();
 
 // --- Yardimci Fonksiyonlar ---
 
@@ -437,7 +546,50 @@ function getPublicRoomsList() {
   }));
 }
 
-function broadcastRooms() { io.emit('public_rooms_update', getPublicRoomsList()); }
+function broadcastRooms() { io.emit('public_rooms_update', getPublicRoomsList()); broadcastAdminDashboard(); }
+
+// Admin real-time dashboard broadcast
+let adminDashboardInterval = null;
+function broadcastAdminDashboard() {
+  if (adminSocketIds.size === 0) return;
+  const onlineCount = Object.keys(onlineUsers).length;
+  const roomList = Object.entries(rooms).map(([id, r]) => ({
+    id, name: r.name, userCount: r.users.length, maxUsers: r.maxUsers,
+    hasPassword: !!r.password, isVip: !!r.isVip, hostUserId: r.hostUserId,
+    users: r.users.map(u => ({ username: u.username, userId: u.userId, avatar: u.avatar })),
+    currentMedia: r.currentMedia, createdAt: r.createdAt, lastActivityAt: r.lastActivityAt
+  }));
+  const onlineList = Object.entries(onlineUsers).map(([name, data]) => ({
+    username: name, socketCount: data.socketIds.size, lastSeen: data.lastSeen
+  }));
+  const logStats = db.getLogStats();
+  const payload = {
+    totalRooms: roomList.length,
+    totalOnlineUsers: onlineCount,
+    rooms: roomList,
+    onlineUsers: onlineList,
+    logStats,
+    timestamp: Date.now()
+  };
+  adminSocketIds.forEach(sid => {
+    io.to(sid).emit('admin_dashboard_update', payload);
+  });
+}
+
+// Admin real-time activity feed
+function broadcastAdminActivity(type, data) {
+  if (adminSocketIds.size === 0) return;
+  const activity = { type, ...data, timestamp: Date.now() };
+  adminSocketIds.forEach(sid => { io.to(sid).emit('admin_activity', activity); });
+}
+
+// Start periodic admin updates
+function startAdminUpdates() {
+  if (adminDashboardInterval) return;
+  adminDashboardInterval = setInterval(() => {
+    if (adminSocketIds.size > 0) broadcastAdminDashboard();
+  }, 5000);
+}
 
 function updateRoomUsers(roomId) {
   if (rooms[roomId]) {
@@ -497,6 +649,21 @@ io.on('connection', (socket) => {
   const checkRate = (type, max) => { resetRateLimits(); socketRateLimit[type]++; return socketRateLimit[type] > max; };
 
   // ──────────────────────────────────────────────────────
+  // 7.0 ADMIN REAL-TIME DASHBOARD
+  // ──────────────────────────────────────────────────────
+  socket.on('admin_connect', ({ pass }) => {
+    if (pass !== (process.env.ADMIN_PASS || 'admin123')) return;
+    adminSocketIds.add(socket.id);
+    startAdminUpdates();
+    broadcastAdminDashboard();
+    broadcastAdminActivity('admin_login', { message: 'Admin panele bağlandı' });
+  });
+
+  socket.on('admin_disconnect', () => {
+    adminSocketIds.delete(socket.id);
+  });
+
+  // ──────────────────────────────────────────────────────
   // 7.1 KIMLIK DOGRULAMA
   // ──────────────────────────────────────────────────────
 
@@ -520,6 +687,7 @@ io.on('connection', (socket) => {
     setOnline(cleanUsername, socket.id);
     logger.info(`Yeni kayit: ${cleanUsername}`);
     socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
+    broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu` });
   });
 
   socket.on('auth_login', ({ email, password }) => {
@@ -541,6 +709,7 @@ io.on('connection', (socket) => {
     broadcastOnlineStatus(user.username);
     logger.info(`Giris: ${user.username}`);
     socket.emit('auth_result', { ok: true, user: publicUser(user), token });
+    broadcastAdminActivity('user_login', { username: user.username, message: `${user.username} giriş yaptı` });
     socket.emit('friends_update', {
       friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
       requests: db.getPendingFriendRequests(user.username)
@@ -1283,6 +1452,7 @@ io.on('connection', (socket) => {
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();
+    broadcastAdminActivity('room_join', { username: user.username, roomId: cleanRoomId, roomName: room.name, message: `${user.username} odaya katıldı: ${room.name}` });
   });
 
   socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword }) => {
@@ -1601,6 +1771,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    adminSocketIds.delete(socket.id);
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom; const sid = socket.id;
       if (rooms[rId]) {
