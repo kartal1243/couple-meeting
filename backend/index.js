@@ -1303,7 +1303,16 @@ io.on('connection', (socket) => {
     const cleanRoomId = sanitize(roomId, 50);
     const room = rooms[cleanRoomId];
     if (room) {
-      if (type === 'CHANGE_MEDIA') {
+      if (type === 'ROOM_CLOSED') {
+        io.to(cleanRoomId).emit('room_action', { type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
+        for (const u of room.users) {
+          io.sockets.sockets.get(u.socketId)?.leave(cleanRoomId);
+        }
+        delete rooms[cleanRoomId];
+        broadcastRooms();
+        logger.info(`Oda kapatildi (yönetici): ${cleanRoomId}`);
+        return;
+      } else if (type === 'CHANGE_MEDIA') {
         room.currentMedia = { type: payload.type, src: payload.src, title: sanitize(payload.title, 200) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
       } else if (type === 'PLAY') {
         room.currentMedia.isPlaying = true; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
@@ -1478,7 +1487,15 @@ io.on('connection', (socket) => {
       const rId = socket.currentRoom;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       rooms[rId].lastActivityAt = Date.now();
-      socket.leave(rId); updateRoomUsers(rId); socket.currentRoom = null; broadcastRooms();
+      socket.leave(rId); socket.currentRoom = null;
+
+      if (rooms[rId].users.length === 0) {
+        delete rooms[rId];
+        logger.info(`Oda silindi (bos): ${rId}`);
+      } else {
+        updateRoomUsers(rId);
+      }
+      broadcastRooms();
     }
   });
 
@@ -1491,7 +1508,18 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom; const sid = socket.id;
-      if (rooms[rId]) { rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid); rooms[rId].lastActivityAt = Date.now(); updateRoomUsers(rId); broadcastRooms(); }
+      if (rooms[rId]) {
+        rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
+        rooms[rId].lastActivityAt = Date.now();
+
+        if (rooms[rId].users.length === 0) {
+          delete rooms[rId];
+          logger.info(`Oda silindi (disconnect, bos): ${rId}`);
+        } else {
+          updateRoomUsers(rId);
+        }
+        broadcastRooms();
+      }
     }
     if (socket.socialUsername) { setOffline(socket.socialUsername, socket.id); broadcastOnlineStatus(socket.socialUsername); }
   });
