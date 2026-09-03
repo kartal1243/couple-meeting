@@ -322,7 +322,7 @@ app.delete('/api/admin/rooms/:roomId', adminAuth, (req, res) => {
   delete rooms[roomId];
   delete tombalaGames[roomId];
   broadcastRooms();
-  broadcastAdminActivity('room_close', { roomId, message: `Oda kapatıldı: ${roomId}` });
+  try { broadcastAdminActivity('room_close', { roomId, message: `Oda kapatıldı: ${roomId}` }); } catch (e) {}
   logger.info(`[ADMIN] Oda kapatildi: ${roomId}`);
   res.json({ ok: true, message: 'Oda kapatildi' });
 });
@@ -546,7 +546,10 @@ function getPublicRoomsList() {
   }));
 }
 
-function broadcastRooms() { io.emit('public_rooms_update', getPublicRoomsList()); broadcastAdminDashboard(); }
+function broadcastRooms() {
+  io.emit('public_rooms_update', getPublicRoomsList());
+  try { broadcastAdminDashboard(); } catch (e) { /* admin broadcast hatasi onemsiz */ }
+}
 
 // Admin real-time dashboard broadcast
 let adminDashboardInterval = null;
@@ -655,8 +658,8 @@ io.on('connection', (socket) => {
     if (pass !== (process.env.ADMIN_PASS || 'admin123')) return;
     adminSocketIds.add(socket.id);
     startAdminUpdates();
-    broadcastAdminDashboard();
-    broadcastAdminActivity('admin_login', { message: 'Admin panele bağlandı' });
+    try { broadcastAdminDashboard(); } catch (e) {}
+    try { broadcastAdminActivity('admin_login', { message: 'Admin panele bağlandı' }); } catch (e) {}
   });
 
   socket.on('admin_disconnect', () => {
@@ -687,7 +690,7 @@ io.on('connection', (socket) => {
     setOnline(cleanUsername, socket.id);
     logger.info(`Yeni kayit: ${cleanUsername}`);
     socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
-    broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu` });
+    try { broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu` }); } catch (e) {}
   });
 
   socket.on('auth_login', ({ email, password }) => {
@@ -709,7 +712,7 @@ io.on('connection', (socket) => {
     broadcastOnlineStatus(user.username);
     logger.info(`Giris: ${user.username}`);
     socket.emit('auth_result', { ok: true, user: publicUser(user), token });
-    broadcastAdminActivity('user_login', { username: user.username, message: `${user.username} giriş yaptı` });
+    try { broadcastAdminActivity('user_login', { username: user.username, message: `${user.username} giriş yaptı` }); } catch (e) {}
     socket.emit('friends_update', {
       friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
       requests: db.getPendingFriendRequests(user.username)
@@ -1452,7 +1455,7 @@ io.on('connection', (socket) => {
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();
-    broadcastAdminActivity('room_join', { username: user.username, roomId: cleanRoomId, roomName: room.name, message: `${user.username} odaya katıldı: ${room.name}` });
+    try { broadcastAdminActivity('room_join', { username: user.username, roomId: cleanRoomId, roomName: room.name, message: `${user.username} odaya katıldı: ${room.name}` }); } catch (e) {}
   });
 
   socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword }) => {
