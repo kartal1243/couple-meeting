@@ -1,339 +1,122 @@
-# Couple Meeting - Tanıtım İçerik Paketi
-## 📱 Ekran Görüntüleri Rehberi
+# Couple Meeting - Reklam Metinleri & Sosyal Medya Stratejisi
 
-### Gerekli Ekran Görüntüleri (10 Adet)
+## 🎯 Instagram / TikTok Reklam Metinleri
 
-#### 1. Ana Sayfa (Hero Section)
-- **Nerede:** couplemeeting.com.tr
-- **Nasıl:** Tam ekran, hero bölümü yukarıda
-- **Vurgu:** "BİRLİKTE İZLE & DİNLE" başlığı, "Hemen Oda Oluştur" butonu
-- **Araç:** Chrome DevTools → Toggle Device Toolbar → iPhone 14 Pro
+### Reklam 1 - Genel Tanıtım
+**Başlık:** Arkadaşlarınla Aynı Anda Eğlen 🎬
+**Metin:** YouTube, Vimeo veya kendi videonu paylaş. Arkadaşlarınla aynı anda izle, sohbet et, müzik dinle. Ücretsiz video odası!
 
-#### 2. Canlı Oda (Karanlık Tema)
-- **Nerede:** Bir odaya katıl, YouTube videosu çal
-- **Nasıl:** Video + sohbet + kontroller görünür
-- **Vurgu:** Senkronize video oynatma, yeşil tema
+### Reklam 2 - Müzik Odak
+**Başlık:** Müziği Birlikte Dinle 🎵
+**Metin:** Sevdiğin şarkıları playlist'e ekle, arkadaşlarınla aynı anda dinle. YouTube'dan milyonlarca şarkıya erişim. Hemen oda aç!
 
-#### 3. Sohbet Paneli
-- **Nerede:** Oda içinde sağ panel
-- **Nasıl:** Birkaç mesaj yaz, emoji gönder
-- **Vurgu:** Renkli baloncuklar, emoji tepkileri
+### Reklam 3 - Oyun Odak
+**Başlık:** Tombala Oyna, Kazan! 🎯
+**Metin:** Arkadaşlarınla online tombala oyna. Video eşliğinde oyun keyfi. Couple Meeting ile eğlenceye katıl.
 
-#### 4. Arkadaş Sistemi
-- **Nerede:** Sosyal modal → Arkadaşlar sekmesi
-- **Nasıl:** Arkadaş listesi + online durumu göster
-- **Vurgu:** Yeşil noktalar (çevrimiçi), istek sistemi
+### Reklam 4 - Sosyal Medya
+**Başlık:** Yalnız Değilsin 💜
+**Metin:** Yeni insanlarla tanış, topluluklara katıl, etkinliklere git. Couple Meeting ile sosyal çevreini genişlet.
 
-#### 5. Global Sohbet
-- **Nerede:** Sosyal modal → Global Sohbet
-- **Nasıl:** Birkaç farklı kullanıcının mesajı
-- **Vurgu:** Canlı topluluk hissi
+---
 
-#### 6. Özel Mesajlaşma (DM)
-- **Nerede:** Sosyal modal → Mesajlar
-- **Nasıl:** WhatsApp tarzı baloncuk sohbet
-- **Vurgu:** Kişisel iletişim
+## 📱 Sosyal Medya Paylaşım Metinleri
 
-#### 7. Profil Düzenleme
-- **Nerede:** Sosyal modal → Profilim
-- **Nasıl:** Avatar seçimi, bio, durum
-- **Vurgu:** Kişiselleştirme seçenekleri
-
-#### 8. Oda Oluşturma
-- **Nerede:** Ana sayfa → "Oda Oluştur"
-- **Nasıl:** Oda adı, şifre, max kişi seçimi
-- **Vurgu:** Kolay kurulum
-
-#### 9. Mobil Görünüm
-- **Nerede:** Telefondan siteyi aç
-- **Nasıl:** Dikey modda tam ekran
-- **Vurgu:** Mobil uyumlu tasarım
-
-#### 10. VIP Üyelik
-- **Nerede:** VIP modal
-- **Nasıl:** VIP avantajları listesi
-- **Vurgu:** Premium özellikler
-
-### Çekim Ayarları
+### Instagram Caption
 ```
-Tarayıcı: Chrome (gizli mod)
-Çözünürlük: 1440x900 (masaüstü), 390x844 (mobil)
-Tema: Koyu (dark mode)
-Zoom: %100
-Extension: GoFullPage (tüm sayfa screenshot)
+🎬 Arkadaşlarınla aynı anda video izle
+🎵 Müzik dinle, sohbet et
+🎯 Tombala oyna
+👥 Topluluklara katıl
+
+ÜCRETSİZ hemen başla!
+🔗 couplemeeting.com.tr
+
+#couplemeeting #videoodası #müzikdostu #arkadaşlarlatanış #ücretsizuygulama #onlineetkinlik #tombala #sosyalmedya
+```
+
+### Twitter/X Paylaşımı
+```
+Yeni nesil sosyal deneyim 🚀
+
+Arkadaşlarınla aynı anda:
+✅ Video izle
+✅ Müzik dinle  
+✅ Sohbet et
+✅ Tombala oyna
+
+Ücretsiz: couplemeeting.com.tr
+
+#CoupleMeeting #SosyalMedya
+```
+
+### TikTok Açıklama
+```
+Arkadaşlarınla aynı anda video izleyebilir misin? 🤔
+Evet! Couple Meeting ile yapabilirsin 🎬
+Ücretsiz dene 👆
+#couplemeeting #video #müzik #arkadaşlar #ücretsiz
 ```
 
 ---
 
-## 🎬 Sosyal Medya Video Planları
+## 📧 E-posta Pazarlama (Yeni Kullanıcı Hoş Geldin)
 
-### Video 1: 15 Saniyelik Tanıtım (TikTok/Reels)
-```
-Süre: 15 saniye
-Müzik: Trend bir müzik (Turkish pop önerilir)
+**Konu:** Couple Meeting'e Hoş Geldin! 🎉
 
-[0-3sn] Karanlık ekrandan açılış
-  → "Sevdiklerinle aynı anda müzik dinlemeye hazır mısın?"
+Merhaba!
 
-[3-6sn] Ana sayfa ekran görüntüsü
-  → "couplemeeting.com.tr"
+Couple Meeting ailesine hoş geldin! İşte yapabileceklerin:
 
-[6-9sn] Oda içi ekran görüntüsü
-  → Video + sohbet birlikte akıyor
+🎬 **Video Odaları**: Arkadaşlarınla aynı anda YouTube, Vimeo veya özel videolar izle
+🎵 **Müzik**: Binlerce şarkıdan playlist oluştur, senkronize dinle
+💬 **Sohbet**: Hem sesli hem yazılı sohbet et
+🎯 **Tombala**: Arkadaşlarınla online tombala oyna
+👥 **Topluluklar**: İlgi alanına göre topluluklara katıl
+📅 **Etkinlikler**: Yaklaşan etkinlikleri takip et
 
-[9-12sn] Arkadaş ekleme ekranı
-  → "Arkadaşlarını ekle, birlikte izle"
+Hemen bir oda aç ve arkadaşlarını davet et!
 
-[12-15sn] Logo + URL
-  → "Şimdi dene! 🔗 Bio'daki link"
-```
-
-### Video 2: 30 Saniyelik Özellik Tanıtımı (YouTube Shorts)
-```
-Süre: 30 saniye
-
-[0-5sn] Problem
-  → "Uzaktaki sevdiklerinle aynı anda video izleyemiyor musun?"
-
-[5-10sn] Çözüm
-  → "Couple Meeting ile aynı anda izle, dinle, sohbet et!"
-
-[10-15sn] Özellik 1
-  → YouTube senkronizasyonu
-
-[15-20sn] Özellik 2
-  → Canlı sohbet + emoji tepkileri
-
-[20-25sn] Özellik 3
-  → Arkadaş sistemi + özel odalar
-
-[25-30sn] CTA
-  → "Ücretsiz hesap aç! 🔗 Link bio'da"
-```
-
-### Video 3: 60 Saniyelik Hikaye Anlatımı (YouTube)
-```
-Süre: 60 saniye
-
-[0-10sn] Giriş
-  → "Bir çift, uzakta yaşıyor. Her akşam aynı filmi izlemek istiyor."
-
-[10-20sn] Problem
-  → "Ama zamanlama farkı, farklı ekranlar, kopukluk..."
-
-[20-30sn] Keşif
-  → "Ta ki Couple Meeting'i keşfedene kadar..."
-
-[30-40sn] Çözüm
-  → "Artık aynı anda izliyorlar, aynı anda gülüyorlar, aynı anda ağlıyorlar."
-
-[40-50sn] Topluluk
-  → "Binlerce çift, arkadaş grubu, aile burada."
-
-[50-60sn] CTA
-  → "Sen de katıl. couplemeeting.com.tr"
-```
-
-### Video 4: 15 Saniyelik Testimonial (Instagram Stories)
-```
-Süre: 15 saniye
-Format: Dikey (9:16)
-
-[0-3sn] Kullanıcı ekran görüntüsü
-  → "Couple Meeting'i 1 aydır kullanıyorum"
-
-[3-6sn] Oda içi görüntü
-  → "Her akşam sevgilimle aynı müzikleri dinliyoruz"
-
-[6-9sn] Sohbet görüntü
-  → "Sohbet de harika, senkronizasyon mükemmel"
-
-[9-12sn] Emoji tepkileri
-  → "10/10 şiddetle tavsiye ederim"
-
-[12-15sn] URL
-  → "couplemeeting.com.tr"
-```
+Sevgilerle,
+Couple Meeting Ekibi 💜
 
 ---
 
-## 🏪 Mağaza Görselleri (App Store/Google Play)
+## 🎯 Google Ads Metinleri
 
-### Gerekli Görseller
-```
-1. Ana Görsel: 1024x500px (Landscape)
-2. Ekran Görüntüleri: 6 adet (1290x2796px - iPhone 15 Pro Max)
-3. Küçük İkon: 1024x1024px
-4. Tanıtım Videosu: 30 saniye (opsiyonel)
-```
+### Reklam Grubu 1 - Video Odası
+**Başlık 1:** Ücretsiz Video Odası
+**Başlık 2:** Arkadaşlarınla İzle
+**Başlık 3:** YouTube Senkronize
+**Açıklama:** Aynı anda video izle, sohbet et. Ücretsiz video odası uygulaması. Hemen dene!
 
-### Ana Görsel İçeriği
-```
-Sol Kısım: Telefon ekranında uygulama
-Sağ Kısım: "BİRLİKTE İZLE & DİNLE" başlığı
-Alt Kısım: "Ücretsiz İndir" butonu + QR kod
-Arka Plan: Koyu gradient (#0a0e14 → #1a1a2e)
-```
+### Reklam Grubu 2 - Müzik
+**Başlık 1:** Müziği Birlikte Dinle
+**Başlık 2:** Playlist Oluştur
+**Başlık 3:** Online Müzik Keyfi
+**Açıklama:** Arkadaşlarınla müzik dinle. YouTube'dan milyonlarca şarkı. Ücretsiz!
 
-### Ekran Görüntüsü Planları
-```
-1. "Senkronize Müzik" - İki telefonda aynı şarkı
-2. "Canlı Sohbet" - Mesajlaşma baloncukları
-3. "Arkadaş Ekleme" - Arkadaş listesi
-4. "Oda Oluşturma" - Kurulum ekranı
-5. "Global Topluluk" - Çoklu sohbet
-6. "VIP Özellikler" - Premium avantajlar
-```
+### Reklam Grubu 3 - Sosyal
+**Başlık 1:** Yeni İnsanlarla Tanış
+**Başlık 2:** Topluluklara Katıl
+**Başlık 3:** Etkinlik Bul
+**Açıklama:** Sosyal çevreni genişlet. Video odalarında yeni arkadaşlar edin.
 
 ---
 
-## 📝 Reklam Metinleri
+## 📊 Takip Edilecekler
 
-### Google Ads (Arama)
-```
-Başlık 1: Couple Meeting - Birlikte İzle
-Başlık 2: YouTube Senkronizasyon
-Başlık 3: Ücretsiz Hesap Aç
-Açıklama: Sevdiklerinle aynı anda müzik dinle, video izle. Arkadaş sistemi, canlı sohbet, özel odalar. Hemen katıl!
-URL: couplemeeting.com.tr
-```
+### 1. Haftalık
+- [ ] Google Search Console performans kontrolü
+- [ ] Sosyal medya paylaşımları (3-4 post/hafta)
+- [ ] Kullanıcı geri bildirimleri
 
-### Google Ads (Görsel)
-```
-Başlık: BİRLİKTE İZLE & DİNLE
-Alt Başlık: YouTube'da Aynı Anda
-Açıklama: Arkadaşlarınla, sevdiklerinle aynı anda video izle, müzik dinle. Ücretsiz!
-CTA: Hemen Dene
-```
+### 2. Aylık
+- [ ] SEO sıralama kontrolü
+- [ ] Reklam kampanyası sonuçları
+- [ ] Yeni özellik duyuruları
 
-### Facebook/Instagram Reklamı
-```
-Başlık: Sevdiklerinle Aynı Anda İzle 🎬
-Metin: Uzaktaki sevdiklerinle aynı anda YouTube videosu izle, müzik dinle ve sohbet et. Arkadaş sistemli, canlı chat'li, özel odalı platform.
-
-Senkronize video oynatma ✅
-Canlı sohbet + emoji ✅
-Arkadaş sistemi ✅
-Özel odalar ✅
-
-🔗 couplemeeting.com.tr'den ücretsiz katıl!
-
-Hedef Kitle: 18-35, Türkiye, arkadaşlık/ilişki/ilgi: YouTube, müzik, uzaktan ilişki
-```
-
-### TikTok Reklamı
-```
-Metin: Aynı anda izlemek artık mümkün 🎬
-
-Sevdiklerinle birlikte YouTube videosu izle, müzik dinle, sohbet et.
-
-couplemeeting.com.tr 🔗
-```
-
-### Twitter/X Reklamı
-```
-Tweet 1: Uzaktaki sevdiklerinle aynı anda video izlemek ister misin? 🎬
-
-Couple Meeting ile YouTube senkronizasyonu, canlı sohbet ve arkadaş sistemi. Ücretsiz!
-
-couplemeeting.com.tr
-
-Tweet 2: Arkadaşlarınla aynı anda müzik dinlemeye hazır mısın? 🎵
-
-Canlı sohbet, emoji tepkileri, özel odalar. Hemen katıl!
-
-couplemeeting.com.tr
-```
-
----
-
-## 🎨 Landing Page Görselleri
-
-### Hero Bölümü
-```
-Arka Plan: Koyu gradient (#0a0e14 → #0f172a)
-Merkez: Telefon mockup'ları (3 adet)
-  - Sol: Kadın telefonunda müzik dinliyor
-  - Orta: Laptop'ta video izliyor
-  - Sağ: Erkek telefonunda sohbet ediyor
-Üst: "BİRLİKTE İZLE & DİNLE" başlığı
-Alt: "Hemen Ola Oluştur" butonu
-```
-
-### Özellik Bölümü
-```
-3 Sütun Grid:
-1. 🎬 Senkronize Video
-   → Aynı anda YouTube izle
-2. 💬 Canlı Sohbet
-   → Anlık mesajlaşma + emoji
-3. 🤝 Arkadaş Sistemi
-   → Arkadaş ekle, online gör
-
-Her sütun için: İkon + Başlık + 1 cümle açıklama
-```
-
-### Sosyal Kanıt Bölümü
-```
-Kullanıcı yorumları (3 adet):
-"Harika bir uygulama!" - Ahmet ⭐⭐⭐⭐⭐
-"Sevgilimle her akşam kullanıyoruz" - Elif ⭐⭐⭐⭐⭐
-"Arkadaş grubumuzla müzik dinliyoruz" - Mehmet ⭐⭐⭐⭐⭐
-```
-
-### CTA Bölümü
-```
-Arka Plan: Gradient (#7c3aed → #2563eb)
-Başlık: "Hemen Başla"
-Alt Başlık: "Ücretsiz hesap aç, arkadaşlarını davet et"
-Buton: "Ücretsiz Katıl"
-Alt: "couplemeeting.com.tr"
-```
-
----
-
-## 🛠️ Kullanılacak Araçlar
-
-### Ekran Görüntüleri
-- **GoFullPage** (Chrome Extension) - Tüm sayfa screenshot
-- **Screenshot API** - Otomatik ekran görüntüsü
-- **Figma** - Mockup oluşturma
-
-### Video Düzenleme
-- **CapCut** - Kısa video düzenleme (ücretsiz)
-- **DaVinci Resolve** - Profesyonel video düzenleme (ücretsiz)
-- **Canva** - Hızlı video tasarımı
-
-### Görsel Tasarım
-- **Canva** - Hızlı görsel tasarımı
-- **Figma** - Profesyonel tasarım
-- **Photoshop** - Detaylı düzenleme
-
-### Mockup
-- **Smartmockups** - Telefon/laptop mockup
-- **Placeit** - Uygulama mockup'ları
-- **Mockup World** - Ücretsiz mockup'lar
-
----
-
-## 📅 Zaman Çizelgesi
-
-### Hafta 1: Ekran Görüntüleri
-- [ ] 10 ekran görüntüsü çek
-- [ ] Mockup'ları hazırla
-- [ ] Küçük düzenlemeler yap
-
-### Hafta 2: Video İçerikleri
-- [ ] 4 video senaryosu yaz
-- [ ] Video çekimlerini yap
-- [ ] Video düzenlemelerini tamamla
-
-### Hafta 3: Görsel Tasarımlar
-- [ ] Mağaza görsellerini tasarla
-- [ ] Landing page görsellerini hazırla
-- [ ] Sosyal medya şablonlarını oluştur
-
-### Hafta 4: Reklam Metinleri
-- [ ] Google Ads metinlerini yaz
-- [ ] Sosyal medya reklam metinlerini hazırla
-- [ ] A/B testleri planla
+### 3. 3 Aylık
+- [ ] Uygulama mağazası başvurusu (PWA wrapper)
+- [ ] Ortaklık programı başlatma
+- [ ] Bütçe planlaması
