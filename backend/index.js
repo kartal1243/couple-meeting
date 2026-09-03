@@ -1416,13 +1416,12 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
 
   socket.on('join_room', ({ roomId, password, maxUsers, token, userCity } = {}) => {
-    const user = requireAuth(token);
-    if (!user) return socket.emit('room_error', 'Kimlik doğrulama gerekli.');
+    const user = token ? requireAuth(token) : null;
     const cleanRoomId = sanitize(roomId, 50);
-    const userId = user.username;
-    const username = user.username;
-    const avatar = user.avatar || '🐱';
-    const isVip = !!user.isVip;
+    const userId = user ? user.username : 'misafir-' + Math.floor(1000 + Math.random() * 9000);
+    const username = user ? user.username : userId;
+    const avatar = user ? (user.avatar || '🐱') : '🐱';
+    const isVip = user ? !!user.isVip : false;
     let room = rooms[cleanRoomId];
 
     if (!room) {
