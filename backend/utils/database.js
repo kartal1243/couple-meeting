@@ -332,7 +332,7 @@ function createUser(username, email, passwordHash, avatar, bio) {
   }
 }
 
-const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'email_verified', 'is_vip', 'vip_expiry', 'last_seen', 'totp_secret', 'two_factor_enabled']);
+const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'reset_expiry', 'email_verified', 'is_vip', 'vip_expiry', 'vip_plan', 'vip_activated_at', 'stripe_customer_id', 'stripe_subscription_id', 'last_seen', 'totp_secret', 'two_factor_enabled', 'is_banned', 'role']);
 
 function updateUser(username, fields) {
   const safeFields = {};

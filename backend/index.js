@@ -362,7 +362,7 @@ app.post('/api/admin/users/vip', adminAuth, (req, res) => {
   const uname = sanitize(username, 30);
   if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
   const expiry = isVip ? Date.now() + (parseInt(vipDays) || 30) * 86400000 : null;
-  db.updateUser(uname, { isVip: !!isVip, vipPlan: isVip ? (vipPlan || 'yearly') : null, vipExpiry: expiry });
+  db.updateUser(uname, { is_vip: !!isVip, vip_plan: isVip ? (vipPlan || 'yearly') : null, vip_expiry: expiry });
   logger.info(`[ADMIN] VIP degistirildi: ${uname} -> ${isVip}`);
   res.json({ ok: true });
 });
@@ -372,7 +372,7 @@ app.post('/api/admin/users/ban', adminAuth, (req, res) => {
   const { username, isBanned } = req.body;
   const uname = sanitize(username, 30);
   if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
-  db.updateUser(uname, { isBanned: !!isBanned });
+  db.updateUser(uname, { is_banned: !!isBanned });
   logger.info(`[ADMIN] Ban degistirildi: ${uname} -> ${isBanned}`);
   res.json({ ok: true });
 });
@@ -475,7 +475,7 @@ const adminSocketIds = new Set();
 function publicUser(u) {
   if (!u) return null;
   return {
-    username: u.username, email: u.email, avatar: u.avatar || '🐱',
+    username: u.username, avatar: u.avatar || '🐱',
     bio: u.bio || '', status: u.status || '', createdAt: u.createdAt,
     isOnline: !!onlineUsers[u.username],
     lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null,
@@ -589,7 +589,9 @@ function broadcastAdminActivity(type, data) {
 function startAdminUpdates() {
   if (adminDashboardInterval) return;
   adminDashboardInterval = setInterval(() => {
-    if (adminSocketIds.size > 0) broadcastAdminDashboard();
+    if (adminSocketIds.size > 0) {
+      try { broadcastAdminDashboard(); } catch (e) { /* ignore */ }
+    }
   }, 5000);
 }
 
@@ -638,13 +640,15 @@ io.on('connection', (socket) => {
   };
 
   // Socket.IO rate limiting
-  const socketRateLimit = { chat: 0, join: 0, action: 0, lastReset: Date.now() };
+  const socketRateLimit = { chat: 0, join: 0, action: 0, auth: 0, search: 0, lastReset: Date.now() };
   const resetRateLimits = () => {
     const now = Date.now();
     if (now - socketRateLimit.lastReset > 10000) {
       socketRateLimit.chat = 0;
       socketRateLimit.join = 0;
       socketRateLimit.action = 0;
+      socketRateLimit.auth = 0;
+      socketRateLimit.search = 0;
       socketRateLimit.lastReset = now;
     }
   };
@@ -653,7 +657,7 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
   // 7.0 ADMIN REAL-TIME DASHBOARD
   // ──────────────────────────────────────────────────────
-  socket.on('admin_connect', ({ pass }) => {
+  socket.on('admin_connect', ({ pass } = {}) => {
     if (pass !== (process.env.ADMIN_PASS || 'admin123')) return;
     adminSocketIds.add(socket.id);
     startAdminUpdates();
@@ -669,7 +673,7 @@ io.on('connection', (socket) => {
   // 7.1 KIMLIK DOGRULAMA
   // ──────────────────────────────────────────────────────
 
-  socket.on('auth_register', ({ username, email, password, bio, avatar }) => {
+  socket.on('auth_register', ({ username, email, password, bio, avatar } = {}) => {
     if (checkRate('auth', 5)) return socket.emit('auth_result', { ok: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const cleanUsername = sanitize(username, 20).toLowerCase();
     const cleanEmail = sanitize(email, 100).toLowerCase();
@@ -692,7 +696,7 @@ io.on('connection', (socket) => {
     try { broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu` }); } catch (e) {}
   });
 
-  socket.on('auth_login', ({ email, password }) => {
+  socket.on('auth_login', ({ email, password } = {}) => {
     if (checkRate('auth', 5)) return socket.emit('auth_result', { ok: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const cleanEmail = sanitize(email, 100).toLowerCase();
     const user = db.getUserByEmail(cleanEmail);
@@ -748,7 +752,7 @@ io.on('connection', (socket) => {
   // 7.2 PROFIL & SOSYAL
   // ──────────────────────────────────────────────────────
 
-  socket.on('social_sync', ({ token }) => {
+  socket.on('social_sync', ({ token } = {}) => {
     const user = db.getUserByToken(token);
     if (!user) {
       socket.emit('social_profile', null);
@@ -774,7 +778,11 @@ io.on('connection', (socket) => {
         updates.username = cleanName;
       }
     }
-    db.updateUser(user.username, updates);
+    const oldName = user.username;
+    db.updateUser(oldName, updates);
+    if (updates.username && updates.username !== oldName) {
+      try { db.getDb().prepare('UPDATE tokens SET username = ? WHERE username = ?').run(updates.username, oldName); } catch (e) {}
+    }
     const updated = db.getUser(updates.username || user.username);
     socket.emit('social_profile', publicUser(updated));
   });
@@ -789,17 +797,17 @@ io.on('connection', (socket) => {
     if (!newPassword || newPassword.length < 6) return socket.emit('change_password_result', { success: false, message: 'Yeni şifre en az 6 karakter olmalı.' });
     const newSalt = crypto.randomBytes(16).toString('hex');
     const newHashFull = crypto.scryptSync(newPassword, newSalt, 64).toString('hex');
-    db.updateUser(user.username, { passwordHash: `${newSalt}:${newHashFull}` });
+    db.updateUser(user.username, { password_hash: `${newSalt}:${newHashFull}` });
     socket.emit('change_password_result', { success: true, message: 'Şifre başarıyla değiştirildi.' });
   });
 
   // ── YAZMA İNDİKATÖRÜ ──
-  socket.on('typing_start', ({ to, token }) => {
+  socket.on('typing_start', ({ to, token } = {}) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     emitToUser(sanitize(to, 24), 'typing_indicator', { from: user.username, typing: true });
   });
-  socket.on('typing_stop', ({ to, token }) => {
+  socket.on('typing_stop', ({ to, token } = {}) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     emitToUser(sanitize(to, 24), 'typing_indicator', { from: user.username, typing: false });
@@ -1181,7 +1189,7 @@ io.on('connection', (socket) => {
   // 7.4 GLOBAL SOHBET
   // ──────────────────────────────────────────────────────
 
-  socket.on('global_chat_message', ({ text, token }) => {
+  socket.on('global_chat_message', ({ text, token } = {}) => {
     const user = requireAuth(token);
     if (!user) return;
     const cleanText = sanitize(text, 500);
@@ -1205,7 +1213,7 @@ io.on('connection', (socket) => {
   const dmMessages = globalDmMessages;
   const chatGroups = globalChatGroups;
 
-  socket.on('dm_send', ({ to, text, token }) => {
+  socket.on('dm_send', ({ to, text, token } = {}) => {
     if (checkRate('chat', 20)) return;
     const from = db.getUserByToken(token);
     if (!from) return;
@@ -1407,7 +1415,7 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity } = {}) => {
     const user = requireAuth(token);
     if (!user) return socket.emit('room_error', 'Kimlik doğrulama gerekli.');
     const cleanRoomId = sanitize(roomId, 50);
@@ -1457,7 +1465,7 @@ io.on('connection', (socket) => {
     try { broadcastAdminActivity('room_join', { username: user.username, roomId: cleanRoomId, roomName: room.name, message: `${user.username} odaya katıldı: ${room.name}` }); } catch (e) {}
   });
 
-  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword }) => {
+  socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword } = {}) => {
     const room = rooms[sanitize(roomId, 50)];
     if (room && room.hostUserId === socket.userId) {
       if (newName && newName.trim()) room.name = sanitize(newName, 50);
@@ -1470,7 +1478,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('kick_user', ({ roomId, targetUserId, token }) => {
+  socket.on('kick_user', ({ roomId, targetUserId, token } = {}) => {
     const user = requireAuth(token);
     if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
@@ -1536,7 +1544,7 @@ io.on('connection', (socket) => {
   // 7.8 ODA AKSIYONLARI (MEDYA & SOHBET)
   // ──────────────────────────────────────────────────────
 
-  socket.on('room_action', ({ roomId, type, payload }) => {
+  socket.on('room_action', ({ roomId, type, payload } = {}) => {
     if (type === 'CHAT_MESSAGE' && checkRate('chat', 30)) return;
     if (type !== 'CHAT_MESSAGE' && checkRate('action', 20)) return;
     const cleanRoomId = sanitize(roomId, 50);
@@ -1649,7 +1657,7 @@ io.on('connection', (socket) => {
     if (targetSocket) targetSocket.emit('voice_signal', { fromId: socket.id, signal });
   });
 
-  socket.on('request_room_sync', ({ roomId }) => {
+  socket.on('request_room_sync', ({ roomId } = {}) => {
     const cleanRoomId = sanitize(roomId, 50);
     const room = rooms[cleanRoomId];
     if (room) {
@@ -1695,7 +1703,7 @@ io.on('connection', (socket) => {
     if (!room || room.hostUserId !== user.username) return;
     const game = { active: true, calledNumbers: [], currentNumber: null, players: {}, winner: null };
     room.users.forEach(u => { game.players[u.socketId] = { userId: u.userId, username: u.username, card: generateTombalaCard(), lineDone: false }; });
-    tombalaGames[roomId] = game;
+    tombalaGames[sanitize(roomId, 50)] = game;
     io.to(roomId).emit('tombala_game_state', { active: true, calledNumbers: [], currentNumber: null, players: Object.values(game.players).map(p => ({ userId: p.userId, username: p.username })) });
     Object.entries(game.players).forEach(([sid, p]) => { io.to(sid).emit('tombala_your_card', { card: p.card }); });
   });
