@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
-export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted }) {
+export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
   const [voiceActive, setVoiceActive] = useState(false);
   const [voiceUsers, setVoiceUsers] = useState([]);
   const localStreamRef = useRef(null);
@@ -14,7 +14,7 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
       setVoiceActive(true);
-      if (socket) socket.emit('voice_join', { roomId });
+      if (socket) socket.emit('voice_join', { roomId, token });
     } catch (err) { console.error('Mikrofon erişimi reddedildi:', err); }
   }, [socket, roomId]);
 
@@ -25,7 +25,7 @@ export default function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMu
     setVoiceActive(false);
     setVoiceUsers([]);
     if (audioContainerRef.current) audioContainerRef.current.innerHTML = '';
-    if (socket) socket.emit('voice_leave', { roomId });
+    if (socket) socket.emit('voice_leave', { roomId, token });
   }, [socket, roomId]);
 
   const toggleMute = useCallback(() => {

@@ -266,10 +266,17 @@ function createUser(username, email, passwordHash, avatar, bio) {
   }
 }
 
+const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'email_verified', 'is_vip', 'vip_expiry', 'last_seen', 'totp_secret', 'two_factor_enabled']);
+
 function updateUser(username, fields) {
+  const safeFields = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if (ALLOWED_USER_FIELDS.has(key)) safeFields[key] = val;
+  }
+  if (Object.keys(safeFields).length === 0) return;
   if (getDb()) {
     const sets = []; const vals = [];
-    for (const [key, val] of Object.entries(fields)) { sets.push(`${key} = ?`); vals.push(val); }
+    for (const [key, val] of Object.entries(safeFields)) { sets.push(`${key} = ?`); vals.push(val); }
     vals.push(username);
     db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE username = ?`).run(...vals);
   } else {

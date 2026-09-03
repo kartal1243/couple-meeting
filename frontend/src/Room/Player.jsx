@@ -11,7 +11,7 @@ function extractVideoId(src) {
 export default function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
-  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId
+  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId, token
 }) {
   const videoId = extractVideoId(mediaSrc);
   const screenVideoRef = useRef(null);
@@ -65,7 +65,7 @@ export default function Player({
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always', width: 1280, height: 720 }, audio: false });
       screenStreamRef.current = stream;
       setScreenSharing(true);
-      if (socket) socket.emit('screen_share_start', { roomId: mediaMeta?.roomId });
+      if (socket) socket.emit('screen_share_start', { roomId: mediaMeta?.roomId, token });
 
       // Create hidden video + canvas for frame capture
       const video = document.createElement('video');

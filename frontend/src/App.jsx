@@ -278,10 +278,7 @@ function App() {
     const text = globalChatInput.trim();
     if (!text) return;
     socket.emit('global_chat_message', {
-      text,
-      username: authUser?.username || username || 'Misafir',
-      avatar: authUser?.avatar || myAvatar,
-      token: authToken || ''
+      text, token: authToken || ''
     });
     setGlobalChatInput('');
   };
@@ -491,7 +488,7 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, userId, userCity, username: displayUsername, avatar: myAvatar };
+    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -512,7 +509,7 @@ function App() {
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     socket.emit('join_room', {
       roomId: joinRoomTarget.id, password: joinModalPass.trim(),
-      userId, userCity, username: displayUsername, avatar: myAvatar
+      token: authToken, userCity
     });
     setShowJoinModal(false);
     setJoinRoomTarget(null);
@@ -549,7 +546,7 @@ function App() {
     setShowSettingsModal(false);
   };
 
-  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId });
+  const handleKickUser = (targetUserId) => socket.emit('kick_user', { roomId: currentRoomIdRef.current, targetUserId, token: authToken });
   const handleTransferAdmin = (targetUserId) => socket.emit('update_room_settings', { roomId: currentRoomIdRef.current, newHostUserId: targetUserId });
 
   // ── 7. MEDYA & PLAYLIST ──
@@ -643,7 +640,7 @@ function App() {
 
   const confirmAddToPlaylist = () => {
     if (!pendingMediaItem) return;
-    socket.emit('add_to_playlist', { roomId: currentRoomIdRef.current, item: { ...pendingMediaItem, category: modalTargetCategory } });
+    socket.emit('add_to_playlist', { roomId: currentRoomIdRef.current, item: { ...pendingMediaItem, category: modalTargetCategory }, token: authToken });
     setShowFolderModal(false);
     setPendingMediaItem(null);
   };
@@ -657,7 +654,7 @@ function App() {
 
   const handleRemovePlaylistItem = (itemId, e) => {
     e.stopPropagation();
-    socket.emit('remove_from_playlist', { roomId: currentRoomIdRef.current, itemId });
+    socket.emit('remove_from_playlist', { roomId: currentRoomIdRef.current, itemId, token: authToken });
   };
 
   const handleModeChange = (mode) => {
@@ -668,7 +665,7 @@ function App() {
   const handleCreateCategory = (e) => {
     e.preventDefault();
     if (!newCategoryInput.trim()) return;
-    socket.emit('create_category', { roomId: currentRoomIdRef.current, categoryName: newCategoryInput.trim() });
+    socket.emit('create_category', { roomId: currentRoomIdRef.current, categoryName: newCategoryInput.trim(), token: authToken });
     setSelectedCategory(newCategoryInput.trim());
     setNewCategoryInput('');
   };
@@ -771,7 +768,7 @@ function App() {
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = decodeURIComponent(match[1]);
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, userId, userCity, username: displayUsername, avatar: myAvatar });
+      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity });
     }
   }, [location.pathname]);
 
@@ -780,7 +777,7 @@ function App() {
       setSearchResults([]); setIsSearching(false); return;
     }
     setIsSearching(true);
-    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim() }); }, 300);
+    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim(), token: authToken }); }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 

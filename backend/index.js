@@ -120,7 +120,7 @@ app.post('/api/upload-video', uploadLimiter, (req, res) => {
 // 2. YARDIMCI FONKSİYONLAR
 // ═══════════════════════════════════════════════════════════
 
-function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>]/g, ''); }
+function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#x27;' }[c] || '')); }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
 
@@ -269,11 +269,13 @@ async function getInnertube() {
 // 6.5 ADMIN PANEL
 // ═══════════════════════════════════════════════════════════
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASS;
+if (!ADMIN_PASSWORD && isProd) { logger.error('ADMIN_PASS env degiskeni zorunludur!'); process.exit(1); }
+if (!ADMIN_PASSWORD) logger.warn('ADMIN_PASS ayarlanmadi, varsayilan kullaniliyor (GELISTIRME)');
 
 function adminAuth(req, res, next) {
-  const pass = req.headers['x-admin-pass'] || req.query.pass;
-  if (pass !== ADMIN_PASSWORD) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
+  const pass = req.headers['x-admin-pass'];
+  if (!pass || pass !== ADMIN_PASSWORD) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
   next();
 }
 
@@ -474,6 +476,11 @@ setInterval(() => {
 io.on('connection', (socket) => {
   socket.emit('public_rooms_update', getPublicRoomsList());
   socket.emit('global_chat_history', db.getGlobalMessages(100));
+
+  const requireAuth = (token) => {
+    if (!token) return null;
+    return db.getUserByToken(token);
+  };
 
   // Socket.IO rate limiting
   const socketRateLimit = { chat: 0, join: 0, action: 0, lastReset: Date.now() };
@@ -687,17 +694,19 @@ io.on('connection', (socket) => {
   socket.on('add_reaction', ({ messageId, messageType, emoji, token }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
-    db.addReaction(messageId, messageType || 'dm', user.username, emoji);
+    const cleanEmoji = sanitize(emoji, 8);
+    if (!cleanEmoji) return;
+    db.addReaction(messageId, messageType || 'dm', user.username, cleanEmoji);
     const reactions = db.getReactions(messageId, messageType || 'dm');
-    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
     socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
   });
   socket.on('remove_reaction', ({ messageId, messageType, emoji, token }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
-    db.removeReaction(messageId, messageType || 'dm', user.username, emoji);
+    const cleanEmoji = sanitize(emoji, 8);
+    if (!cleanEmoji) return;
+    db.removeReaction(messageId, messageType || 'dm', user.username, cleanEmoji);
     const reactions = db.getReactions(messageId, messageType || 'dm');
-    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
     socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
   });
 
@@ -708,6 +717,7 @@ io.on('connection', (socket) => {
     const target = sanitize(targetUsername, 20);
     const room = rooms[roomId];
     if (!room) return socket.emit('room_invite_result', { success: false, message: 'Oda bulunamadı.' });
+    if (!room.users.find(u => u.userId === user.username)) return socket.emit('room_invite_result', { success: false, message: 'Bu odada değilsiniz.' });
     emitToUser(target, 'room_invite', { from: user.username, fromAvatar: user.avatar, roomId, roomName: room.name || roomId });
     socket.emit('room_invite_result', { success: true, message: `${target} kullanıcısına davet gönderildi.` });
   });
@@ -720,6 +730,8 @@ io.on('connection', (socket) => {
     if (target === user.username) return socket.emit('follow_result', { success: false, message: 'Kendini takip edemezsin.' });
     const targetUser = db.getUser(target);
     if (!targetUser) return socket.emit('follow_result', { success: false, message: 'Kullanıcı bulunamadı.' });
+    if (db.isBlocked(target, user.username)) return socket.emit('follow_result', { success: false, message: 'Bu kullanıcı sizi engelledi.' });
+    if (db.isBlocked(user.username, target)) return socket.emit('follow_result', { success: false, message: 'Bu kullanıcıyı engellediniz.' });
     const ok = db.followUser(user.username, target);
     if (ok) {
       db.addFeedItem(user.username, 'follow', { following: target });
@@ -862,7 +874,7 @@ io.on('connection', (socket) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     if (db.isEmailVerified(user.username)) return socket.emit('verify_result', { success: false, message: 'Email zaten doğrulanmış.' });
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(crypto.randomInt(100000, 999999));
     db.createEmailVerification(user.username, user.email, code);
     const transporter = nodemailer?.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: parseInt(process.env.SMTP_PORT) || 587, secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
     if (transporter && process.env.SMTP_USER) {
@@ -874,6 +886,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('verify_email_code', ({ code, token }) => {
+    if (checkRate('auth', 5)) return socket.emit('verify_result', { success: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const user = db.getUserByToken(token);
     if (!user) return;
     const ok = db.verifyEmailCode(user.username, code);
@@ -900,6 +913,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('verify_2fa_setup', ({ code, token }) => {
+    if (checkRate('auth', 5)) return socket.emit('two_factor_result', { success: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const user = db.getUserByToken(token);
     if (!user) return;
     const tf = db.getTwoFactor(user.username);
@@ -995,14 +1009,16 @@ io.on('connection', (socket) => {
   // 7.4 GLOBAL SOHBET
   // ──────────────────────────────────────────────────────
 
-  socket.on('global_chat_message', ({ text, username, avatar, token }) => {
+  socket.on('global_chat_message', ({ text, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const cleanText = sanitize(text, 500);
     if (!cleanText) return;
-    const accountUser = db.getUserByToken(token);
+    if (checkRate('chat', 30)) return;
     const msg = {
       id: crypto.randomBytes(8).toString('hex'),
-      username: accountUser?.username || sanitize(username, 24) || 'Misafir',
-      avatar: accountUser?.avatar || sanitize(avatar, 10) || '🐱',
+      username: user.username,
+      avatar: user.avatar || '🐱',
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now()
@@ -1018,6 +1034,7 @@ io.on('connection', (socket) => {
   const chatGroups = globalChatGroups;
 
   socket.on('dm_send', ({ to, text, token }) => {
+    if (checkRate('chat', 20)) return;
     const from = db.getUserByToken(token);
     if (!from) return;
     const cleanText = sanitize(text, 500);
@@ -1174,7 +1191,10 @@ io.on('connection', (socket) => {
   // 7.5 MÜZIK ARAMA
   // ──────────────────────────────────────────────────────
 
-  socket.on('search_music', async ({ query }) => {
+  socket.on('search_music', async ({ query, token }) => {
+    const user = requireAuth(token);
+    if (!user) return socket.emit('search_results', []);
+    if (checkRate('search', 10)) return socket.emit('search_results', []);
     try {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
@@ -1215,8 +1235,14 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, userId, userCity, username, avatar, isVip }) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity }) => {
+    const user = requireAuth(token);
+    if (!user) return socket.emit('room_error', 'Kimlik doğrulama gerekli.');
     const cleanRoomId = sanitize(roomId, 50);
+    const userId = user.username;
+    const username = user.username;
+    const avatar = user.avatar || '🐱';
+    const isVip = !!user.isVip;
     let room = rooms[cleanRoomId];
 
     if (!room) {
@@ -1271,9 +1297,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('kick_user', ({ roomId, targetUserId }) => {
+  socket.on('kick_user', ({ roomId, targetUserId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
-    if (room && room.hostUserId === socket.userId && targetUserId !== socket.userId) {
+    if (room && room.hostUserId === user.username && targetUserId !== user.username) {
       const target = room.users.find(u => u.userId === targetUserId);
       if (target) {
         io.to(target.socketId).emit('kicked_from_room', 'Odadan atıldınız, tekrar giremezsiniz!');
@@ -1291,7 +1319,9 @@ io.on('connection', (socket) => {
   // 7.7 PLAYLIST & KATEGORI
   // ──────────────────────────────────────────────────────
 
-  socket.on('create_category', ({ roomId, categoryName }) => {
+  socket.on('create_category', ({ roomId, categoryName, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
     const name = sanitize(categoryName, 50);
     if (room && name && !room.categories.includes(name)) {
@@ -1300,15 +1330,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('add_to_playlist', ({ roomId, item }) => {
+  socket.on('add_to_playlist', ({ roomId, item, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
-    if (room && item) {
-      room.playlist.push(item);
+    if (room && item && typeof item === 'object') {
+      const safeItem = { id: item.id || crypto.randomBytes(8).toString('hex'), title: sanitize(item.title, 200) || 'Video', type: sanitize(item.type, 20) || 'youtube', src: sanitize(item.src, 500) || '', addedBy: user.username };
+      room.playlist.push(safeItem);
       io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
     }
   });
 
-  socket.on('remove_from_playlist', ({ roomId, itemId }) => {
+  socket.on('remove_from_playlist', ({ roomId, itemId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
     if (room) {
       room.playlist = room.playlist.filter(i => i.id !== itemId);
@@ -1383,32 +1418,41 @@ io.on('connection', (socket) => {
   // 7.9 AYRILMA & BAGLANTI KESIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('screen_share_start', ({ roomId }) => {
-    if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
+  socket.on('screen_share_start', ({ roomId, token }) => {
+    const user = requireAuth(token);
+    if (!user || !roomId || !rooms[roomId] || !rooms[roomId].users.find(u => u.userId === user.username)) return;
+    socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
   });
 
   socket.on('screen_share_frame', ({ roomId, frame }) => {
-    if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_frame', { frame, socketId: socket.id });
+    if (!roomId || !rooms[roomId]) return;
+    if (typeof frame !== 'string' || frame.length > 500000) return;
+    socket.to(roomId).emit('screen_share_frame', { frame, socketId: socket.id });
   });
 
   socket.on('screen_share_stop', ({ roomId }) => {
-    if (roomId && rooms[roomId]) socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
+    if (!roomId || !rooms[roomId]) return;
+    socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
   });
 
   // Voice chat
-  socket.on('voice_join', ({ roomId }) => {
+  socket.on('voice_join', ({ roomId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const cleanRoomId = sanitize(roomId, 50);
     if (!rooms[cleanRoomId]) return;
+    if (!rooms[cleanRoomId].users.find(u => u.userId === user.username)) return;
     if (!rooms[cleanRoomId].voiceUsers) rooms[cleanRoomId].voiceUsers = {};
-    const roomUser = rooms[cleanRoomId].users?.find(u => u.socketId === socket.id);
-    rooms[cleanRoomId].voiceUsers[socket.id] = { username: roomUser?.username || 'Anonim', isMuted: false };
+    rooms[cleanRoomId].voiceUsers[socket.id] = { username: user.username, isMuted: false };
     socket.to(cleanRoomId).emit('voice_join', { socketId: socket.id });
     const vu = Object.entries(rooms[cleanRoomId].voiceUsers).map(([sid, u]) => ({ socketId: sid, username: u.username, isMuted: u.isMuted }));
     socket.emit('voice_users', { users: vu });
     socket.to(cleanRoomId).emit('voice_users', { users: vu });
   });
 
-  socket.on('voice_leave', ({ roomId }) => {
+  socket.on('voice_leave', ({ roomId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const cleanRoomId = sanitize(roomId, 50);
     if (!rooms[cleanRoomId]) return;
     if (rooms[cleanRoomId].voiceUsers) delete rooms[cleanRoomId].voiceUsers[socket.id];
@@ -1460,9 +1504,11 @@ io.on('connection', (socket) => {
     return card;
   }
 
-  socket.on('tombala_start', ({ roomId }) => {
+  socket.on('tombala_start', ({ roomId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
-    if (!room || room.hostUserId !== socket.userId) return;
+    if (!room || room.hostUserId !== user.username) return;
     const game = { active: true, calledNumbers: [], currentNumber: null, players: {}, winner: null };
     room.users.forEach(u => { game.players[u.socketId] = { userId: u.userId, username: u.username, card: generateTombalaCard(), lineDone: false }; });
     tombalaGames[roomId] = game;
@@ -1470,11 +1516,13 @@ io.on('connection', (socket) => {
     Object.entries(game.players).forEach(([sid, p]) => { io.to(sid).emit('tombala_your_card', { card: p.card }); });
   });
 
-  socket.on('tombala_call', ({ roomId }) => {
+  socket.on('tombala_call', ({ roomId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const game = tombalaGames[sanitize(roomId, 50)];
     if (!game || !game.active) return;
     const room = rooms[sanitize(roomId, 50)];
-    if (!room || room.hostUserId !== socket.userId) return;
+    if (!room || room.hostUserId !== user.username) return;
     const available = [];
     for (let i = 1; i <= 50; i++) { if (!game.calledNumbers.includes(i)) available.push(i); }
     if (available.length === 0) return;
@@ -1484,7 +1532,9 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('tombala_number', { number: num, calledNumbers: game.calledNumbers });
   });
 
-  socket.on('tombala_claim', ({ roomId, type }) => {
+  socket.on('tombala_claim', ({ roomId, type, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const game = tombalaGames[sanitize(roomId, 50)];
     if (!game || !game.active) return;
     const player = game.players[socket.id];
@@ -1505,9 +1555,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('tombala_end', ({ roomId }) => {
+  socket.on('tombala_end', ({ roomId, token }) => {
+    const user = requireAuth(token);
+    if (!user) return;
     const room = rooms[sanitize(roomId, 50)];
-    if (!room || room.hostUserId !== socket.userId) return;
+    if (!room || room.hostUserId !== user.username) return;
     delete tombalaGames[roomId];
     io.to(roomId).emit('tombala_end');
   });

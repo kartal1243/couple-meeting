@@ -27,7 +27,7 @@ function checkFull(card, called) {
   return card.every(n => called.includes(n));
 }
 
-export default function Tombala({ socket, roomId, mySocketId, userId, hostUserId, roomUsersList }) {
+export default function Tombala({ socket, roomId, mySocketId, userId, hostUserId, roomUsersList, token }) {
   const isHost = hostUserId === userId;
   const [gameActive, setGameActive] = useState(false);
   const [myCard, setMyCard] = useState([]);
@@ -75,11 +75,11 @@ export default function Tombala({ socket, roomId, mySocketId, userId, hostUserId
     };
   }, [socket, mySocketId]);
 
-  const startGame = () => { if (socket) socket.emit('tombala_start', { roomId }); };
-  const callNumber = () => { if (socket) socket.emit('tombala_call', { roomId }); };
-  const claimLine = () => { if (socket) socket.emit('tombala_claim', { roomId, type: 'line' }); };
-  const claimFull = () => { if (socket) socket.emit('tombala_claim', { roomId, type: 'full' }); };
-  const endGame = () => { if (socket) socket.emit('tombala_end', { roomId }); };
+  const startGame = () => { if (socket) socket.emit('tombala_start', { roomId, token }); };
+  const callNumber = () => { if (socket) socket.emit('tombala_call', { roomId, token }); };
+  const claimLine = () => { if (socket) socket.emit('tombala_claim', { roomId, type: 'line', token }); };
+  const claimFull = () => { if (socket) socket.emit('tombala_claim', { roomId, type: 'full', token }); };
+  const endGame = () => { if (socket) socket.emit('tombala_end', { roomId, token }); };
 
   return (
     <div style={{

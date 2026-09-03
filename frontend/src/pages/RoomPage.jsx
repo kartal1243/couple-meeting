@@ -26,7 +26,7 @@ export default function RoomPage() {
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars, handleVideoUpload,
     toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
-    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef
+    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
 
   const isHost = hostUserId === userId;
@@ -165,9 +165,9 @@ export default function RoomPage() {
             openYouTubeExternally={openYouTubeExternally}
             handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
             screenSharing={screenSharing} setScreenSharing={setScreenSharing}
-            socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId}
+            socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken}
           />
-          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef} voiceChat={<VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} />}           />
+          <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} />}           />
         </div>
 
         <div className="cm-sidebar" style={{ background: chatTheme.bg }}>
@@ -210,7 +210,7 @@ export default function RoomPage() {
           {sidebarTab === 'chat' ? (
             <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
           ) : sidebarTab === 'tombala' ? (
-            <Tombala socket={socket} roomId={roomId} mySocketId={mySocketId} userId={userId} hostUserId={hostUserId} roomUsersList={roomUsersList} />
+            <Tombala socket={socket} roomId={roomId} mySocketId={mySocketId} userId={userId} hostUserId={hostUserId} roomUsersList={roomUsersList} token={authToken} />
           ) : (
             <Playlist
               categories={categories} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
