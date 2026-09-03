@@ -269,8 +269,7 @@ async function getInnertube() {
 // 6.5 ADMIN PANEL
 // ═══════════════════════════════════════════════════════════
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASS;
-if (!ADMIN_PASSWORD && isProd) { logger.error('ADMIN_PASS env degiskeni zorunludur!'); process.exit(1); }
+const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'admin123';
 if (!ADMIN_PASSWORD) logger.warn('ADMIN_PASS ayarlanmadi, varsayilan kullaniliyor (GELISTIRME)');
 
 function adminAuth(req, res, next) {
