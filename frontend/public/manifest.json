@@ -1,12 +1,21 @@
 {
-  "name": "Couple Meeting - Birlikte Dinle, İzle, Sohbet Et",
-  "short_name": "CoupleMeeting",
-  "description": "Sevdiklerinle aynı anda müzik dinle, YouTube videolarını birlikte izle ve anlık sohbet et.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0b141a",
-  "theme_color": "#0b141a",
-  "orientation": "portrait",
-  "lang": "tr",
-  "categories": ["social", "music", "entertainment"]
+    "name": "Couple Meeting",
+    "short_name": "CoupleMeeting",
+    "description": "Arkadaşlarınla video odalarında buluş, müzik dinle, sohbet et",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0e14",
+    "theme_color": "#7c3aed",
+    "orientation": "any",
+    "scope": "/",
+    "lang": "tr",
+    "categories": ["social", "entertainment"],
+    "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+        { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        { "name": "Oda Oluştur", "url": "/?action=create", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+    ]
 }
