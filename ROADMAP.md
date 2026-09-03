@@ -1,5 +1,5 @@
-# Couple Meeting - GÜNCEL Yol Haritası (v2)
-## 📊 Durum: 18/20 Özellik Tamamlandı (%90)
+# Couple Meeting - GÜNCEL Yol Haritası (v3)
+## 📊 Durum: 22/24 Özellik Tamamlandı (%92)
 
 ---
 
@@ -19,22 +19,30 @@
 - [x] Oda Daveti → `invite_to_room`
 - [x] Profil Fotoğrafı Yükleme → `/api/upload-avatar`
 
-### 🔧 BUG FIX (3 Bug Düzeltildi)
+### 🔧 BUG FIX (5 Bug Düzeltildi)
 - [x] DM Sol-Sağ Karışması → `getDmHistory` field alias düzeltildi
 - [x] Real-Time Mesaj Gitmiyor → `authTokenRef` closure bug fix
 - [x] Sohbetle Yanıtlama → Chat reply ID + mobil touch handler
+- [x] Oda Silinme → `leave_room` / `disconnect` / `ROOM_CLOSED` handler'ları → room boşsa `delete rooms[rId]`
+- [x] localStorage Cache → Eski oda verileri localStorage'dan temizlenir, sunucu mesajları kullanılır
 
----
+### 🎬 MEDYA & OYNATICI (4/4 Tamamlandı)
+- [x] YouTube Embed → `react-youtube` ile otomatik oynatma + senkron
+- [x] Vimeo Embed → `vimeo.com/ID` URL'si → iframe ile oynatma
+- [x] Video Yükleme → `/api/upload-video` endpoint (100MB, mp4/webm/ogg/mov)
+- [x] Özel Video Oynatici → `.mp4` `.webm` `.ogg` URL'leri → native `<video>` etiketi
 
-## ⏳ BEKLEYEN ÖZELLİKLER
-
-### 🟢 GELİŞTİRME (4/6 Tamamlandı)
+### 🟢 GELİŞTİRME (6/6 Tamamlandı)
 - [x] 🔔 **Bildirim Sistemi** — In-app bildirimler + bell ikonu + unread badge
 - [x] 👆 **Takip Sistemi** — Tek taraflı takip + takipçi + feed akışı
 - [x] 👮 **Admin Rol Sistemi** — user → mod → admin → superadmin + yetki bazlı kontrol
 - [x] 🚨 **Kullanıcı Raporlama** — Şikayet → admin paneli + bildirim
 - [x] 📧 **Email Doğrulama** — 6 haneli kod + nodemailer SMTP + profilde durum
 - [x] 🔐 **İki Faktörlü Doğrulama** — TOTP + QR kod + Google Authenticator
+
+---
+
+## ⏳ BEKLEYEN ÖZELLİKLER
 
 ### 🔵 VİZYON (0/4)
 - [ ] 🏘️ **Topluluklar** — İlgi alanına göre topluluk
@@ -46,78 +54,60 @@
 
 ## 📋 TEKNİK DETAYLAR
 
-### Yeni Veritabanı Tabloları
+### Veritabanı Tabloları (14 adet)
 ```sql
-dm_messages        — DM mesajları (kalıcı)
-group_messages     — Grup mesajları (kalıcı)
-blocked_users      — Engellenen kullanıcılar
-message_reactions  — Mesaj tepkileri (emoji)
+users, rooms (in-memory), dm_messages, group_messages,
+blocked_users, message_reactions, friendships, follows,
+feed_items, notifications, user_roles, reported_users,
+email_verifications, totp_secrets
 ```
 
-### Yeni Backend Handler'ları (10 adet)
-| Handler | Açıklama |
-|---------|----------|
-| `change_password` | Şifre değiştirme (eski şifre + yeni şifre) |
-| `typing_start` | Yazma indikatörü başlat |
-| `typing_stop` | Yazma indikatörü durdur |
-| `block_user` | Kullanıcı engelleme |
-| `unblock_user` | Engelleme kaldırma |
-| `get_blocked_users` | Engellenenleri listele |
-| `dm_delete` | DM mesajı silme |
-| `dm_edit` | DM mesajı düzenleme |
-| `add_reaction` / `remove_reaction` | Mesaj tepkileri |
-| `invite_to_room` | Oda daveti gönderme |
+### Backend Handler'ları (85+ adet)
+| Kategori | Handler'lar |
+|----------|-------------|
+| Oda | `join_room`, `leave_room`, `kick_user`, `update_room_settings` |
+| Mesaj | `room_action` (CHAT_MESSAGE, CHANGE_MEDIA, PLAY, PAUSE, ROOM_CLOSED) |
+| DM | `send_dm`, `dm_list`, `dm_history`, `dm_delete`, `dm_edit`, `dm_read_receipt` |
+| Grup | `create_group`, `send_group_message`, `group_list`, `group_history` |
+| sosyal | `friend_request`, `respond_friend_request`, `unfriend_user`, `block_user` |
+| Takip | `follow_user`, `unfollow_user`, `followers_list`, `following_list` |
+| Bildirim | `get_notifications`, `mark_notification_read` |
+| Admin | `admin/users`, `admin/rooms/:id` (DELETE), `admin/update-role` |
+| Medya | `add_to_playlist`, `remove_from_playlist`, `create_category` |
 
-### Yeni API Endpoint'leri
+### API Endpoint'leri
 | Endpoint | Yöntem | Açıklama |
 |----------|--------|----------|
-| `/api/upload-avatar` | POST | Profil fotoğrafı yükleme (multer) |
+| `/api/upload-avatar` | POST | Profil fotoğrafı yükleme (2MB, resim) |
+| `/api/upload-video` | POST | Video yükleme (100MB, mp4/webm/ogg/mov) |
 | `/uploads/:filename` | GET | Yüklenen dosyaları sunma |
+| `/api/admin/users` | GET | Kullanıcı listesi (admin) |
+| `/api/admin/rooms/:id` | DELETE | Oda kapatma (admin) |
 
-### Yeni Frontend Fonksiyonları
-```javascript
-sendDmTyping(to)      // Yazıyor bildirimi
-sendDmStopTyping(to)  // Yazmayı durdur
-deleteDm(id, user)    // Mesaj sil
-editDm(id, user, txt) // Mesaj düzenle
-addReaction(id, emoji) // Tepki ekle
-removeReaction(id, emoji) // Tepki kaldır
-blockUser(username)    // Engelle
-unblockUser(username)  // Engeli kaldır
-inviteToRoom(user, room) // Oda daveti
-changePassword(cur, new) // Şifre değiştir
+### Frontend Bileşenleri
+```
+App.jsx              — Ana bileşen, state yönetimi, socket handler'ları
+RoomPage.jsx          — Oda layout'u, grid yapısı
+Player.jsx            — YouTube/Vimeo/video/iframe oynatici
+SearchBar.jsx         — Arama + URL yapıştırma + video yükleme
+Chat.jsx              — Sohbet + yanıtla + mobil touch
+Controls.jsx          — Oynatma kontrolleri
+Playlist.jsx          — Playlist yönetimi
+Header.jsx            — Oda başlığı + ayarlar
+VoiceChat.jsx         — Sesli sohbet (WebRTC)
+Tombala.jsx           — Tombala oyunu
+SocialModal.jsx       — DM + Grup + Arkadaş + Takip
+SettingsModal.jsx     — Oda ayarları + tema
 ```
 
----
-
-## 🎯 SONRAKI ADIMLAR
-
-### Öncelik 1: Bildirim Sistemi (5-7 gün)
-- [ ] Web Push API kurulumu
-- [ ] Service Worker ekleme
-- [ ] Bildirim tercihleri
-- [ ] Backend bildirim kaydetme
-
-### Öncelik 2: Takip Sistemi (4-5 gün)
-- [ ] `follows` tablosu
-- [ ] Takip et/takipten çık handler'ları
-- [ ] Takipçi listesi
-- [ ] Feed akışı
-
-### Öncelik 3: Admin Rolü (3-4 gün)
-- [ ] `user_roles` tablosu
-- [ ] Rol bazlı yetkilendirme
-- [ ] Admin paneli iyileştirmesi
-
-### Öncelik 4: Email Doğrulama (2-3 gün)
-- [ ] Nodemailer SMTP kurulumu
-- [ ] Doğrulama emaili gönderme
-- [ ] Email token doğrulama
-
-### Öncelik 5: 2FA (3-4 gün)
-- [ ] TOTP entegrasyonu
-- [ ] QR kod oluşturma
-- [ ] Yedek kodlar
+### Medya Destek Formatları
+| Kaynak | Format | Nasıl Kullanılır |
+|--------|--------|------------------|
+| YouTube | Video ID veya URL | `youtube.com/watch?v=ABC123` |
+| Vimeo | Video ID veya URL | `vimeo.com/123456789` |
+| Özel Video | .mp4/.webm/.ogg URL | Direkt URL veya yükleme |
+| Yükleme | mp4/webm/ogg/mov | 📁 butonu ile dosya seç (100MB) |
+| iframe | Herhangi bir URL | Embed 가능 herhangi bir site |
 
 ---
 
@@ -125,22 +115,23 @@ changePassword(cur, new) // Şifre değiştir
 
 | Metrik | Değer |
 |--------|-------|
-| Toplam Handler | 80+ |
+| Toplam Handler | 85+ |
 | Veritabanı Tablosu | 14 |
 | Frontend Bileşeni | 20+ |
-| API Endpoint | 15 |
-| Tamamlanan | %90 |
-| Kalan | %10 |
+| API Endpoint | 17 |
+| Tamamlanan | %92 |
+| Kalan | %8 (4 vizyon özelliği) |
 
 ---
 
 ## 🛠️ MEVCUT ALTYAPI
 
-- **Backend:** Express + Socket.IO + SQLite
-- **Frontend:** React 19 + Vite
-- **Deploy:** PM2 + Nginx + Cloudflare
-- **Güvenlik:** Helmet, rate-limit, scrypt, engelleme
+- **Backend:** Express + Socket.IO + SQLite + multer + nodemailer + otpauth
+- **Frontend:** React 19 + Vite + react-youtube + socket.io-client
+- **Deploy:** PM2 + Nginx + Cloudflare (DNS + SSL + CDN)
+- **Güvenlik:** Helmet, rate-limit, scrypt, engelleme, 2FA, email doğrulama
 - **Gerçek Zamanlı:** Socket.IO + heartbeat + online/offline broadcast
+- **Medya:** YouTube embed + Vimeo embed + özel video + video yükleme + ekran paylaşımı
 
 ---
 
