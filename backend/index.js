@@ -47,8 +47,8 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' } });
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' }, validate: { xForwardedForHeader: false } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' }, validate: { xForwardedForHeader: false } });
 app.use('/api/', apiLimiter);
 app.use('/api/vip/create-checkout', authLimiter);
 app.use('/api/vip/admin-grant', authLimiter);
@@ -74,7 +74,7 @@ const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 }, fileFilt
 
 app.use('/uploads', express.static(uploadsDir));
 
-const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla dosya yükleme.' } });
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla dosya yükleme.' }, validate: { xForwardedForHeader: false } });
 
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
@@ -1084,7 +1084,8 @@ io.on('connection', (socket) => {
     const existing = db.getTwoFactor(user.username);
     if (existing?.enabled) return socket.emit('two_factor_setup', { success: false, message: '2FA zaten aktif. Önce devre dışı bırak.' });
     const OTPAuth = require('otpauth');
-    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.generate(20) });
+    const secret = new OTPAuth.Secret({ size: 20 });
+    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret });
     db.setupTwoFactor(user.username, totp.secret.base32);
     const QRCode = require('qrcode');
     QRCode.toDataURL(totp.toString(), (err, url) => {
@@ -1461,7 +1462,7 @@ io.on('connection', (socket) => {
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();
-    try { broadcastAdminActivity('room_join', { username: user.username, roomId: cleanRoomId, roomName: room.name, message: `${user.username} odaya katıldı: ${room.name}` }); } catch (e) {}
+    try { broadcastAdminActivity('room_join', { username, roomId: cleanRoomId, roomName: room.name, message: `${username} odaya katıldı: ${room.name}` }); } catch (e) {}
   });
 
   socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword } = {}) => {
