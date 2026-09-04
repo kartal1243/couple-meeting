@@ -195,14 +195,8 @@ app.post('/api/vip/create-checkout', async (req, res) => {
   const user = db.getUserByToken(token);
   if (!user) return res.json({ ok: false, message: 'Giris yapmalisin.' });
 
-  if (!stripe) {
-    const now = Date.now();
-    const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
-    const newExpiry = startFrom + VIP_PLANS[plan].duration;
-    db.updateUser(user.username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan, vip_activated_at: now });
-    emitToUser(user.username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan });
-    logger.info(`VIP test aktif: ${user.username} (${VIP_PLANS[plan].label})`);
-    return res.json({ ok: true, testMode: true, message: 'Test modunda aktifles tirildi.', vipExpiry: newExpiry, plan });
+  if (process.env.VIP_MAINTENANCE === '1' || !stripe) {
+    return res.json({ ok: false, message: 'VIP sistemi su an bakimda. Lutfen daha sonra tekrar deneyin.' });
   }
 
   try {
@@ -225,6 +219,7 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 if (!ADMIN_SECRET) logger.warn('ADMIN_SECRET tanimli degil. Admin VIP ozellikleri pasif olacak.');
 
 app.post('/api/vip/admin-grant', (req, res) => {
+  if (process.env.VIP_MAINTENANCE === '1') return res.status(503).json({ ok: false, message: 'VIP sistemi su an bakimda.' });
   const { secret, username, plan } = req.body;
   if (!ADMIN_SECRET || secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz erisim.' });
   if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Gecersiz parametre.' });
