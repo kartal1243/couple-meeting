@@ -686,9 +686,13 @@ io.on('connection', (socket) => {
     const token = db.createToken(cleanUsername);
     socket.socialUsername = cleanUsername;
     setOnline(cleanUsername, socket.id);
-    logger.info(`Yeni kayit: ${cleanUsername}`);
+    const clientIp = socket.handshake?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake?.address || 'bilinmiyor';
+    const userAgent = socket.handshake?.headers?.['user-agent'] || 'bilinmiyor';
+    const timestamp = new Date().toISOString();
+    logger.info(`[KAYIT] ${cleanUsername} | IP: ${clientIp} | Tarayıcı: ${userAgent} | Zaman: ${timestamp}`);
+    db.addConnectionLog(cleanUsername, socket.id, clientIp, '', 'register', userAgent);
     socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
-    try { broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu` }); } catch (e) {}
+    try { broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu`, ip: clientIp, time: timestamp }); } catch (e) {}
   });
 
   socket.on('auth_login', ({ email, password } = {}) => {
@@ -708,9 +712,13 @@ io.on('connection', (socket) => {
     socket.socialUsername = user.username;
     setOnline(user.username, socket.id);
     broadcastOnlineStatus(user.username);
-    logger.info(`Giris: ${user.username}`);
+    const clientIp = socket.handshake?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake?.address || 'bilinmiyor';
+    const userAgent = socket.handshake?.headers?.['user-agent'] || 'bilinmiyor';
+    const timestamp = new Date().toISOString();
+    logger.info(`[GIRIS] ${user.username} | IP: ${clientIp} | Tarayıcı: ${userAgent} | Zaman: ${timestamp}`);
+    db.addConnectionLog(user.username, socket.id, clientIp, '', 'login', userAgent);
     socket.emit('auth_result', { ok: true, user: publicUser(user), token });
-    try { broadcastAdminActivity('user_login', { username: user.username, message: `${user.username} giriş yaptı` }); } catch (e) {}
+    try { broadcastAdminActivity('user_login', { username: user.username, message: `${user.username} giriş yaptı`, ip: clientIp, time: timestamp }); } catch (e) {}
     socket.emit('friends_update', {
       friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
       requests: db.getPendingFriendRequests(user.username)
@@ -726,8 +734,8 @@ io.on('connection', (socket) => {
     const resetToken = crypto.randomBytes(16).toString('hex');
     const expiry = Date.now() + 3600000;
     db.updateUser(user.username, { reset_token: resetToken, reset_expiry: expiry });
-    logger.info?.(`Şifre sıfırlama isteği: ${cleanEmail} → token: ${resetToken}`);
-    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama bağlantısı e-postana gönderildi.', ...(isProd ? {} : { resetToken, dev: true }) });
+    logger.info?.(`[SIFRE SIFIRLAMA] ${cleanEmail} → token: ${resetToken} | IP: ${socket.handshake?.address || 'bilinmiyor'}`);
+    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama kodu e-postana gönderildi.', resetToken });
   });
 
   socket.on('auth_reset_password', ({ resetToken, newPassword }) => {
@@ -1044,88 +1052,30 @@ io.on('connection', (socket) => {
     db.removePushSubscription(endpoint);
   });
 
-  // ── EMAIL DOGRULAMA ──
-  socket.on('send_verification_email', ({ token }) => {
-    const user = db.getUserByToken(token);
-    if (!user) return;
-    if (db.isEmailVerified(user.username)) return socket.emit('verify_result', { success: false, message: 'Email zaten doğrulanmış.' });
-    const code = String(crypto.randomInt(100000, 999999));
-    db.createEmailVerification(user.username, user.email, code);
-    const transporter = nodemailer?.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: parseInt(process.env.SMTP_PORT) || 587, secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
-    if (transporter && process.env.SMTP_USER) {
-      transporter.sendMail({ from: process.env.SMTP_FROM || 'noreply@couplemeeting.com', to: user.email, subject: 'Couple Meeting - Email Doğrulama', text: `Doğrulama kodun: ${code}`, html: `<div style="font-family:sans-serif;text-align:center;padding:40px"><h2 style="color:#00a884">Couple Meeting</h2><p>Email doğrulama kodun:</p><h1 style="font-size:32px;letter-spacing:8px;color:#00a884">${code}</h1><p style="color:#666">Bu kod 15 dakika geçerlidir.</p></div>` }).catch(e => logger.warn?.('Email gönderilemedi: ' + e.message));
-      socket.emit('verify_result', { success: true, message: 'Doğrulama emaili gönderildi.' });
-    } else {
-      socket.emit('verify_result', { success: true, message: `Doğrulama kodun: ${code}` });
-    }
+  // ── EMAIL DOGRULAMA (pasif) ──
+  socket.on('send_verification_email', () => {
+    socket.emit('verify_result', { success: true, message: 'Email doğrulama şu an pasif.' });
   });
 
-  socket.on('verify_email_code', ({ code, token }) => {
-    if (checkRate('auth', 5)) return socket.emit('verify_result', { success: false, message: 'Çok fazla deneme. Biraz bekle.' });
-    const user = db.getUserByToken(token);
-    if (!user) return;
-    const ok = db.verifyEmailCode(user.username, code);
-    socket.emit('verify_result', { success: ok, message: ok ? 'Email doğrulandı!' : 'Geçersiz veya süresi dolmuş kod.' });
-    if (ok) {
-      const updated = { ...user, email_verified: 1 };
-      socket.emit('social_profile', updated);
-    }
+  socket.on('verify_email_code', () => {
+    socket.emit('verify_result', { success: true, message: 'Email doğrulama şu an pasif.' });
   });
 
-  // ── IKI FAKTORLU DOGRULAMA (2FA) ──
-  socket.on('setup_2fa', ({ token }) => {
-    const user = db.getUserByToken(token);
-    if (!user) return;
-    const existing = db.getTwoFactor(user.username);
-    if (existing?.enabled) return socket.emit('two_factor_setup', { success: false, message: '2FA zaten aktif. Önce devre dışı bırak.' });
-    const OTPAuth = require('otpauth');
-    const secret = new OTPAuth.Secret({ size: 20 });
-    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret });
-    db.setupTwoFactor(user.username, totp.secret.base32);
-    const QRCode = require('qrcode');
-    QRCode.toDataURL(totp.toString(), (err, url) => {
-      socket.emit('two_factor_setup', { success: true, secret: totp.secret.base32, qrCode: url || null });
-    });
+  // ── IKI FAKTORLU DOGRULAMA (pasif) ──
+  socket.on('setup_2fa', () => {
+    socket.emit('two_factor_setup', { success: false, message: '2FA şu an kullanılamıyor.' });
   });
 
-  socket.on('verify_2fa_setup', ({ code, token }) => {
-    if (checkRate('auth', 5)) return socket.emit('two_factor_result', { success: false, message: 'Çok fazla deneme. Biraz bekle.' });
-    const user = db.getUserByToken(token);
-    if (!user) return;
-    const tf = db.getTwoFactor(user.username);
-    if (!tf) return socket.emit('two_factor_result', { success: false, message: '2FA kurulumu bulunamadı.' });
-    const OTPAuth = require('otpauth');
-    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(tf.secret) });
-    const delta = totp.validate({ token: code, window: 2 });
-    if (delta !== null) {
-      db.enableTwoFactor(user.username);
-      socket.emit('two_factor_result', { success: true, message: '2FA başarıyla aktif edildi!' });
-    } else {
-      socket.emit('two_factor_result', { success: false, message: 'Geçersiz kod. Tekrar dene.' });
-    }
+  socket.on('verify_2fa_setup', () => {
+    socket.emit('two_factor_result', { success: false, message: '2FA şu an kullanılamıyor.' });
   });
 
-  socket.on('disable_2fa', ({ code, token }) => {
-    const user = db.getUserByToken(token);
-    if (!user) return;
-    const tf = db.getTwoFactor(user.username);
-    if (!tf?.enabled) return socket.emit('two_factor_result', { success: false, message: '2FA zaten devre dışı.' });
-    const OTPAuth = require('otpauth');
-    const totp = new OTPAuth.TOTP({ issuer: 'CoupleMeeting', label: user.username, algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(tf.secret) });
-    const delta = totp.validate({ token: code, window: 2 });
-    if (delta !== null) {
-      db.disableTwoFactor(user.username);
-      socket.emit('two_factor_result', { success: true, message: '2FA devre dışı bırakıldı.' });
-    } else {
-      socket.emit('two_factor_result', { success: false, message: 'Geçersiz kod.' });
-    }
+  socket.on('disable_2fa', () => {
+    socket.emit('two_factor_result', { success: false, message: '2FA şu an kullanılamıyor.' });
   });
 
-  socket.on('get_2fa_status', ({ token }) => {
-    const user = db.getUserByToken(token);
-    if (!user) return;
-    const tf = db.getTwoFactor(user.username);
-    socket.emit('two_factor_status', { enabled: tf?.enabled === 1 });
+  socket.on('get_2fa_status', () => {
+    socket.emit('two_factor_status', { enabled: false });
   });
 
   // ──────────────────────────────────────────────────────
