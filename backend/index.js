@@ -693,6 +693,7 @@ io.on('connection', (socket) => {
     db.addConnectionLog(cleanUsername, socket.id, clientIp, '', 'register', userAgent);
     socket.emit('auth_result', { ok: true, user: publicUser(db.getUser(cleanUsername)), token });
     try { broadcastAdminActivity('user_register', { username: cleanUsername, message: `${cleanUsername} kayıt oldu`, ip: clientIp, time: timestamp }); } catch (e) {}
+    try { broadcastAdminDashboard(); } catch (e) {}
   });
 
   socket.on('auth_login', ({ email, password } = {}) => {
@@ -719,6 +720,7 @@ io.on('connection', (socket) => {
     db.addConnectionLog(user.username, socket.id, clientIp, '', 'login', userAgent);
     socket.emit('auth_result', { ok: true, user: publicUser(user), token });
     try { broadcastAdminActivity('user_login', { username: user.username, message: `${user.username} giriş yaptı`, ip: clientIp, time: timestamp }); } catch (e) {}
+    try { broadcastAdminDashboard(); } catch (e) {}
     socket.emit('friends_update', {
       friends: db.getFriends(user.username).map(publicUser).filter(Boolean),
       requests: db.getPendingFriendRequests(user.username)
@@ -1770,9 +1772,11 @@ setInterval(() => {
       }
     }
   }
+  try { broadcastAdminDashboard(); } catch (e) {}
 }, 15000);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   logger.info(`Sunucu ${PORT} portunda aktif! (${isProd ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+  startAdminUpdates();
 });
