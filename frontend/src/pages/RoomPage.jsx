@@ -6,7 +6,7 @@ import Controls from '../Room/Controls';
 import Chat from '../Room/Chat';
 import Playlist from '../Room/Playlist';
 import VoiceChat from '../Room/VoiceChat';
-import Tombala from '../Room/Tombala';
+
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useState } from 'react';
 
@@ -162,26 +162,11 @@ export default function RoomPage() {
                 transition: 'all 0.25s ease'
               }}
             >📚 Kitaplık</button>
-            <button
-              onClick={() => setSidebarTab('tombala')}
-              style={{
-                padding: '12px 10px', border: 'none',
-                background: sidebarTab === 'tombala' ? 'rgba(245,158,11,.12)' : 'transparent',
-                color: sidebarTab === 'tombala' ? '#f59e0b' : '#64748b',
-                fontWeight: 800, cursor: 'pointer', fontSize: 13,
-                borderBottom: sidebarTab === 'tombala' ? '2px solid #f59e0b' : '2px solid transparent',
-                transition: 'all 0.25s ease', whiteSpace: 'nowrap'
-              }}
-            >🎲</button>
           </div>
 
           {sidebarTab === 'chat' ? (
             <ErrorBoundary fallbackMessage="Sohbet yüklenirken bir hata oluştu.">
               <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
-            </ErrorBoundary>
-          ) : sidebarTab === 'tombala' ? (
-            <ErrorBoundary fallbackMessage="Tombala yüklenirken bir hata oluştu.">
-              <Tombala socket={socket} roomId={roomId} mySocketId={mySocketId} userId={userId} hostUserId={hostUserId} roomUsersList={roomUsersList} token={authToken} />
             </ErrorBoundary>
           ) : (
             <Playlist

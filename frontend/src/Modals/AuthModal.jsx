@@ -8,7 +8,6 @@ export default function AuthModal({
   const [errors, setErrors] = useState({});
   const [step, setStep] = useState(1);
   const [focused, setFocused] = useState('');
-  const [animDir, setAnimDir] = useState('right');
   const [resetMode, setResetMode] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -17,14 +16,12 @@ export default function AuthModal({
   const [resetMessage, setResetMessage] = useState('');
   const [resetBusy, setResetBusy] = useState(false);
 
-  useEffect(() => {
-    setErrors({}); setStep(1);
-  }, [authMode]);
+  useEffect(() => { setErrors({}); setStep(1); }, [authMode]);
 
   useEffect(() => {
     if (!socket) return;
-    const onForgot = (data) => { setResetBusy(false); setResetMessage(data.message); if (data.ok && data.resetToken) { setResetToken(data.resetToken); setResetStep(2); } };
-    const onReset = (data) => { setResetBusy(false); setResetMessage(data.message); if (data.ok) setTimeout(() => { setResetMode(false); setAuthMode('login'); }, 2000); };
+    const onForgot = (d) => { setResetBusy(false); setResetMessage(d.message); if (d.ok && d.resetToken) { setResetToken(d.resetToken); setResetStep(2); } };
+    const onReset = (d) => { setResetBusy(false); setResetMessage(d.message); if (d.ok) setTimeout(() => { setResetMode(false); setAuthMode('login'); }, 2000); };
     socket.on('forgot_result', onForgot);
     socket.on('reset_result', onReset);
     return () => { socket.off('forgot_result', onForgot); socket.off('reset_result', onReset); };
@@ -44,13 +41,8 @@ export default function AuthModal({
     return Object.keys(e).length === 0;
   };
 
-  const nextStep = () => {
-    if (!validateStep()) return;
-    setAnimDir('right');
-    setStep(s => s + 1);
-  };
-
-  const prevStep = () => { setAnimDir('left'); setStep(s => s - 1); };
+  const nextStep = () => { if (!validateStep()) return; setStep(s => s + 1); };
+  const prevStep = () => setStep(s => s - 1);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -60,61 +52,68 @@ export default function AuthModal({
     submitAuth(e);
   };
 
-  const inputStyle = (field) => ({
-    width: '100%', padding: '14px 16px', borderRadius: 14, fontSize: 15,
-    background: focused === field ? '#1a2a36' : '#111b21',
-    border: errors[field] ? '2px solid #ea0038' : (focused === field ? '2px solid #00a884' : '2px solid #25313a'),
-    color: '#e9edef', outline: 'none', transition: 'all 0.25s ease', boxSizing: 'border-box'
-  });
+  const S = {
+    overlay: { position: 'fixed', inset: 0, zIndex: 20000, background: 'linear-gradient(135deg, rgba(0,0,0,.92), rgba(10,14,20,.95))', backdropFilter: 'blur(30px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
+    card: { width: 'min(440px, 100%)', background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(8,12,18,.99))', border: '1px solid rgba(255,255,255,.06)', borderRadius: 28, padding: 0, position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,.6), 0 0 60px rgba(124,58,237,.06)', maxHeight: '92vh', overflow: 'hidden' },
+    header: { padding: '36px 32px 24px', textAlign: 'center', background: 'linear-gradient(180deg, rgba(124,58,237,.06), transparent)', position: 'relative' },
+    logo: { width: 56, height: 56, borderRadius: 18, background: 'linear-gradient(135deg, #7c3aed, #ec4899)', display: 'inline-grid', placeItems: 'center', marginBottom: 16, boxShadow: '0 8px 32px rgba(124,58,237,.3)', border: '1px solid rgba(255,255,255,.1)' },
+    title: { color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 4, letterSpacing: -0.3 },
+    subtitle: { color: '#64748b', fontSize: 13, fontWeight: 500 },
+    inputWrap: { position: 'relative', marginBottom: 4 },
+    label: { fontSize: 11, color: '#64748b', fontWeight: 800, display: 'block', marginBottom: 6, letterSpacing: 0.5 },
+    input: (field) => ({ width: '100%', padding: '14px 16px 14px 44px', borderRadius: 14, fontSize: 15, background: focused === field ? 'rgba(124,58,237,.06)' : 'rgba(255,255,255,.03)', border: errors[field] ? '1.5px solid #ef4444' : (focused === field ? '1.5px solid #7c3aed' : '1.5px solid rgba(255,255,255,.06)'), color: '#e2e8f0', outline: 'none', transition: 'all 0.25s ease', boxSizing: 'border-box' }),
+    icon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, opacity: .5, pointerEvents: 'none' },
+    btnPrimary: { width: '100%', padding: '15px', borderRadius: 14, border: 'none', background: authBusy ? 'rgba(124,58,237,.3)' : 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 900, fontSize: 15, cursor: authBusy ? 'not-allowed' : 'pointer', boxShadow: '0 8px 32px rgba(124,58,237,.25)', transition: 'all 0.3s ease', letterSpacing: 0.3 },
+    btnSecondary: { flex: 1, padding: '13px', borderRadius: 14, border: '1.5px solid rgba(255,255,255,.06)', background: 'transparent', color: '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s ease' },
+    close: { position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.06)', color: '#64748b', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 13, display: 'grid', placeItems: 'center', transition: 'all 0.2s' },
+    error: { background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.15)', color: '#f87171', padding: '10px 14px', borderRadius: 12, fontWeight: 700, fontSize: 12, textAlign: 'center' },
+    stepDot: (active, done) => ({ width: active ? 28 : 8, height: 8, borderRadius: 4, background: done ? '#7c3aed' : 'rgba(255,255,255,.06)', transition: 'all 0.4s ease' }),
+    divider: { display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0', color: '#374151', fontSize: 11, fontWeight: 700 },
+    dividerLine: { flex: 1, height: 1, background: 'rgba(255,255,255,.06)' },
+  };
 
   const renderStep = () => {
     if (authMode === 'register') {
       if (step === 1) return (
-        <div key="reg1" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>✨</div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Hadi başlayalım!</div>
-            <div style={{ color: '#7f8c98', fontSize: 13, marginTop: 4 }}>Kullanıcı adı ve e-posta bilgilerini gir</div>
+        <div key="r1" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={S.label}>KULLANICI ADI</label>
+            <div style={S.inputWrap}>
+              <span style={S.icon}>👤</span>
+              <input placeholder="ornek_kullanici" value={authForm.username}
+                onChange={(e) => { setAuthForm({ ...authForm, username: e.target.value }); setErrors({ ...errors, username: '' }); }}
+                onFocus={() => setFocused('username')} onBlur={() => setFocused('')} style={S.input('username')} />
+            </div>
+            {errors.username && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 700 }}>{errors.username}</div>}
           </div>
           <div>
-            <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 800, marginBottom: 4, display: 'block' }}>KULLANICI ADI</label>
-            <input placeholder="ornek_kullanici" value={authForm.username}
-              onChange={(e) => { setAuthForm({ ...authForm, username: e.target.value }); setErrors({ ...errors, username: '' }); }}
-              onFocus={() => setFocused('username')} onBlur={() => setFocused('')}
-              style={inputStyle('username')} />
-            {errors.username && <div style={{ color: '#ea0038', fontSize: 11, marginTop: 4, fontWeight: 700 }}>{errors.username}</div>}
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 800, marginBottom: 4, display: 'block' }}>E-POSTA</label>
-            <input type="email" placeholder="ornek@email.com" value={authForm.email}
-              onChange={(e) => { setAuthForm({ ...authForm, email: e.target.value }); setErrors({ ...errors, email: '' }); }}
-              onFocus={() => setFocused('email')} onBlur={() => setFocused('')}
-              style={inputStyle('email')} />
-            {errors.email && <div style={{ color: '#ea0038', fontSize: 11, marginTop: 4, fontWeight: 700 }}>{errors.email}</div>}
+            <label style={S.label}>E-POSTA</label>
+            <div style={S.inputWrap}>
+              <span style={S.icon}>✉️</span>
+              <input type="email" placeholder="ornek@email.com" value={authForm.email}
+                onChange={(e) => { setAuthForm({ ...authForm, email: e.target.value }); setErrors({ ...errors, email: '' }); }}
+                onFocus={() => setFocused('email')} onBlur={() => setFocused('')} style={S.input('email')} />
+            </div>
+            {errors.email && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 700 }}>{errors.email}</div>}
           </div>
         </div>
       );
       if (step === 2) return (
-        <div key="reg2" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🔒</div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Şifreni belirle</div>
-            <div style={{ color: '#7f8c98', fontSize: 13, marginTop: 4 }}>En az 6 karakter olmalı</div>
-          </div>
+        <div key="r2" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <input type="password" placeholder="••••••••" value={authForm.password}
-              onChange={(e) => { setAuthForm({ ...authForm, password: e.target.value }); setErrors({ ...errors, password: '' }); }}
-              onFocus={() => setFocused('password')} onBlur={() => setFocused('')}
-              style={{ ...inputStyle('password'), fontSize: 22, letterSpacing: 6, textAlign: 'center' }} />
-            {errors.password && <div style={{ color: '#ea0038', fontSize: 11, marginTop: 4, fontWeight: 700, textAlign: 'center' }}>{errors.password}</div>}
+            <label style={S.label}>ŞİFRENİ BELİRLE</label>
+            <div style={S.inputWrap}>
+              <span style={S.icon}>🔒</span>
+              <input type="password" placeholder="••••••••" value={authForm.password}
+                onChange={(e) => { setAuthForm({ ...authForm, password: e.target.value }); setErrors({ ...errors, password: '' }); }}
+                onFocus={() => setFocused('password')} onBlur={() => setFocused('')}
+                style={{ ...S.input('password'), fontSize: 20, letterSpacing: 6, textAlign: 'center', paddingLeft: 16 }} />
+            </div>
+            {errors.password && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 700, textAlign: 'center' }}>{errors.password}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
             {[6, 8, 12, 16].map(len => (
-              <div key={len} style={{
-                padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 800,
-                background: authForm.password.length >= len ? '#00a884' : '#1a2634',
-                color: authForm.password.length >= len ? '#fff' : '#63727d'
-              }}>
+              <div key={len} style={{ padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 800, background: authForm.password.length >= len ? 'rgba(124,58,237,.15)' : 'rgba(255,255,255,.03)', color: authForm.password.length >= len ? '#a855f7' : '#475569', border: `1px solid ${authForm.password.length >= len ? 'rgba(124,58,237,.2)' : 'rgba(255,255,255,.04)'}`, transition: 'all 0.3s' }}>
                 {authForm.password.length >= len ? '✓' : '○'} {len}+
               </div>
             ))}
@@ -122,67 +121,58 @@ export default function AuthModal({
         </div>
       );
       if (step === 3) return (
-        <div key="reg3" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🎨</div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Profilini süsle</div>
-            <div style={{ color: '#7f8c98', fontSize: 13, marginTop: 4 }}>Avatar seç ve kendini tanıtamazsın</div>
+        <div key="r3" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ textAlign: 'center', marginBottom: 4 }}>
+            <div style={{ color: '#e2e8f0', fontSize: 15, fontWeight: 800 }}>Avatar seç</div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, justifyItems: 'center' }}>
             {AVATARS.map(a => (
               <button key={a} type="button" onClick={() => setAuthForm({ ...authForm, avatar: a })}
-                style={{
-                  width: 52, height: 52, borderRadius: 16, fontSize: 26, cursor: 'pointer',
-                  background: authForm.avatar === a ? 'linear-gradient(135deg, #00a884, #008f6f)' : '#111b21',
-                  border: authForm.avatar === a ? '2px solid #53e6bc' : '2px solid #25313a',
-                  boxShadow: authForm.avatar === a ? '0 4px 15px rgba(0,168,132,0.3)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}>
+                style={{ width: 48, height: 48, borderRadius: 14, fontSize: 24, cursor: 'pointer', background: authForm.avatar === a ? 'linear-gradient(135deg, rgba(124,58,237,.2), rgba(168,85,247,.1))' : 'rgba(255,255,255,.03)', border: authForm.avatar === a ? '1.5px solid #7c3aed' : '1.5px solid rgba(255,255,255,.04)', boxShadow: authForm.avatar === a ? '0 4px 16px rgba(124,58,237,.2)' : 'none', transition: 'all 0.2s', display: 'grid', placeItems: 'center' }}>
                 {a}
               </button>
             ))}
           </div>
-          <textarea placeholder="Kendini anlat (opsiyonel)" value={authForm.bio}
-            onChange={(e) => setAuthForm({ ...authForm, bio: e.target.value })}
-            style={{ ...inputStyle('bio'), minHeight: 70, resize: 'vertical', fontSize: 13 }} />
+          <div>
+            <label style={S.label}>HAKKINDA (opsiyonel)</label>
+            <textarea placeholder="Kendinden bahset..." value={authForm.bio}
+              onChange={(e) => setAuthForm({ ...authForm, bio: e.target.value })}
+              style={{ width: '100%', padding: '12px 16px', borderRadius: 14, fontSize: 13, background: 'rgba(255,255,255,.03)', border: '1.5px solid rgba(255,255,255,.06)', color: '#e2e8f0', outline: 'none', minHeight: 70, resize: 'vertical', boxSizing: 'border-box', transition: 'all 0.25s' }} />
+          </div>
         </div>
       );
     } else {
-      // LOGIN
       if (step === 1) return (
-        <div key="login1" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>👋</div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Tekrar hoş geldin!</div>
-            <div style={{ color: '#7f8c98', fontSize: 13, marginTop: 4 }}>E-posta adresini gir</div>
-          </div>
+        <div key="l1" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <input type="email" placeholder="ornek@email.com" value={authForm.email}
-              onChange={(e) => { setAuthForm({ ...authForm, email: e.target.value }); setErrors({ ...errors, email: '' }); }}
-              onFocus={() => setFocused('email')} onBlur={() => setFocused('')}
-              style={inputStyle('email')} />
-            {errors.email && <div style={{ color: '#ea0038', fontSize: 11, marginTop: 4, fontWeight: 700 }}>{errors.email}</div>}
+            <label style={S.label}>E-POSTA</label>
+            <div style={S.inputWrap}>
+              <span style={S.icon}>✉️</span>
+              <input type="email" placeholder="ornek@email.com" value={authForm.email}
+                onChange={(e) => { setAuthForm({ ...authForm, email: e.target.value }); setErrors({ ...errors, email: '' }); }}
+                onFocus={() => setFocused('email')} onBlur={() => setFocused('')} style={S.input('email')} />
+            </div>
+            {errors.email && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 700 }}>{errors.email}</div>}
           </div>
         </div>
       );
       if (step === 2) return (
-        <div key="login2" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🔑</div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Şifreni gir</div>
-            <div style={{ color: '#7f8c98', fontSize: 13, marginTop: 4 }}>{authForm.email}</div>
-          </div>
+        <div key="l2" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <input type="password" placeholder="••••••••" value={authForm.password}
-              onChange={(e) => { setAuthForm({ ...authForm, password: e.target.value }); setErrors({ ...errors, password: '' }); }}
-              onFocus={() => setFocused('password')} onBlur={() => setFocused('')}
-              style={{ ...inputStyle('password'), fontSize: 22, letterSpacing: 6, textAlign: 'center' }} />
-            {errors.password && <div style={{ color: '#ea0038', fontSize: 11, marginTop: 4, fontWeight: 700, textAlign: 'center' }}>{errors.password}</div>}
+            <label style={S.label}>ŞİFREN</label>
+            <div style={S.inputWrap}>
+              <span style={S.icon}>🔒</span>
+              <input type="password" placeholder="••••••••" value={authForm.password}
+                onChange={(e) => { setAuthForm({ ...authForm, password: e.target.value }); setErrors({ ...errors, password: '' }); }}
+                onFocus={() => setFocused('password')} onBlur={() => setFocused('')}
+                style={{ ...S.input('password'), fontSize: 20, letterSpacing: 6, textAlign: 'center', paddingLeft: 16 }} />
+            </div>
+            {errors.password && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 700, textAlign: 'center' }}>{errors.password}</div>}
           </div>
           <div style={{ textAlign: 'right' }}>
             <button type="button" onClick={() => { setResetMode(true); setResetStep(1); setResetMessage(''); }}
-              style={{ background: 'none', border: 'none', color: '#53e6bc', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-              🔑 Şifremi Unuttum
+              style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: 12, fontWeight: 800, cursor: 'pointer', transition: 'color 0.2s' }}>
+              Şifremi Unuttum
             </button>
           </div>
         </div>
@@ -194,123 +184,114 @@ export default function AuthModal({
   const progress = (step / totalSteps) * 100;
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.85)',
-      backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18
-    }}>
-      <div style={{
-        width: 'min(420px, 100%)', background: 'linear-gradient(180deg, #0f1a24 0%, #0a0f14 100%)',
-        border: '1px solid #1e2d3a', borderRadius: 28, padding: '28px 24px', position: 'relative',
-        boxShadow: '0 40px 120px rgba(0,0,0,.6), 0 0 80px rgba(0,168,132,.08)',
-        maxHeight: '90vh', overflowY: 'auto'
-      }}>
-
-        {/* Forgot Password Mode */}
+    <div style={S.overlay} onClick={(e) => { if (e.target === e.currentTarget) setShowAuthModal(false); }}>
+      <div style={S.card}>
         {resetMode ? (
-          <>
-            <button type="button" onClick={() => { setResetMode(false); setResetStep(1); setResetMessage(''); }}
-              style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,.06)', border: 'none', color: '#7f8c98', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 13, display: 'grid', placeItems: 'center' }}>✕</button>
-
+          <div style={{ padding: '36px 32px 32px' }}>
+            <button type="button" onClick={() => { setResetMode(false); setResetStep(1); setResetMessage(''); }} style={S.close}>✕</button>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 18, background: 'linear-gradient(135deg, rgba(239,68,68,.1), rgba(239,68,68,.05))', display: 'inline-grid', placeItems: 'center', marginBottom: 16, border: '1px solid rgba(239,68,68,.1)' }}>
+                <span style={{ fontSize: 24 }}>🔐</span>
+              </div>
+              <div style={S.title}>Şifremi Unuttum</div>
+              <div style={S.subtitle}>E-posta adresini gir, sana bir sıfırlama kodu gönderelim.</div>
+            </div>
             {resetStep === 1 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'center' }}>
-                <div style={{ fontSize: 44, marginBottom: 8 }}>🔐</div>
-                <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Şifremi Unuttum</div>
-                <div style={{ color: '#7f8c98', fontSize: 13 }}>E-posta adresini gir, sana bir sıfırlama kodu gönderelim.</div>
-                <input type="email" placeholder="ornek@email.com" value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  style={{ width: '100%', padding: '14px 16px', borderRadius: 14, fontSize: 15, background: '#111b21', border: '2px solid #25313a', color: '#e9edef', outline: 'none', boxSizing: 'border-box' }} />
-                {resetMessage && <div style={{ color: resetMessage.includes('✓') ? '#53e6bc' : '#ea0038', fontSize: 12, fontWeight: 800 }}>{resetMessage}</div>}
-                <button onClick={() => {
-                  if (!socket || !resetEmail) return;
-                  setResetBusy(true);
-                  socket.emit('auth_forgot_password', { email: resetEmail });
-                }} disabled={resetBusy || !resetEmail} style={{
-                  padding: '13px', borderRadius: 14, border: 'none',
-                  background: resetBusy || !resetEmail ? '#1a2634' : 'linear-gradient(135deg, #00a884, #008f6f)',
-                  color: '#fff', fontWeight: 900, fontSize: 14, cursor: resetBusy || !resetEmail ? 'not-allowed' : 'pointer',
-                  opacity: resetBusy || !resetEmail ? 0.6 : 1
-                }}>{resetBusy ? '⏳ Gönderiliyor...' : '📧 Sıfırlama Kodu Gönder'}</button>
-              </div>
-            )}
-
-            {resetStep === 2 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'center' }}>
-                <div style={{ fontSize: 44, marginBottom: 8 }}>✅</div>
-                <div style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>Sıfırlama Kodu</div>
-                <div style={{ color: '#7f8c98', fontSize: 13 }}>E-postana gönderilen kodu ve yeni şifreni gir.</div>
-                <input placeholder="Sıfırlama kodu" value={resetToken}
-                  onChange={(e) => setResetToken(e.target.value)}
-                  style={{ width: '100%', padding: '14px 16px', borderRadius: 14, fontSize: 15, background: '#111b21', border: '2px solid #25313a', color: '#e9edef', outline: 'none', boxSizing: 'border-box', textAlign: 'center', letterSpacing: 2, fontWeight: 900 }} />
-                <input type="password" placeholder="Yeni şifre (min 6 karakter)" value={resetNewPass}
-                  onChange={(e) => setResetNewPass(e.target.value)}
-                  style={{ width: '100%', padding: '14px 16px', borderRadius: 14, fontSize: 15, background: '#111b21', border: '2px solid #25313a', color: '#e9edef', outline: 'none', boxSizing: 'border-box' }} />
-                {resetMessage && <div style={{ color: resetMessage.includes('✓') || resetMessage.includes('başarıyla') ? '#53e6bc' : '#ea0038', fontSize: 12, fontWeight: 800 }}>{resetMessage}</div>}
-                <button onClick={() => {
-                  if (!socket) return;
-                  setResetBusy(true);
-                  socket.emit('auth_reset_password', { resetToken, newPassword: resetNewPass });
-                }} disabled={resetBusy || !resetToken || resetNewPass.length < 6} style={{
-                  padding: '13px', borderRadius: 14, border: 'none',
-                  background: resetBusy || !resetToken || resetNewPass.length < 6 ? '#1a2634' : 'linear-gradient(135deg, #00a884, #008f6f)',
-                  color: '#fff', fontWeight: 900, fontSize: 14, cursor: resetBusy ? 'not-allowed' : 'pointer'
-                }}>{resetBusy ? '⏳ İşleniyor...' : '🔒 Şifreyi Sıfırla'}</button>
-                <button type="button" onClick={() => setResetStep(1)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 12, cursor: 'pointer' }}>← Geri</button>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Progress bar */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, borderRadius: '28px 28px 0 0', background: '#1a2634', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, #00a884, #53e6bc)', transition: 'width 0.4s ease', borderRadius: 28 }} />
-            </div>
-
-            <button type="button" onClick={() => setShowAuthModal(false)}
-              style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,.06)', border: 'none', color: '#7f8c98', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 13, display: 'grid', placeItems: 'center' }}>✕</button>
-
-            <div style={{ display: 'inline-flex', gap: 4, background: '#111b21', padding: 4, borderRadius: 10, marginBottom: 18 }}>
-              <button type="button" onClick={() => { setAuthMode('login'); setStep(1); setErrors({}); }}
-                style={{ padding: '7px 14px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 900, cursor: 'pointer', background: authMode === 'login' ? '#00a884' : 'transparent', color: authMode === 'login' ? '#fff' : '#7f8c98' }}>Giriş Yap</button>
-              <button type="button" onClick={() => { setAuthMode('register'); setStep(1); setErrors({}); }}
-                style={{ padding: '7px 14px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 900, cursor: 'pointer', background: authMode === 'register' ? '#00a884' : 'transparent', color: authMode === 'register' ? '#fff' : '#7f8c98' }}>Kayıt Ol</button>
-            </div>
-
-            <div style={{ display: 'flex', gap: 6, marginBottom: 20, justifyContent: 'center' }}>
-              {Array.from({ length: totalSteps }).map((_, i) => (
-                <div key={i} style={{ width: i + 1 === step ? 24 : 8, height: 8, borderRadius: 4, background: i + 1 <= step ? '#00a884' : '#1a2634', transition: 'all 0.3s ease' }} />
-              ))}
-            </div>
-
-            {errorMessage && (
-              <div style={{ background: 'rgba(234,0,56,.12)', border: '1px solid rgba(234,0,56,.3)', color: '#ff6b81', padding: '10px 14px', borderRadius: 12, fontWeight: 800, fontSize: 12, marginBottom: 14, textAlign: 'center' }}>{errorMessage}</div>
-            )}
-
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {renderStep()}
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                {step > 1 && (
-                  <button type="button" onClick={prevStep}
-                    style={{ flex: 1, padding: '13px', borderRadius: 14, border: '2px solid #25313a', background: 'transparent', color: '#7f8c98', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>← Geri</button>
-                )}
-                <button type="submit" disabled={authBusy}
-                  style={{ flex: 1, padding: '13px', borderRadius: 14, border: 'none', background: authBusy ? '#1a2634' : 'linear-gradient(135deg, #00a884, #008f6f)', color: '#fff', fontWeight: 900, fontSize: 14, cursor: authBusy ? 'not-allowed' : 'pointer', opacity: authBusy ? 0.6 : 1 }}>
-                  {authBusy ? '⏳ İşleniyor...' : ((authMode === 'register' && step === 3) ? '✨ Hesabı Oluştur' : (authMode === 'login' && step === 2) ? '🚀 Giriş Yap' : 'Devam →')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={S.inputWrap}>
+                  <span style={S.icon}>✉️</span>
+                  <input type="email" placeholder="ornek@email.com" value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    style={{ ...S.input('resetemail'), paddingLeft: 44 }} />
+                </div>
+                {resetMessage && <div style={{ color: resetMessage.includes('✓') ? '#34d399' : '#ef4444', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>{resetMessage}</div>}
+                <button onClick={() => { if (!socket || !resetEmail) return; setResetBusy(true); socket.emit('auth_forgot_password', { email: resetEmail }); }}
+                  disabled={resetBusy || !resetEmail} style={{ ...S.btnPrimary, opacity: resetBusy || !resetEmail ? 0.5 : 1 }}>
+                  {resetBusy ? '⏳ Gönderiliyor...' : '📧 Sıfırlama Kodu Gönder'}
                 </button>
               </div>
-            </form>
+            )}
+            {resetStep === 2 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <input placeholder="Sıfırlama kodu" value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: 14, fontSize: 16, background: 'rgba(255,255,255,.03)', border: '1.5px solid rgba(255,255,255,.06)', color: '#e2e8f0', outline: 'none', boxSizing: 'border-box', textAlign: 'center', letterSpacing: 4, fontWeight: 900 }} />
+                <input type="password" placeholder="Yeni şifre (min 6)" value={resetNewPass}
+                  onChange={(e) => setResetNewPass(e.target.value)}
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: 14, fontSize: 15, background: 'rgba(255,255,255,.03)', border: '1.5px solid rgba(255,255,255,.06)', color: '#e2e8f0', outline: 'none', boxSizing: 'border-box' }} />
+                {resetMessage && <div style={{ color: resetMessage.includes('✓') || resetMessage.includes('başarıyla') ? '#34d399' : '#ef4444', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>{resetMessage}</div>}
+                <button onClick={() => { if (!socket) return; setResetBusy(true); socket.emit('auth_reset_password', { resetToken, newPassword: resetNewPass }); }}
+                  disabled={resetBusy || !resetToken || resetNewPass.length < 6} style={{ ...S.btnPrimary, opacity: resetBusy || !resetToken || resetNewPass.length < 6 ? 0.5 : 1 }}>
+                  {resetBusy ? '⏳ İşleniyor...' : '🔒 Şifreyi Sıfırla'}
+                </button>
+                <button type="button" onClick={() => setResetStep(1)} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>← Geri</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Progress */}
+            <div style={{ height: 3, background: 'rgba(255,255,255,.03)' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, #7c3aed, #a855f7)', transition: 'width 0.4s ease' }} />
+            </div>
 
-            <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#63727d' }}>
-              {authMode === 'register' ? (
-                <>Zaten hesabın var mı?{' '}
-                  <button type="button" onClick={() => { setAuthMode('login'); setStep(1); setErrors({}); setErrorMessage(''); }}
-                    style={{ background: 'none', border: 'none', color: '#53e6bc', fontWeight: 900, cursor: 'pointer' }}>Giriş yap</button>
-                </>
-              ) : (
-                <>Hesabın yok mu?{' '}
-                  <button type="button" onClick={() => { setAuthMode('register'); setStep(1); setErrors({}); setErrorMessage(''); }}
-                    style={{ background: 'none', border: 'none', color: '#53e6bc', fontWeight: 900, cursor: 'pointer' }}>Kayıt ol</button>
-                </>
-              )}
+            {/* Header */}
+            <div style={S.header}>
+              <button type="button" onClick={() => setShowAuthModal(false)} style={S.close}>✕</button>
+              <div style={S.logo}>
+                <span style={{ color: '#fff', fontSize: 20, fontWeight: 900 }}>♥</span>
+              </div>
+              <div style={S.title}>{authMode === 'register' ? 'Hesap Oluştur' : 'Hoş Geldin'}</div>
+              <div style={S.subtitle}>{authMode === 'register' ? 'Birkaç adımda hazır!' : 'Hesabına giriş yap'}</div>
+
+              {/* Mode tabs */}
+              <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.03)', padding: 4, borderRadius: 12, marginTop: 20, border: '1px solid rgba(255,255,255,.04)' }}>
+                <button type="button" onClick={() => { setAuthMode('login'); setStep(1); setErrors({}); }}
+                  style={{ flex: 1, padding: '9px 0', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 800, cursor: 'pointer', background: authMode === 'login' ? 'linear-gradient(135deg, #7c3aed, #a855f7)' : 'transparent', color: authMode === 'login' ? '#fff' : '#64748b', transition: 'all 0.25s', boxShadow: authMode === 'login' ? '0 4px 12px rgba(124,58,237,.2)' : 'none' }}>
+                  Giriş Yap
+                </button>
+                <button type="button" onClick={() => { setAuthMode('register'); setStep(1); setErrors({}); }}
+                  style={{ flex: 1, padding: '9px 0', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 800, cursor: 'pointer', background: authMode === 'register' ? 'linear-gradient(135deg, #7c3aed, #a855f7)' : 'transparent', color: authMode === 'register' ? '#fff' : '#64748b', transition: 'all 0.25s', boxShadow: authMode === 'register' ? '0 4px 12px rgba(124,58,237,.2)' : 'none' }}>
+                  Kayıt Ol
+                </button>
+              </div>
+
+              {/* Step dots */}
+              <div style={{ display: 'flex', gap: 6, marginTop: 16, justifyContent: 'center' }}>
+                {Array.from({ length: totalSteps }).map((_, i) => (
+                  <div key={i} style={S.stepDot(i + 1 === step, i + 1 <= step)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px 32px 32px' }}>
+              {errorMessage && <div style={{ ...S.error, marginBottom: 16 }}>{errorMessage}</div>}
+
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {renderStep()}
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  {step > 1 && <button type="button" onClick={prevStep} style={S.btnSecondary}>← Geri</button>}
+                  <button type="submit" disabled={authBusy} style={{ ...S.btnPrimary, flex: step > 1 ? 2 : 1, opacity: authBusy ? 0.5 : 1 }}>
+                    {authBusy ? '⏳ İşleniyor...' : ((authMode === 'register' && step === 3) ? '✨ Hesabı Oluştur' : (authMode === 'login' && step === 2) ? '🚀 Giriş Yap' : 'Devam →')}
+                  </button>
+                </div>
+              </form>
+
+              {/* Footer */}
+              <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#475569' }}>
+                {authMode === 'register' ? (
+                  <>Zaten hesabın var mı?{' '}
+                    <button type="button" onClick={() => { setAuthMode('login'); setStep(1); setErrors({}); setErrorMessage(''); }}
+                      style={{ background: 'none', border: 'none', color: '#a855f7', fontWeight: 800, cursor: 'pointer' }}>Giriş yap</button>
+                  </>
+                ) : (
+                  <>Hesabın yok mu?{' '}
+                    <button type="button" onClick={() => { setAuthMode('register'); setStep(1); setErrors({}); setErrorMessage(''); }}
+                      style={{ background: 'none', border: 'none', color: '#a855f7', fontWeight: 800, cursor: 'pointer' }}>Kayıt ol</button>
+                  </>
+                )}
+              </div>
             </div>
           </>
         )}
