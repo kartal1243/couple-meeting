@@ -268,7 +268,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'admin123';
 if (!ADMIN_PASSWORD) logger.warn('ADMIN_PASS ayarlanmadi, varsayilan kullaniliyor (GELISTIRME)');
 
 function adminAuth(req, res, next) {
-  const pass = req.headers['x-admin-pass'];
+  const pass = req.headers['x-admin-pass'] || req.query.pass;
   if (!pass || pass !== ADMIN_PASSWORD) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
   next();
 }
