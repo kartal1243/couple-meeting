@@ -50,7 +50,13 @@ function AdminPage() {
   useEffect(() => {
     if (!authed) return;
 
-    socket.emit('admin_connect', { pass });
+    if (!socket.connected) socket.connect();
+
+    const handleConnect = () => {
+      socket.emit('admin_connect', { pass });
+    };
+    socket.on('connect', handleConnect);
+    if (socket.connected) socket.emit('admin_connect', { pass });
 
     const handleDashboardUpdate = (data) => {
       setRooms(data.rooms || []);
@@ -84,6 +90,7 @@ function AdminPage() {
       socket.emit('admin_disconnect');
       socket.off('admin_dashboard_update', handleDashboardUpdate);
       socket.off('admin_activity', handleActivity);
+      socket.off('connect', handleConnect);
     };
   }, [authed, pass]);
 
