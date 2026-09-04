@@ -31,6 +31,8 @@ function AdminPage() {
   const navigate = useNavigate();
   const activityFeedRef = useRef([]);
   const chartRef = useRef([]);
+  const passRef = useRef('');
+  passRef.current = pass;
 
   const headers = { 'Content-Type': 'application/json', 'x-admin-pass': pass };
 
@@ -41,10 +43,10 @@ function AdminPage() {
 
   const api = useCallback(async (path, opts = {}) => {
     const sep = path.includes('?') ? '&' : '?';
-    const url = `${BACKEND_URL}${path}${sep}pass=${pass}`;
-    const res = await fetch(url, { headers, ...opts });
+    const url = `${BACKEND_URL}${path}${sep}pass=${passRef.current}`;
+    const res = await fetch(url, { headers: { ...headers, 'x-admin-pass': passRef.current }, ...opts });
     return res.json();
-  }, [pass]);
+  }, []);
 
   // ── SOCKET.IO REAL-TIME CONNECTION ──
   useEffect(() => {
