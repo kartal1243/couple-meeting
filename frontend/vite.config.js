@@ -5,15 +5,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   build: {
-    chunkSizeWarningLimit: 1500,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          socket: ['socket.io-client'],
-          ui: ['react-youtube']
-        }
-      }
-    }
+    chunkSizeWarningLimit: 1500
   }
 })
