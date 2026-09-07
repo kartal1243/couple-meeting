@@ -103,6 +103,7 @@ function App() {
 
   const [joinRoomTarget, setJoinRoomTarget] = useState(null);
   const [joinModalPass, setJoinModalPass] = useState('');
+  const [joinModalError, setJoinModalError] = useState('');
 
   const [pendingMediaItem, setPendingMediaItem] = useState(null);
   const [modalTargetCategory, setModalTargetCategory] = useState('Genel');
@@ -901,11 +902,15 @@ function App() {
     });
     socket.on('play_mode_changed', (mode) => setPlayMode(mode));
     socket.on('room_error', (msg) => {
-      setErrorMessage(msg);
-      setInRoom(false);
-      navigate('/');
-      localStorage.removeItem('cm_saved_room');
-      localStorage.removeItem('cm_saved_pass');
+      if (showJoinModal) {
+        setJoinModalError(msg);
+      } else {
+        setErrorMessage(msg);
+        setInRoom(false);
+        navigate('/');
+        localStorage.removeItem('cm_saved_room');
+        localStorage.removeItem('cm_saved_pass');
+      }
     });
 
     socket.on('room_action', ({ type, payload }) => {
@@ -1349,7 +1354,7 @@ function App() {
                 <div style={{ color:'#2563eb', fontSize:11, fontWeight:900 }}>🚪 ODAYA KATIL</div>
                 <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:2 }}>{joinRoomTarget.name}</div>
               </div>
-              <button onClick={() => { setShowJoinModal(false); setJoinRoomTarget(null); setJoinModalPass(''); }} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
+              <button onClick={() => { setShowJoinModal(false); setJoinRoomTarget(null); setJoinModalPass(''); setJoinModalError(''); }} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
             </div>
             <form onSubmit={handleJoinRoomFromModal} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)' }}>
@@ -1359,10 +1364,15 @@ function App() {
                   <div style={{ color:'#64748b', fontSize:11 }}>{joinRoomTarget.userCount}/{joinRoomTarget.maxUsers} kisi • {joinRoomTarget.hasPassword ? 'Sifreli' : 'Acik'}</div>
                 </div>
               </div>
+              {joinModalError && (
+                <div style={{ background:'rgba(239,68,68,.1)', border:'1px solid rgba(239,68,68,.2)', borderRadius:10, padding:'10px 14px', color:'#ef4444', fontSize:12, fontWeight:700, textAlign:'center' }}>
+                  ⚠️ {joinModalError}
+                </div>
+              )}
               {joinRoomTarget.hasPassword && (
                 <div>
                   <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Sifresi</label>
-                  <input type="password" value={joinModalPass} onChange={(e) => setJoinModalPass(e.target.value)} placeholder="Sifreyi girin..." autoFocus style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
+                  <input type="password" value={joinModalPass} onChange={(e) => { setJoinModalPass(e.target.value); setJoinModalError(''); }} placeholder="Sifreyi girin..." autoFocus style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border: joinModalError ? '1px solid rgba(239,68,68,.4)' : '1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
                 </div>
               )}
               <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(37,99,235,.3)', marginTop:4 }}>🚪 Odaya Gir</button>

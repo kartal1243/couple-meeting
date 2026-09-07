@@ -1573,15 +1573,17 @@ io.on('connection', (socket) => {
 
   socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword } = {}) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room && room.hostUserId === socket.userId) {
-      if (newName && newName.trim()) room.name = sanitize(newName, 50);
-      if (newTheme) room.theme = newTheme;
-      if (newHostUserId && room.users.find(u => u.userId === newHostUserId)) room.hostUserId = newHostUserId;
-      if (newMaxUsers) room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), 8);
-      if (typeof newPassword === 'string') room.password = newPassword;
-      io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId, maxUsers: room.maxUsers });
-      broadcastRooms();
-    }
+    if (!room) return;
+    const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+    if (!isHost) return;
+    if (newName && newName.trim()) room.name = sanitize(newName, 50);
+    if (newTheme) room.theme = newTheme;
+    if (newHostUserId && room.users.find(u => u.userId === newHostUserId)) room.hostUserId = newHostUserId;
+    if (newMaxUsers) room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), 8);
+    if (typeof newPassword === 'string') room.password = newPassword;
+    try { db.saveRoom({ id: sanitize(roomId, 50), name: room.name, hostUserId: room.hostUserId, password: room.password, isVip: room.isVip, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
+    io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId, maxUsers: room.maxUsers, hasPassword: !!room.password });
+    broadcastRooms();
   });
 
   socket.on('kick_user', ({ roomId, targetUserId, token } = {}) => {
