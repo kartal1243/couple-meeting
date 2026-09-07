@@ -1518,10 +1518,10 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity } = {}) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId } = {}) => {
     const user = token ? requireAuth(token) : null;
     const cleanRoomId = sanitize(roomId, 50);
-    const userId = user ? user.username : 'misafir-' + Math.floor(1000 + Math.random() * 9000);
+    const userId = user ? user.username : (clientUserId && typeof clientUserId === 'string' ? sanitize(clientUserId, 50) : 'misafir-' + Math.floor(1000 + Math.random() * 9000));
     const username = user ? user.username : userId;
     const avatar = user ? (user.avatar || '🐱') : '🐱';
     const isVip = user ? !!user.isVip : false;
