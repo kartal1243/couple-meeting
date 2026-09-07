@@ -451,6 +451,30 @@ app.get('/api/admin/maintenance', adminAuth, (req, res) => {
   res.json({ ok: true, maintenanceMode });
 });
 
+// ═══════════════════════════════════════════════════════════
+// FEEDBACK / HATA BILDIRIMI
+// ═══════════════════════════════════════════════════════════
+app.post('/api/feedback', (req, res) => {
+  try {
+    const { type, title, description, username, userAgent, url } = req.body;
+    if (!type || !title || !description) return res.status(400).json({ ok: false, message: 'Eksik bilgi.' });
+    const id = crypto.randomBytes(8).toString('hex');
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
+    if (db.getDb()) {
+      try {
+        db.getDb().prepare('INSERT INTO feedback (id, type, title, description, username, ip, user_agent, url, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+          id, String(type).slice(0, 20), String(title).slice(0, 100), String(description).slice(0, 2000),
+          String(username || '').slice(0, 24), ip, String(userAgent || '').slice(0, 300), String(url || '').slice(0, 500), 'open', Date.now()
+        );
+      } catch (e) { logger.error?.('Feedback kaydetme hatası: ' + e.message); }
+    }
+    try { broadcastAdminActivity('feedback', { type, title, message: `Yeni geri bildirim: ${title}` }); } catch (e) {}
+    res.json({ ok: true, message: 'Geri bildiriminiz alındı, teşekkürler!' });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: 'Bir hata oluştu.' });
+  }
+});
+
 
 // ═══════════════════════════════════════════════════════════
 // 7. SOCKET.IO SERVER
@@ -813,6 +837,50 @@ io.on('connection', (socket) => {
     db.updateUser(user.username, { password_hash: `${salt}:${hash}`, reset_token: '', reset_expiry: 0 });
     logger.info?.(`Şifre sıfırlandı: ${user.username}`);
     socket.emit('reset_result', { ok: true, message: 'Şifren başarıyla sıfırlandı! Giriş yapabilirsin.' });
+  });
+
+  // HESAP SILME
+  socket.on('delete_account', ({ token, password }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return socket.emit('delete_account_result', { ok: false, message: 'Kullanıcı bulunamadı.' });
+    try {
+      const [salt, hash] = user.passwordHash.split(':');
+      const check = crypto.scryptSync(password || '', salt, 64).toString('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(check, 'hex'))) {
+        return socket.emit('delete_account_result', { ok: false, message: 'Şifre hatalı.' });
+      }
+      const username = user.username;
+      // Tüm token'ları sil
+      db.getDb().prepare('DELETE FROM tokens WHERE username = ?').run(username);
+      // Arkadaşlıkları sil
+      db.getDb().prepare('DELETE FROM friendships WHERE user1 = ? OR user2 = ?').run(username, username);
+      db.getDb().prepare('DELETE FROM friend_requests WHERE from_username = ? OR to_username = ?').run(username, username);
+      // DM'leri sil
+      db.getDb().prepare('DELETE FROM dm_messages WHERE from_username = ? OR to_username = ?').run(username, username);
+      // Bildirimleri sil
+      db.getDb().prepare('DELETE FROM notifications WHERE username = ?').run(username);
+      // Raporları sil
+      db.getDb().prepare('DELETE FROM user_reports WHERE reporter = ? OR reported = ?').run(username, username);
+      // Takipleri sil
+      db.getDb().prepare('DELETE FROM follows WHERE follower = ? OR following = ?').run(username, username);
+      // Roller sil
+      db.getDb().prepare('DELETE FROM user_roles WHERE username = ?').run(username);
+      // Blokları sil
+      db.getDb().prepare('DELETE FROM blocked_users WHERE blocker = ? OR blocked = ?').run(username, username);
+      // Reaksiyonları sil
+      db.getDb().prepare('DELETE FROM message_reactions WHERE username = ?').run(username);
+      // Feed sil
+      db.getDb().prepare('DELETE FROM feed_items WHERE username = ?').run(username);
+      // Push subscription sil
+      db.getDb().prepare('DELETE FROM push_subscriptions WHERE username = ?').run(username);
+      // Kullanıcıyı sil
+      db.getDb().prepare('DELETE FROM users WHERE username = ?').run(username);
+      logger.info(`[HESAP SILINDI] ${username}`);
+      socket.emit('delete_account_result', { ok: true, message: 'Hesabın başarıyla silindi.' });
+    } catch (e) {
+      logger.error?.('Hesap silme hatası: ' + e.message);
+      socket.emit('delete_account_result', { ok: false, message: 'Bir hata oluştu.' });
+    }
   });
 
   // ──────────────────────────────────────────────────────

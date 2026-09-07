@@ -322,6 +322,20 @@ function initTables() {
       members TEXT NOT NULL DEFAULT '[]',
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS feedback (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      username TEXT DEFAULT '',
+      ip TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      url TEXT DEFAULT '',
+      status TEXT DEFAULT 'open',
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at DESC);
   `);
 
   // Migration: reset_token ve reset_expiry sütunları

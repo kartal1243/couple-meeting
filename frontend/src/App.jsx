@@ -130,6 +130,8 @@ function App() {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifySent, setVerifySent] = useState(false);
   const [show2FAModal, setShow2FAModal] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletePass, setDeletePass] = useState('');
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [twoFASecret, setTwoFASecret] = useState('');
   const [twoFAQR, setTwoFAQR] = useState('');
@@ -273,6 +275,28 @@ function App() {
     setFriendSearchResults([]);
     setShowSocialModal(false);
   };
+
+  const deleteAccount = () => {
+    if (!deletePass || !authToken) return;
+    if (!confirm('Hesabını gerçekten silmek istiyor musun? Bu işlem geri alınamaz!')) return;
+    socket.emit('delete_account', { token: authToken, password: deletePass });
+  };
+
+  useEffect(() => {
+    const handler = (data) => {
+      if (data.ok) {
+        setShowDeleteAccount(false);
+        setDeletePass('');
+        setShowSocialModal(false);
+        persistAuth(null, '');
+        setToast({ msg: 'Hesabın başarıyla silindi.', type: 'success' });
+      } else {
+        setToast({ msg: data.message || 'Hesap silinemedi.', type: 'error' });
+      }
+    };
+    socket.on('delete_account_result', handler);
+    return () => socket.off('delete_account_result', handler);
+  }, [deletePass, authToken]);
 
   // ── 5. SOSYAL ──
   const sendGlobalMessage = (e) => {
@@ -1279,6 +1303,7 @@ function App() {
           show2FAModal={show2FAModal} setShow2FAModal={setShow2FAModal} twoFAEnabled={twoFAEnabled}
           setup2FA={setup2FA} disable2FA={disable2FA} twoFASecret={twoFASecret} twoFAQR={twoFAQR}
           twoFACode={twoFACode} setTwoFACode={setTwoFACode} verify2FASetup={verify2FASetup}
+          showDeleteAccount={showDeleteAccount} setShowDeleteAccount={setShowDeleteAccount} deleteAccount={deleteAccount} deletePass={deletePass} setDeletePass={setDeletePass}
         />
       )}
       {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}

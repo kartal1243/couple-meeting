@@ -1,7 +1,7 @@
 import { useApp } from '../../contexts/AppContext';
 import ProfileDropdown from './ProfileDropdown';
 
-export default function Navbar({ onOpenAuth }) {
+export default function Navbar({ onOpenAuth, onOpenFeedback }) {
   const {
     authUser, myAvatar, setShowSocialModal, handleLogout,
     friendRequests, friends, friendOnlineStatuses, socialTab, setSocialTab
@@ -18,11 +18,26 @@ export default function Navbar({ onOpenAuth }) {
           ))}
         </div>
         <div>
-          <div style={{ fontWeight: 950, color: '#fff', fontSize: 17, letterSpacing: '-0.5px' }}>Couple Meeting</div>
+          <div style={{ fontWeight: 950, color: '#fff', fontSize: 17, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            Couple Meeting
+            <span style={{
+              background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+              color: '#000', fontSize: 9, fontWeight: 900, padding: '2px 7px',
+              borderRadius: 6, letterSpacing: '0.5px', lineHeight: '14px'
+            }}>BETA</span>
+          </div>
           <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 800, letterSpacing: '0.5px' }}>LISTEN • CONNECT • SHARE</div>
         </div>
       </div>
       <div className="cm-nav-actions">
+        <button
+          onClick={onOpenFeedback}
+          style={{
+            background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)',
+            color: '#94a3b8', fontSize: 12, padding: '7px 12px', borderRadius: 8,
+            cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5
+          }}
+        >🐛 Hata Bildir</button>
         {authUser ? (
           <ProfileDropdown
             authUser={authUser} myAvatar={myAvatar}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { HOME_CSS } from '../constants';
 import Navbar from '../components/layout/Navbar';
@@ -7,6 +8,7 @@ import About from '../Home/About';
 import Features from '../Home/Features';
 import PublicRooms from '../Home/PublicRooms';
 import SocialPreview from '../Home/SocialPreview';
+import FeedbackModal from '../Modals/FeedbackModal';
 
 export default function HomePage() {
   const {
@@ -15,12 +17,13 @@ export default function HomePage() {
     setShowQuickCreate
   } = useApp();
 
+  const [showFeedback, setShowFeedback] = useState(false);
   const openSocial = (tab) => { setSocialTab(tab); setShowSocialModal(true); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowY: 'auto' }}>
       <style>{HOME_CSS}</style>
-      <Navbar onOpenAuth={openAuth} />
+      <Navbar onOpenAuth={openAuth} onOpenFeedback={() => setShowFeedback(true)} />
       <main className="cm-home-main" style={{ flex: 1 }}>
         <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={() => setShowQuickCreate(true)} onOpenSocial={openSocial} />
         <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} onCreateRoom={() => setShowQuickCreate(true)} />
@@ -29,6 +32,7 @@ export default function HomePage() {
         <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
         <Footer />
       </main>
+      <FeedbackModal show={showFeedback} onClose={() => setShowFeedback(false)} />
     </div>
   );
 }

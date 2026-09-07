@@ -121,7 +121,8 @@ function SocialModal({
   notifications, unreadCount, loadNotifications, markNotifsRead, showNotifPanel, setShowNotifPanel,
   myRole, reportUser, showVerifyModal, setShowVerifyModal, verifyCode, setVerifyCode,
   verifySent, setVerifySent, sendVerificationEmail, verifyEmailCode,
-  show2FAModal, setShow2FAModal, twoFAEnabled, setup2FA, disable2FA, twoFASecret, twoFAQR, twoFACode, setTwoFACode, verify2FASetup
+  show2FAModal, setShow2FAModal, twoFAEnabled, setup2FA, disable2FA, twoFASecret, twoFAQR, twoFACode, setTwoFACode, verify2FASetup,
+  showDeleteAccount, setShowDeleteAccount, deleteAccount, deletePass, setDeletePass
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
@@ -457,6 +458,14 @@ function SocialModal({
                       </div>
                     </div>
                     <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet ✓</button>
+                    <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(234,0,56,.15)' }}>
+                      <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tehlikeli Bölge</div>
+                      <button type="button" onClick={() => setShowDeleteAccount(true)} style={{
+                        width: '100%', padding: '10px 12px', background: 'rgba(234,0,56,.06)',
+                        border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, color: '#ea0038',
+                        fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center'
+                      }}>🗑️ Hesabımı Sil</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -579,6 +588,33 @@ function SocialModal({
               style={{ width: '100%', background: twoFAEnabled ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14 }}>
               {twoFAEnabled ? 'Devre Dışı Bırak' : 'Doğrula ve Aktif Et'}
             </button>
+           </div>
+        </div>
+      )}
+
+      {/* Hesap Silme Onay Modalı */}
+      {showDeleteAccount && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowDeleteAccount(false); setDeletePass(''); }}>
+          <div style={{ width: 380, background: '#111827', border: '1px solid rgba(234,0,56,.2)', borderRadius: 18, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: 24, textAlign: 'center' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+              <h3 style={{ color: '#ea0038', fontSize: 18, fontWeight: 900, margin: '0 0 8px' }}>Hesabını Silmek İstiyor Musun?</h3>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 20px', lineHeight: 1.5 }}>
+                Bu işlem geri alınamaz!<br />
+                Tüm verilerin, arkadaşların, mesajların kalıcı olarak silinir.
+              </p>
+              <input
+                type="password"
+                value={deletePass}
+                onChange={(e) => setDeletePass(e.target.value)}
+                placeholder="Şifreni girerek onayla"
+                style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, padding: '12px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
+              />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => { setShowDeleteAccount(false); setDeletePass(''); }} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 10, color: '#94a3b8', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>İptal</button>
+                <button onClick={deleteAccount} disabled={!deletePass} style={{ flex: 1, padding: '12px', background: deletePass ? '#ea0038' : 'rgba(234,0,56,.3)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 900, fontSize: 13, cursor: deletePass ? 'pointer' : 'not-allowed' }}>🗑️ Kalıcı Sil</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

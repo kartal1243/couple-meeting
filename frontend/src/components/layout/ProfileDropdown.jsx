@@ -111,7 +111,7 @@ export default function ProfileDropdown({ authUser, myAvatar, friendRequests, fr
             ))}
           </div>
 
-          {/* Logout */}
+          {/* Logout + Delete */}
           <div style={{ padding: '6px', borderTop: '1px solid #25313a' }}>
             <button onClick={() => { onLogout(); setOpen(false); }} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
@@ -122,6 +122,16 @@ export default function ProfileDropdown({ authUser, myAvatar, friendRequests, fr
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
               <span style={{ fontSize: 18, width: 32, height: 32, borderRadius: 10, background: 'rgba(234,0,56,.1)', display: 'grid', placeItems: 'center' }}>🚪</span>
               Çıkış Yap
+            </button>
+            <button onClick={() => { onOpenSocial('profile'); setOpen(false); }} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+              background: 'transparent', border: 'none', borderRadius: 10, cursor: 'pointer',
+              color: '#64748b', fontWeight: 600, fontSize: 11, transition: 'background 0.15s'
+            }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(234,0,56,.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <span style={{ fontSize: 14, width: 28, height: 28, borderRadius: 8, background: 'rgba(234,0,56,.05)', display: 'grid', placeItems: 'center' }}>🗑️</span>
+              Hesabımı Sil
             </button>
           </div>
         </div>
