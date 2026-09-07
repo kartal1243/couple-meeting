@@ -92,7 +92,7 @@ function SearchBar({
 
       <input
         type="text"
-        placeholder="🔍 Ara..."
+        placeholder="🔍 Video, şarkı, oyun, film ara..."
         value={searchInput}
         onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
         onFocus={() => setShowResults(true)}
@@ -128,7 +128,7 @@ function SearchBar({
               <img src={song.thumbnail} alt={song.title} style={{ width: '50px', height: '30px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
                 <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{song.title}</div>
-                <div style={{ fontSize: '10px', color: '#7f8c98', marginTop: 1 }}>{song.timestamp}</div>
+                <div style={{ fontSize: '10px', color: '#7f8c98', marginTop: 1 }}>{song.artist || ''} {song.duration ? `• ${song.duration}` : ''}</div>
               </div>
               <div className="cm-result-actions" style={{ display: 'flex', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 {addedId === song.id ? (

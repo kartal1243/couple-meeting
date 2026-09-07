@@ -1462,7 +1462,19 @@ io.on('connection', (socket) => {
       const yt = await getInnertube().catch(() => null);
       if (!yt) { socket.emit('search_results', []); return; }
 
-      // Once music search dene
+      // YouTube video ara (müzik + video hepsi)
+      try {
+        const sr = await yt.search(q, { type: 'video' });
+        const results = (sr.videos || []).slice(0, 10).map(v => ({
+          id: v.id, title: v.title?.text || v.title?.toString() || '',
+          artist: v.author?.name || '', duration: v.duration?.text || '',
+          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+          src: v.id
+        })).filter(s => s.id && s.title);
+        if (results.length > 0) { socket.emit('search_results', results); return; }
+      } catch {}
+
+      // Fallback: müzik araması
       try {
         const sr = await yt.music.search(q, { type: 'song' });
         const results = (sr.songs?.contents || []).map(s => ({
@@ -1470,19 +1482,7 @@ io.on('connection', (socket) => {
           artist: s.artists?.[0]?.name || '', duration: s.duration?.text || '',
           thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
           src: s.id
-        })).filter(s => s.id && s.title).slice(0, 8);
-        if (results.length > 0) { socket.emit('search_results', results); return; }
-      } catch {}
-
-      // Fallback: video search
-      try {
-        const sr = await yt.search(q, { type: 'video' });
-        const results = (sr.videos || []).slice(0, 8).map(v => ({
-          id: v.id, title: v.title?.text || v.title?.toString() || '',
-          artist: v.author?.name || '', duration: v.duration?.text || '',
-          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
-          src: v.id
-        })).filter(s => s.id && s.title);
+        })).filter(s => s.id && s.title).slice(0, 10);
         socket.emit('search_results', results);
         return;
       } catch {}
