@@ -1553,8 +1553,8 @@ io.on('connection', (socket) => {
     socket.currentRoom = cleanRoomId; socket.userId = userId; socket.join(cleanRoomId);
     db.addConnectionLog(username, socket.id, socket.handshake?.address || '', cleanRoomId, 'join', socket.handshake?.headers?.['user-agent'] || '');
 
-    let calcTime = room.currentMedia.time;
-    if (room.currentMedia.isPlaying) calcTime += (Date.now() - room.currentMedia.lastUpdated) / 1000;
+    let calcTime = room.currentMedia?.time || 0;
+    if (room.currentMedia?.isPlaying) calcTime += (Date.now() - (room.currentMedia.lastUpdated || Date.now())) / 1000;
 
     socket.emit('room_joined', {
       roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
