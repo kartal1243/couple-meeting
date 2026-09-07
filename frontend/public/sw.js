@@ -18,6 +18,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     if (event.request.url.includes('/api/') || event.request.url.includes('/socket.io/')) return;
     event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
+        fetch(event.request).catch(() => caches.match(event.request).then(r => r || fetch(event.request)))
     );
 });
