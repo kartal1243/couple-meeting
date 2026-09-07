@@ -25,6 +25,7 @@ function AdminPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [feedbackList, setFeedbackList] = useState([]);
+  const [quickVipUser, setQuickVipUser] = useState('');
   const [vipDays, setVipDays] = useState(365);
   const [vipPlan, setVipPlan] = useState('yearly');
   const [toast, setToast] = useState(null);
@@ -255,7 +256,7 @@ function AdminPage() {
         .admin-action { transition: all .15s !important; }
         .admin-action:hover { transform: scale(1.03); }
         .admin-action:active { transform: scale(0.97); }
-        @media(max-width:768px) { .admin-grid { grid-template-columns: 1fr !important; } .admin-header { flex-wrap: wrap !important; } }
+        @media(max-width:768px) { .admin-grid { grid-template-columns: 1fr !important; } .admin-header { flex-wrap: wrap !important; } .admin-stat-grid { grid-template-columns: repeat(3, 1fr) !important; } }
       `}</style>
 
       {toast && (
@@ -284,6 +285,22 @@ function AdminPage() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Quick VIP Input */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 10, background: 'rgba(234,179,8,.06)', border: '1px solid rgba(234,179,8,.15)' }}>
+            <span style={{ fontSize: 14 }}>👑</span>
+            <input type="text" placeholder="Kullanıcı adı..." value={quickVipUser} onChange={e => setQuickVipUser(e.target.value)}
+              style={{ width: 100, padding: '4px 8px', borderRadius: 6, background: 'transparent', border: 'none', color: '#eab308', fontSize: 11, fontWeight: 700, outline: 'none' }} />
+            <button onClick={async () => {
+              if (!quickVipUser.trim()) return;
+              await api('/api/admin/users/vip', { method: 'POST', body: JSON.stringify({ username: quickVipUser.trim(), isVip: true, vipPlan: 'lifetime', vipDays: 99999 }) });
+              showToast(`👑 ${quickVipUser.trim()} ömür boyu VIP verildi!`);
+              setQuickVipUser('');
+              fetchLogs();
+            }} className="admin-action" style={{
+              padding: '4px 10px', borderRadius: 6, border: 'none',
+              background: 'linear-gradient(135deg, #eab308, #f59e0b)', color: '#000', fontWeight: 800, fontSize: 10, cursor: 'pointer'
+            }}>Ver</button>
+          </div>
           {/* Live Ping Indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, background: 'rgba(0,168,132,.08)', border: '1px solid rgba(0,168,132,.15)' }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00a884', animation: 'livePulse 1s ease-in-out infinite' }} />
@@ -326,12 +343,14 @@ function AdminPage() {
         {tab === 'dashboard' && (
           <div style={{ animation: 'fadeIn .4s ease-out' }}>
             {/* Stat Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }} className="admin-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }} className="admin-grid admin-stat-grid">
               {[
                 { icon: '🏠', label: 'Aktif Oda', value: totalRoomsCount, color: '#7c3aed', gradient: 'linear-gradient(135deg, rgba(124,58,237,.12), rgba(168,85,247,.05))' },
                 { icon: '👥', label: 'Çevrimiçi', value: totalOnlineUsers, color: '#00a884', gradient: 'linear-gradient(135deg, rgba(0,168,132,.12), rgba(0,168,132,.05))' },
                 { icon: '👤', label: 'Toplam Üye', value: users.length, color: '#2563eb', gradient: 'linear-gradient(135deg, rgba(37,99,235,.12), rgba(37,99,235,.05))' },
-                { icon: '👑', label: 'VIP Üye', value: vipCount, color: '#eab308', gradient: 'linear-gradient(135deg, rgba(234,179,8,.12), rgba(234,179,8,.05))' }
+                { icon: '👑', label: 'VIP Üye', value: vipCount, color: '#eab308', gradient: 'linear-gradient(135deg, rgba(234,179,8,.12), rgba(234,179,8,.05))' },
+                { icon: '🚫', label: 'Banlı', value: users.filter(u => u.isBanned).length, color: '#ef4444', gradient: 'linear-gradient(135deg, rgba(239,68,68,.12), rgba(239,68,68,.05))' },
+                { icon: '🚨', label: 'Rapor', value: reports.length, color: '#f97316', gradient: 'linear-gradient(135deg, rgba(249,115,22,.12), rgba(249,115,22,.05))' }
               ].map((s, i) => (
                 <div key={i} style={{
                   background: s.gradient, padding: '20px 22px', borderRadius: 18,
@@ -448,6 +467,36 @@ function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Son Kayıtlar + Son Girişler */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }} className="admin-grid">
+              <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 20, border: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#94a3b8', marginBottom: 12 }}>✨ Son Kayıtlar</div>
+                {users.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5).map((u, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,.03)' : 'none' }}>
+                    <span style={{ fontSize: 18 }}>{u.avatar}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{u.username}</div>
+                      <div style={{ fontSize: 10, color: '#475569' }}>{formatTime(u.createdAt)}</div>
+                    </div>
+                    {u.isVip && <span style={{ fontSize: 9, background: 'rgba(234,179,8,.12)', color: '#eab308', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>👑</span>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 20, border: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#94a3b8', marginBottom: 12 }}>🔑 Son Girişler</div>
+                {logs.filter(l => l.action === 'join').slice(0, 5).map((l, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,.03)' : 'none' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00a884' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{l.username || 'Anonim'}</div>
+                      <div style={{ fontSize: 10, color: '#475569' }}>{l.ip || 'IP yok'} • {l.room_id || '-'}</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#475569' }}>{formatTime(l.created_at)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

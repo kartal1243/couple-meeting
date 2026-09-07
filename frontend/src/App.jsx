@@ -534,13 +534,30 @@ function App() {
     e.preventDefault();
     if (!joinRoomTarget) return;
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
+    setJoinModalError('');
+    const timeoutId = setTimeout(() => {
+      setShowJoinModal(false);
+      setJoinRoomTarget(null);
+      setJoinModalPass('');
+    }, 3000);
+    const onError = (msg) => {
+      clearTimeout(timeoutId);
+      setJoinModalError(msg);
+      socket.off('room_joined', onJoined);
+    };
+    const onJoined = () => {
+      clearTimeout(timeoutId);
+      socket.off('room_error', onError);
+      setShowJoinModal(false);
+      setJoinRoomTarget(null);
+      setJoinModalPass('');
+    };
+    socket.once('room_error', onError);
+    socket.once('room_joined', onJoined);
     socket.emit('join_room', {
       roomId: joinRoomTarget.id, password: joinModalPass.trim(),
       token: authToken, userCity
     });
-    setShowJoinModal(false);
-    setJoinRoomTarget(null);
-    setJoinModalPass('');
   };
 
   const handleLeaveRoom = () => {
