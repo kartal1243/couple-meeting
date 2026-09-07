@@ -108,11 +108,11 @@ app.post('/api/upload-video', uploadLimiter, (req, res) => {
     if (err) return res.status(400).json({ ok: false, message: err.message });
     if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadı.' });
     const token = req.body.token;
-    if (!token) return res.status(401).json({ ok: false, message: 'Token gerekli.' });
-    const user = db.getUserByToken(token);
-    if (!user) return res.status(401).json({ ok: false, message: 'Geçersiz token.' });
+    const user = token ? db.getUserByToken(token) : null;
+    const uploader = user ? user.username : 'Misafir';
     const videoUrl = `/uploads/${req.file.filename}`;
-    res.json({ ok: true, url: videoUrl, filename: req.file.originalname, size: req.file.size });
+    res.json({ ok: true, url: videoUrl, filename: req.file.originalname, size: req.file.size, uploader });
+  });
   });
 });
 
