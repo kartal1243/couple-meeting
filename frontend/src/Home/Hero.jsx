@@ -104,8 +104,8 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
               <div className="cm-screen-player">
                 <div className="cm-screen-album" />
                 <div className="cm-screen-song">
-                  <div className="cm-screen-song-name">Our Little Moment</div>
-                  <div className="cm-screen-song-artist">Couple Meeting Radio</div>
+                  <div className="cm-screen-song-name">Şımarık</div>
+                  <div className="cm-screen-song-artist">Tarkan</div>
                 </div>
               </div>
               <div className="cm-screen-chat">
@@ -132,8 +132,8 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
               <div className="cm-screen-player">
                 <div className="cm-screen-album cm-album-small" />
                 <div className="cm-screen-song">
-                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Yıldız Tozu</div>
-                  <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Tarkan</div>
+                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Ahh</div>
+                  <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Mabel Matiz</div>
                 </div>
               </div>
               <div className="cm-screen-chat">
@@ -158,7 +158,7 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
               <div className="cm-screen-player">
                 <div className="cm-screen-album cm-album-small" />
                 <div className="cm-screen-song">
-                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Gece</div>
+                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Güneşleneceğim</div>
                   <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Mabel Matiz</div>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
               <div className="cm-screen-player">
                 <div className="cm-screen-album" />
                 <div className="cm-screen-song">
-                  <div className="cm-screen-song-name">Seni Dert Etmek</div>
+                  <div className="cm-screen-song-name">Tükeneceğiz</div>
                   <div className="cm-screen-song-artist">Sezen Aksu</div>
                 </div>
               </div>
