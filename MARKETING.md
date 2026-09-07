@@ -72,6 +72,8 @@ Couple Meeting ücretsiz canlı video odası platformu 🚀
 
 👉 couplemeeting.com.tr
 
+@couplemeetingtr
+
 #CoupleMeeting #video #müzik #sohbet #ücretsiz
 
 ### Feature Tweet
@@ -85,10 +87,14 @@ Yeni özellikler geldi! 🎉
 
 Hemen dene: couplemeeting.com.tr
 
+@couplemeetingtr
+
 ### Turkish Community
 Arkadaşlarla film gecesi yapmak isteyenler? 🎬🍿
 
 couplemeeting.com.tr ile aynı anda aynı videoyu izleyebilir, sohbet edebilirsiniz. Ücretsiz!
+
+@couplemeetingtr
 
 #arkadaşlarlafilm #müzikgecesi #canlısohbet
 
