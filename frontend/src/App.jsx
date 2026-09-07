@@ -55,6 +55,8 @@ function App() {
   const [messageReactions, setMessageReactions] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
 
+  const [shortsMode, setShortsMode] = useState({ active: false, videoIds: [], currentIndex: 0 });
+
   const [mediaType, setMediaType] = useState('none');
   const [mediaSrc, setMediaSrc] = useState('');
   const [mediaMeta, setMediaMeta] = useState(null);
@@ -581,6 +583,16 @@ function App() {
     navigate('/');
   };
 
+  const handleStartShortsMode = (videoIds) => {
+    if (!socket || !roomId || !videoIds?.length) return;
+    socket.emit('start_shorts_mode', { roomId, videoIds });
+  };
+
+  const handleExitShortsMode = () => {
+    if (!socket || !roomId) return;
+    socket.emit('exit_shorts_mode', { roomId });
+  };
+
   const handleSaveSettings = () => {
     socket.emit('update_room_settings', {
       roomId: currentRoomIdRef.current,
@@ -860,6 +872,7 @@ function App() {
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
+      if (data.shortsMode) setShortsMode(data.shortsMode);
 
       if (Array.isArray(data.playlist)) { setPlaylist(data.playlist); localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist)); }
       if (Array.isArray(data.categories)) { setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
@@ -910,6 +923,16 @@ function App() {
     });
 
     socket.on('kicked_from_room', (msg) => { setErrorMessage(msg); handleLeaveRoom(); });
+
+    socket.on('shorts_mode_started', (data) => {
+      setShortsMode({ active: true, videoIds: data.videoIds || [], currentIndex: data.currentIndex || 0 });
+    });
+    socket.on('shorts_navigated', (data) => {
+      setShortsMode(prev => ({ ...prev, currentIndex: data.currentIndex || 0 }));
+    });
+    socket.on('shorts_mode_exited', () => {
+      setShortsMode({ active: false, videoIds: [], currentIndex: 0 });
+    });
 
     socket.on('categories_updated', (cats) => { setCategories(cats); localStorage.setItem('cm_local_categories', JSON.stringify(cats)); });
     socket.on('playlist_updated', (data) => {
@@ -1264,8 +1287,9 @@ function App() {
     typingUsers, sendDmTyping, sendDmStopTyping,
     messageReactions, addReaction, removeReaction,
     blockedUsers, blockUser, unblockUser,
-    deleteDm, editDm, inviteToRoom, changePassword
-  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows]);
+    deleteDm, editDm, inviteToRoom, changePassword,
+    shortsMode, handleStartShortsMode, handleExitShortsMode
+  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows, shortsMode]);
 
   // ── 11. RENDER ──
   return (

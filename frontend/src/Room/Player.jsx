@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, memo } from 'react';
 function extractVideoId(src) {
   if (!src) return null;
   if (src.length === 11 && /^[a-zA-Z0-9_-]{11}$/.test(src)) return src;
-  const m = src.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  const m = src.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : src;
 }
 

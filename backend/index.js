@@ -1514,6 +1514,26 @@ io.on('connection', (socket) => {
     } catch (err) { logger.error('Arama hatasi', { error: err.message }); socket.emit('search_results', []); }
   });
 
+  socket.on('search_shorts', async ({ query }) => {
+    if (checkRate('search', 10)) return socket.emit('search_results', []);
+    try {
+      const q = sanitize(query, 200);
+      if (!q || q.length < 2) { socket.emit('search_results', []); return; }
+      const yt = await getInnertube().catch(() => null);
+      if (!yt) { socket.emit('search_results', []); return; }
+      try {
+        const sr = await yt.search(q + ' shorts', { type: 'video' });
+        const results = (sr.videos || []).slice(0, 20).map(v => ({
+          id: v.id, title: v.title?.text || v.title?.toString() || '',
+          artist: v.author?.name || '', duration: v.duration?.text || '',
+          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+          src: v.id, isShorts: true
+        })).filter(s => s.id && s.title);
+        socket.emit('search_results', results);
+      } catch {}
+    } catch (err) { logger.error('Shorts arama hatasi', { error: err.message }); socket.emit('search_results', []); }
+  });
+
   // ──────────────────────────────────────────────────────
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
@@ -1535,7 +1555,8 @@ io.on('connection', (socket) => {
         kickedUsers: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
-        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
+        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip,
+        shortsMode: { active: false, videoIds: [], currentIndex: 0 }
       };
       room = rooms[cleanRoomId];
       try { db.saveRoom({ id: cleanRoomId, name: cleanRoomId, hostUserId: userId, password: room.password, isVip: room.isVip, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
@@ -1562,7 +1583,8 @@ io.on('connection', (socket) => {
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
       isVip: !!room.isVip,
-      currentMedia: { ...room.currentMedia, time: calcTime }
+      currentMedia: { ...room.currentMedia, time: calcTime },
+      shortsMode: room.shortsMode || { active: false, videoIds: [], currentIndex: 0 }
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();
     try { broadcastAdminActivity('room_join', { username, roomId: cleanRoomId, roomName: room.name, message: `${username} odaya katıldı: ${room.name}` }); } catch (e) {}
@@ -1931,6 +1953,44 @@ io.on('connection', (socket) => {
     }
     if (socket.socialUsername) { setOffline(socket.socialUsername, socket.id); broadcastOnlineStatus(socket.socialUsername); }
   });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 7.7 SHORTS MODE
+// ═══════════════════════════════════════════════════════════
+
+socket.on('start_shorts_mode', ({ roomId, videoIds } = {}) => {
+  const room = rooms[sanitize(roomId, 50)];
+  if (!room) return;
+  const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+  if (!isHost) return;
+  if (!Array.isArray(videoIds) || videoIds.length === 0) return;
+  room.shortsMode = { active: true, videoIds: videoIds.slice(0, 50), currentIndex: 0, startedAt: Date.now() };
+  io.to(sanitize(roomId, 50)).emit('shorts_mode_started', { videoIds: room.shortsMode.videoIds, currentIndex: 0 });
+  broadcastRooms();
+});
+
+socket.on('shorts_navigate', ({ roomId, direction } = {}) => {
+  const room = rooms[sanitize(roomId, 50)];
+  if (!room || !room.shortsMode?.active) return;
+  const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+  if (!isHost) return;
+  if (direction === 'next') {
+    room.shortsMode.currentIndex = Math.min(room.shortsMode.currentIndex + 1, room.shortsMode.videoIds.length - 1);
+  } else if (direction === 'prev') {
+    room.shortsMode.currentIndex = Math.max(room.shortsMode.currentIndex - 1, 0);
+  }
+  io.to(sanitize(roomId, 50)).emit('shorts_navigated', { currentIndex: room.shortsMode.currentIndex, videoId: room.shortsMode.videoIds[room.shortsMode.currentIndex] });
+});
+
+socket.on('exit_shorts_mode', ({ roomId } = {}) => {
+  const room = rooms[sanitize(roomId, 50)];
+  if (!room) return;
+  const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+  if (!isHost) return;
+  room.shortsMode = { active: false, videoIds: [], currentIndex: 0 };
+  io.to(sanitize(roomId, 50)).emit('shorts_mode_exited');
+  broadcastRooms();
 });
 
 // ═══════════════════════════════════════════════════════════
