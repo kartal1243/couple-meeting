@@ -113,7 +113,6 @@ app.post('/api/upload-video', uploadLimiter, (req, res) => {
     const videoUrl = `/uploads/${req.file.filename}`;
     res.json({ ok: true, url: videoUrl, filename: req.file.originalname, size: req.file.size, uploader });
   });
-  });
 });
 
 // ═══════════════════════════════════════════════════════════
