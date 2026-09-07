@@ -854,6 +854,11 @@ function App() {
       if (data.theme) setRoomTheme(data.theme);
     });
 
+    socket.on('room_host_changed', (data) => {
+      if (data.hostUserId) setHostUserId(data.hostUserId);
+      if (data.message) setToast({ msg: data.message, type: 'info' });
+    });
+
     socket.on('room_settings_updated', (data) => {
       if (data.roomName) setRoomName(data.roomName);
       if (data.theme) setRoomTheme(data.theme);
