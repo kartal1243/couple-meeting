@@ -276,6 +276,52 @@ function initTables() {
       PRIMARY KEY (event_id, username)
     );
     CREATE INDEX IF NOT EXISTS idx_event_attendees_user ON event_attendees(username);
+
+    CREATE TABLE IF NOT EXISTS rooms (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      host_user_id TEXT NOT NULL,
+      has_password INTEGER DEFAULT 0,
+      password TEXT DEFAULT '',
+      is_vip INTEGER DEFAULT 0,
+      max_users INTEGER DEFAULT 10,
+      theme TEXT DEFAULT 'default',
+      created_at INTEGER NOT NULL,
+      last_activity_at INTEGER NOT NULL,
+      deleted INTEGER DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_rooms_host ON rooms(host_user_id);
+    CREATE INDEX IF NOT EXISTS idx_rooms_last_activity ON rooms(last_activity_at);
+
+    CREATE TABLE IF NOT EXISTS room_messages (
+      id TEXT PRIMARY KEY,
+      room_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      avatar TEXT DEFAULT '🐱',
+      text TEXT NOT NULL,
+      time TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_room_msg_room ON room_messages(room_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS room_playlists (
+      room_id TEXT NOT NULL,
+      video_id TEXT NOT NULL,
+      title TEXT DEFAULT '',
+      thumbnail TEXT DEFAULT '',
+      added_by TEXT DEFAULT '',
+      added_at INTEGER NOT NULL,
+      PRIMARY KEY (room_id, video_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_room_playlist_room ON room_playlists(room_id);
+
+    CREATE TABLE IF NOT EXISTS group_chats (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      members TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL
+    );
   `);
 
   // Migration: reset_token ve reset_expiry sütunları
@@ -1020,6 +1066,114 @@ function isTwoFactorEnabled(username) {
   return false;
 }
 
+// ═══════════════════════════════════════════════════════════
+// ROOM FONKSIYONLARI
+// ═══════════════════════════════════════════════════════════
+function saveRoom(room) {
+  if (!getDb()) return;
+  try {
+    db.prepare(`INSERT OR REPLACE INTO rooms (id, name, host_user_id, has_password, password, is_vip, max_users, theme, created_at, last_activity_at, deleted)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(
+      room.id, room.name, room.hostUserId, room.password ? 1 : 0, room.password || '',
+      room.isVip ? 1 : 0, room.maxUsers || 10, room.theme || 'default',
+      room.createdAt || Date.now(), room.lastActivityAt || Date.now()
+    );
+  } catch (e) { logger.error?.('Room save hatası: ' + e.message); }
+}
+
+function deleteRoom(roomId) {
+  if (!getDb()) return;
+  try {
+    db.prepare('DELETE FROM room_messages WHERE room_id = ?').run(roomId);
+    db.prepare('DELETE FROM room_playlists WHERE room_id = ?').run(roomId);
+    db.prepare('DELETE FROM rooms WHERE id = ?').run(roomId);
+  } catch (e) { logger.error?.('Room delete hatası: ' + e.message); }
+}
+
+function saveRoomMessage(msg) {
+  if (!getDb()) return;
+  try {
+    db.prepare('INSERT INTO room_messages (id, room_id, username, avatar, text, time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      msg.id, msg.roomId, msg.username, msg.avatar || '🐱', msg.text, msg.time, msg.createdAt || Date.now()
+    );
+  } catch (e) { logger.error?.('Room message save hatası: ' + e.message); }
+}
+
+function getRoomMessages(roomId, limit = 200) {
+  if (!getDb()) return [];
+  try {
+    return db.prepare('SELECT * FROM room_messages WHERE room_id = ? ORDER BY created_at ASC LIMIT ?').all(roomId, limit);
+  } catch (e) { return []; }
+}
+
+function saveRoomPlaylistItem(roomId, video) {
+  if (!getDb()) return;
+  try {
+    db.prepare('INSERT OR REPLACE INTO room_playlists (room_id, video_id, title, thumbnail, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      roomId, video.id, video.title || '', video.thumbnail || '', video.addedBy || '', Date.now()
+    );
+  } catch (e) {}
+}
+
+function deleteRoomPlaylistItem(roomId, videoId) {
+  if (!getDb()) return;
+  try {
+    db.prepare('DELETE FROM room_playlists WHERE room_id = ? AND video_id = ?').run(roomId, videoId);
+  } catch (e) {}
+}
+
+function clearRoomPlaylist(roomId) {
+  if (!getDb()) return;
+  try {
+    db.prepare('DELETE FROM room_playlists WHERE room_id = ?').run(roomId);
+  } catch (e) {}
+}
+
+function getRoomPlaylist(roomId) {
+  if (!getDb()) return [];
+  try {
+    return db.prepare('SELECT * FROM room_playlists WHERE room_id = ? ORDER BY added_at ASC').all(roomId);
+  } catch (e) { return []; }
+}
+
+function getAllRooms() {
+  if (!getDb()) return [];
+  try {
+    return db.prepare('SELECT * FROM rooms WHERE deleted = 0 ORDER BY created_at DESC').all();
+  } catch (e) { return []; }
+}
+
+function updateRoomActivity(roomId) {
+  if (!getDb()) return;
+  try {
+    db.prepare('UPDATE rooms SET last_activity_at = ? WHERE id = ?').run(Date.now(), roomId);
+  } catch (e) {}
+}
+
+function saveGroupChatDef(group) {
+  if (!getDb()) return;
+  try {
+    db.prepare('INSERT OR REPLACE INTO group_chats (id, name, created_by, members, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      group.id, group.name, group.createdBy, JSON.stringify(group.members || []), group.createdAt || Date.now()
+    );
+  } catch (e) {}
+}
+
+function deleteGroupChatDef(groupId) {
+  if (!getDb()) return;
+  try {
+    db.prepare('DELETE FROM group_chats WHERE id = ?').run(groupId);
+  } catch (e) {}
+}
+
+function getAllGroupChatDefs() {
+  if (!getDb()) return [];
+  try {
+    const rows = db.prepare('SELECT * FROM group_chats').all();
+    return rows.map(r => ({ ...r, members: JSON.parse(r.members || '[]') }));
+  } catch (e) { return []; }
+}
+
 loadJson();
 
 module.exports = {
@@ -1039,5 +1193,8 @@ module.exports = {
   getUserRole, setUserRole, getAllRoles, hasPermission,
   savePushSubscription, getPushSubscriptions, removePushSubscription,
   createEmailVerification, verifyEmailCode, isEmailVerified,
-  setupTwoFactor, enableTwoFactor, disableTwoFactor, getTwoFactor, isTwoFactorEnabled
+  setupTwoFactor, enableTwoFactor, disableTwoFactor, getTwoFactor, isTwoFactorEnabled,
+  saveRoom, deleteRoom, saveRoomMessage, getRoomMessages,
+  saveRoomPlaylistItem, deleteRoomPlaylistItem, clearRoomPlaylist, getRoomPlaylist,
+  getAllRooms, updateRoomActivity, saveGroupChatDef, deleteGroupChatDef, getAllGroupChatDefs
 };

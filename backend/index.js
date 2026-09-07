@@ -264,12 +264,18 @@ async function getInnertube() {
 // 6.5 ADMIN PANEL
 // ═══════════════════════════════════════════════════════════
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'admin123';
-if (!ADMIN_PASSWORD) logger.warn('ADMIN_PASS ayarlanmadi, varsayilan kullaniliyor (GELISTIRME)');
+const ADMIN_PASSWORD = process.env.ADMIN_PASS;
+if (!ADMIN_PASSWORD) {
+  logger.warn('ADMIN_PASS ayarlanmadi! Güvenlik riski! Varsayilan kullaniliyor.');
+}
+const EFFECTIVE_ADMIN_PASS = ADMIN_PASSWORD || (isProd ? null : 'admin123');
+if (!EFFECTIVE_ADMIN_PASS) {
+  logger.error('PRODUCTION modda ADMIN_PASS tanimli degil! Admin paneli calismaz.');
+}
 
 function adminAuth(req, res, next) {
   const pass = req.headers['x-admin-pass'] || req.query.pass;
-  if (!pass || pass !== ADMIN_PASSWORD) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
+  if (!pass || pass !== EFFECTIVE_ADMIN_PASS) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
   next();
 }
 
@@ -315,6 +321,7 @@ app.delete('/api/admin/rooms/:roomId', adminAuth, (req, res) => {
   }
   delete rooms[roomId];
   delete tombalaGames[roomId];
+  try { db.deleteRoom(roomId); } catch (e) {}
   broadcastRooms();
   try { broadcastAdminActivity('room_close', { roomId, message: `Oda kapatıldı: ${roomId}` }); } catch (e) {}
   logger.info(`[ADMIN] Oda kapatildi: ${roomId}`);
@@ -465,6 +472,52 @@ const tombalaGames = {};
 const onlineUsers = {};
 const adminSocketIds = new Set();
 
+// DB'den odalari yukle
+function loadRoomsFromDb() {
+  try {
+    const savedRooms = db.getAllRooms();
+    for (const r of savedRooms) {
+      rooms[r.id] = {
+        id: r.id,
+        name: r.name,
+        hostUserId: r.host_user_id,
+        password: r.password || '',
+        isVip: !!r.is_vip,
+        maxUsers: r.max_users || 10,
+        theme: r.theme || 'default',
+        createdAt: r.created_at,
+        lastActivityAt: r.last_activity_at,
+        users: [],
+        currentMedia: null,
+        playlist: db.getRoomPlaylist(r.id).map(v => ({ id: v.video_id, title: v.title, thumbnail: v.thumbnail, addedBy: v.added_by })),
+        messages: db.getRoomMessages(r.id, 200).map(m => ({
+          id: m.id, username: m.username, avatar: m.avatar, text: m.text, time: m.time, createdAt: m.created_at
+        })),
+        voiceUsers: [],
+        kickedUsers: []
+      };
+    }
+    if (savedRooms.length > 0) logger.info(`[DB] ${savedRooms.length} oda yüklendi.`);
+  } catch (e) {
+    logger.error?.('Oda yükleme hatası: ' + e.message);
+  }
+}
+loadRoomsFromDb();
+
+// Grup sohbeti tanimlarini DB'den yukle
+function loadGroupChatsFromDb() {
+  try {
+    const groups = db.getAllGroupChatDefs();
+    for (const g of groups) {
+      globalChatGroups[g.id] = { id: g.id, name: g.name, createdBy: g.created_by, members: g.members, createdAt: g.created_at };
+    }
+    if (groups.length > 0) logger.info(`[DB] ${groups.length} grup sohbeti yüklendi.`);
+  } catch (e) {
+    logger.error?.('Grup yükleme hatası: ' + e.message);
+  }
+}
+loadGroupChatsFromDb();
+
 // --- Yardimci Fonksiyonlar ---
 
 function publicUser(u) {
@@ -609,16 +662,20 @@ setInterval(() => {
   if (cleaned > 0) logger.info(`${cleaned} eski token temizlendi.`);
 }, TOKEN_CLEANUP_INTERVAL);
 
-const ROOM_CLEANUP_INTERVAL = 30 * 60 * 1000;
-const ROOM_EMPTY_TIMEOUT = 2 * 60 * 60 * 1000;
+const ROOM_CLEANUP_INTERVAL = 60 * 1000; // Her dakika kontrol et
+const ROOM_EMPTY_TIMEOUT = 5 * 60 * 1000; // 5 dakika
 setInterval(() => {
   const now = Date.now(); let cleaned = 0;
   for (const [id, room] of Object.entries(rooms)) {
-    if (room.users.length === 0 && !room.password && !room.isVip && (now - room.lastActivityAt) > ROOM_EMPTY_TIMEOUT) {
+    // VIP odalar asla silinmesin
+    if (room.isVip) continue;
+    // Boş oda 5 dakika geçmişse sil
+    if (room.users.length === 0 && room.emptySince && (now - room.emptySince) > ROOM_EMPTY_TIMEOUT) {
+      try { db.deleteRoom(id); } catch (e) {}
       delete rooms[id]; delete tombalaGames[id]; cleaned++;
     }
   }
-  if (cleaned > 0) { logger.info(`${cleaned} bos oda temizlendi.`); broadcastRooms(); }
+  if (cleaned > 0) { logger.info(`${cleaned} bos oda silindi (5dk kurali).`); broadcastRooms(); }
 }, ROOM_CLEANUP_INTERVAL);
 
 // ═══════════════════════════════════════════════════════════
@@ -653,7 +710,7 @@ io.on('connection', (socket) => {
   // 7.0 ADMIN REAL-TIME DASHBOARD
   // ──────────────────────────────────────────────────────
   socket.on('admin_connect', ({ pass } = {}) => {
-    if (pass !== (process.env.ADMIN_PASS || 'admin123')) return;
+    if (pass !== EFFECTIVE_ADMIN_PASS) return;
     adminSocketIds.add(socket.id);
     startAdminUpdates();
     try { broadcastAdminDashboard(); } catch (e) {}
@@ -682,7 +739,12 @@ io.on('connection', (socket) => {
 
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-    db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '🐱', sanitize(bio, 120));
+    try {
+      db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '🐱', sanitize(bio, 120));
+    } catch (e) {
+      logger.error(`[KAYIT] DB hatasi: ${cleanUsername} - ${e.message}`);
+      return socket.emit('auth_result', { ok: false, message: 'Bu kullanici adi veya e-posta zaten kayitli.' });
+    }
     const token = db.createToken(cleanUsername);
     socket.socialUsername = cleanUsername;
     setOnline(cleanUsername, socket.id);
@@ -798,7 +860,8 @@ io.on('connection', (socket) => {
     if (!user) return socket.emit('change_password_result', { success: false, message: 'Kullanıcı bulunamadı.' });
     const [salt, hash] = user.passwordHash.split(':');
     const newHash = crypto.scryptSync(currentPassword, salt, 64).toString('hex');
-    if (hash !== newHash) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' });
+    const match = crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(newHash, 'hex'));
+    if (!match) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' });
     if (!newPassword || newPassword.length < 6) return socket.emit('change_password_result', { success: false, message: 'Yeni şifre en az 6 karakter olmalı.' });
     const newSalt = crypto.randomBytes(16).toString('hex');
     const newHashFull = crypto.scryptSync(newPassword, newSalt, 64).toString('hex');
@@ -1257,6 +1320,7 @@ io.on('connection', (socket) => {
     const id = crypto.randomBytes(8).toString('hex');
     const memberList = [from.username, ...(members || []).map(m => sanitize(m, 24)).filter(m => m && m !== from.username)].slice(0, 20);
     chatGroups[id] = { id, name: cleanName, createdBy: from.username, members: memberList, messages: [], createdAt: Date.now() };
+    try { db.saveGroupChatDef({ id, name: cleanName, createdBy: from.username, members: memberList, createdAt: Date.now() }); } catch (e) {}
     memberList.forEach(username => emitToUser(username, 'group_created', { id, name: cleanName, members: memberList, createdBy: from.username }));
   });
 
@@ -1383,6 +1447,7 @@ io.on('connection', (socket) => {
         messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
       };
       room = rooms[cleanRoomId];
+      try { db.saveRoom({ id: cleanRoomId, name: cleanRoomId, hostUserId: userId, password: room.password, isVip: room.isVip, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
     } else {
       if (room.password && room.password !== (password || '')) { socket.emit('room_error', 'Şifre hatalı!'); return; }
       if (room.kickedUsers && room.kickedUsers.includes(userId)) { socket.emit('room_error', 'Bu odadan atıldınız, tekrar giremezsiniz!'); return; }
@@ -1523,6 +1588,8 @@ io.on('connection', (socket) => {
         };
         if (!room.messages) room.messages = [];
         room.messages.push(msg);
+        try { db.saveRoomMessage({ id: msg.id, roomId: cleanRoomId, username: msg.sender, avatar: msg.avatar, text: msg.text, time: msg.time, createdAt: msg.createdAt }); } catch (e) {}
+        try { db.updateRoomActivity(cleanRoomId); } catch (e) {}
         room.messages = room.messages.slice(-200);
         room.lastActivityAt = Date.now();
         socket.to(cleanRoomId).emit('room_action', { type, payload: msg });
@@ -1711,10 +1778,20 @@ io.on('connection', (socket) => {
       socket.leave(rId); socket.currentRoom = null;
 
       if (rooms[rId].users.length === 0) {
-        delete rooms[rId];
-        delete tombalaGames[rId];
-        logger.info(`Oda silindi (bos): ${rId}`);
+        if (!rooms[rId].isVip) {
+          rooms[rId].emptySince = Date.now();
+          logger.info(`Oda boşaldı (5 dk sonra silinecek): ${rId}`);
+        }
+        updateRoomUsers(rId);
       } else {
+        // Host ayrıldıysa transfer et
+        const leftUsername = rooms[rId].users.find(u => u.socketId === socket.id)?.username;
+        if (rooms[rId].hostUserId === leftUsername) {
+          const newHost = rooms[rId].users[0];
+          rooms[rId].hostUserId = newHost.username;
+          io.to(rId).emit('room_host_changed', { hostUserId: newHost.username, message: `${newHost.username} artık oda sahibi!` });
+          try { db.saveRoom({ id: rId, name: rooms[rId].name, hostUserId: newHost.username, password: rooms[rId].password, isVip: rooms[rId].isVip, maxUsers: rooms[rId].maxUsers, theme: rooms[rId].theme, createdAt: rooms[rId].createdAt, lastActivityAt: rooms[rId].lastActivityAt }); } catch (e) {}
+        }
         updateRoomUsers(rId);
       }
       broadcastRooms();
@@ -1737,10 +1814,23 @@ io.on('connection', (socket) => {
         rooms[rId].lastActivityAt = Date.now();
 
         if (rooms[rId].users.length === 0) {
-          delete rooms[rId];
-          delete tombalaGames[rId];
-          logger.info(`Oda silindi (disconnect, bos): ${rId}`);
+          // VIP olmayan boş oda 5 dakika sonra silinecek
+          if (!rooms[rId].isVip) {
+            rooms[rId].emptySince = Date.now();
+            logger.info(`Oda boşaldı (5 dk sonra silinecek): ${rId}`);
+          } else {
+            logger.info(`VIP oda boş ama korunuyor: ${rId}`);
+          }
+          updateRoomUsers(rId);
         } else {
+          // Host ayrıldıysa sıradaki kullanıcıya host ver
+          if (rooms[rId].hostUserId === rooms[rId].users.find(u => u.socketId === sid)?.username && rooms[rId].users.length > 0) {
+            const newHost = rooms[rId].users[0];
+            rooms[rId].hostUserId = newHost.username;
+            io.to(rId).emit('room_host_changed', { hostUserId: newHost.username, message: `${newHost.username} artık oda sahibi!` });
+            logger.info(`Host transferi: ${rId} → ${newHost.username}`);
+            try { db.saveRoom({ id: rId, name: rooms[rId].name, hostUserId: newHost.username, password: rooms[rId].password, isVip: rooms[rId].isVip, maxUsers: rooms[rId].maxUsers, theme: rooms[rId].theme, createdAt: rooms[rId].createdAt, lastActivityAt: rooms[rId].lastActivityAt }); } catch (e) {}
+          }
           updateRoomUsers(rId);
         }
         broadcastRooms();
