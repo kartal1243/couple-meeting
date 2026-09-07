@@ -11,12 +11,18 @@ export default function Footer() {
             <div style={{ color: '#8696a0', fontSize: 12, lineHeight: 1.7 }}>
               Uzaktaki sevdiklerinle müzik ve video deneyimini birlikte yaşa. Aynı anda dinle, izle, sohbet et.
             </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+              <a href="https://twitter.com/couplemeeting" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(29,161,242,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1da1f2', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(29,161,242,.15)' }}>𝕏</a>
+              <a href="https://instagram.com/couplemeeting" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(225,48,108,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e1306c', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(225,48,108,.15)' }}>📷</a>
+              <a href="https://reddit.com/r/couplemeeting" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,69,0,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4500', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,69,0,.15)' }}>🔴</a>
+              <a href="https://github.com/kartal1243/couple-meeting" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,255,255,.08)' }}>⌨️</a>
+            </div>
           </div>
 
           <div>
             <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Ürün</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Nasıl Çalışır?</span>
+              <a href="/landing" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Nasıl Çalışır?</a>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Özellikler</span>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>VIP Üyelik</span>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Fiyatlandırma</span>

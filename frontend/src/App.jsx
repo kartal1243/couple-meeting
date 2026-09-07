@@ -11,6 +11,7 @@ import AppContext from './contexts/AppContext';
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
 import Communities from './pages/Communities';
 import Events from './pages/Events';
@@ -1295,6 +1296,8 @@ function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />
         <Route path="/events" element={<Events currentTheme={currentTheme} token={authToken} username={authUser?.username} socket={socket} />} />
+
+        <Route path="/landing" element={<LandingPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 

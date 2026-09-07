@@ -1,122 +1,170 @@
-# Couple Meeting - Reklam Metinleri & Sosyal Medya Stratejisi
+# Couple Meeting - Pazarlama Materyalleri
 
-## 🎯 Instagram / TikTok Reklam Metinleri
-
-### Reklam 1 - Genel Tanıtım
-**Başlık:** Arkadaşlarınla Aynı Anda Eğlen 🎬
-**Metin:** YouTube, Vimeo veya kendi videonu paylaş. Arkadaşlarınla aynı anda izle, sohbet et, müzik dinle. Ücretsiz video odası!
-
-### Reklam 2 - Müzik Odak
-**Başlık:** Müziği Birlikte Dinle 🎵
-**Metin:** Sevdiğin şarkıları playlist'e ekle, arkadaşlarınla aynı anda dinle. YouTube'dan milyonlarca şarkıya erişim. Hemen oda aç!
-
-### Reklam 3 - Oyun Odak
-**Başlık:** Tombala Oyna, Kazan! 🎯
-**Metin:** Arkadaşlarınla online tombala oyna. Video eşliğinde oyun keyfi. Couple Meeting ile eğlenceye katıl.
-
-### Reklam 4 - Sosyal Medya
-**Başlık:** Yalnız Değilsin 💜
-**Metin:** Yeni insanlarla tanış, topluluklara katıl, etkinliklere git. Couple Meeting ile sosyal çevreini genişlet.
+## 🔗 Linkler
+- Site: https://couplemeeting.com.tr
+- Landing: https://couplemeeting.com.tr/landing
+- GitHub: https://github.com/kartal1243/couple-meeting
 
 ---
 
-## 📱 Sosyal Medya Paylaşım Metinleri
+## 📱 Reddit Postları
 
-### Instagram Caption
-```
-🎬 Arkadaşlarınla aynı anda video izle
-🎵 Müzik dinle, sohbet et
-🎯 Tombala oyna
-👥 Topluluklara katıl
+### r/internetisbeautiful
+**Title:** I built a free platform where you can watch YouTube videos with friends in real-time — no download needed
 
-ÜCRETSİZ hemen başla!
-🔗 couplemeeting.com.tr
+**Body:**
+Hey everyone! I built Couple Meeting (couplemeeting.com.tr) — a free web app where you can:
 
-#couplemeeting #videoodası #müzikdostu #arkadaşlarlatanış #ücretsizuygulama #onlineetkinlik #tombala #sosyalmedya
-```
+- Watch YouTube videos together with friends in real-time sync
+- Share music and create playlists
+- Chat via text or voice while watching
+- Create private rooms with passwords
+- Share your screen
 
-### Twitter/X Paylaşımı
-```
-Yeni nesil sosyal deneyim 🚀
+It's completely free, works on mobile/desktop, and requires no installation. Just create a room and share the link.
 
-Arkadaşlarınla aynı anda:
-✅ Video izle
-✅ Müzik dinle  
-✅ Sohbet et
-✅ Tombala oyna
-
-Ücretsiz: couplemeeting.com.tr
-
-#CoupleMeeting #SosyalMedya
-```
-
-### TikTok Açıklama
-```
-Arkadaşlarınla aynı anda video izleyebilir misin? 🤔
-Evet! Couple Meeting ile yapabilirsin 🎬
-Ücretsiz dene 👆
-#couplemeeting #video #müzik #arkadaşlar #ücretsiz
-```
+Currently in beta — would love your feedback!
 
 ---
 
-## 📧 E-posta Pazarlama (Yeni Kullanıcı Hoş Geldin)
+### r/webdev
+**Title:** Built a real-time video sync platform with React + Socket.IO — feedback welcome
 
-**Konu:** Couple Meeting'e Hoş Geldin! 🎉
+**Body:**
+I've been working on Couple Meeting, a real-time platform for watching YouTube videos with friends. Tech stack:
 
-Merhaba!
+- Frontend: React 19 + Vite
+- Backend: Node.js + Express + Socket.IO
+- Database: SQLite
+- Features: Voice chat, screen sharing, playlists, friend system, admin panel
 
-Couple Meeting ailesine hoş geldin! İşte yapabileceklerin:
+It's fully functional and free to use. Looking for feedback on the UX and any suggestions for improvement.
 
-🎬 **Video Odaları**: Arkadaşlarınla aynı anda YouTube, Vimeo veya özel videolar izle
-🎵 **Müzik**: Binlerce şarkıdan playlist oluştur, senkronize dinle
-💬 **Sohbet**: Hem sesli hem yazılı sohbet et
-🎯 **Tombala**: Arkadaşlarınla online tombala oyna
-👥 **Topluluklar**: İlgi alanına göre topluluklara katıl
-📅 **Etkinlikler**: Yaklaşan etkinlikleri takip et
-
-Hemen bir oda aç ve arkadaşlarını davet et!
-
-Sevgilerle,
-Couple Meeting Ekibi 💜
+Live at: couplemeeting.com.tr
 
 ---
 
-## 🎯 Google Ads Metinleri
+### r/SideProject
+**Title:** [Launch] Couple Meeting - Watch YouTube with friends for free
 
-### Reklam Grubu 1 - Video Odası
-**Başlık 1:** Ücretsiz Video Odası
-**Başlık 2:** Arkadaşlarınla İzle
-**Başlık 3:** YouTube Senkronize
-**Açıklama:** Aynı anda video izle, sohbet et. Ücretsiz video odası uygulaması. Hemen dene!
+**Body:**
+Hey! I just launched Couple Meeting — a free platform for watching videos with friends.
 
-### Reklam Grubu 2 - Müzik
-**Başlık 1:** Müziği Birlikte Dinle
-**Başlık 2:** Playlist Oluştur
-**Başlık 3:** Online Müzik Keyfi
-**Açıklama:** Arkadaşlarınla müzik dinle. YouTube'dan milyonlarca şarkı. Ücretsiz!
+**What it does:**
+- Sync YouTube playback with friends
+- Voice & text chat
+- Private rooms with passwords
+- VIP features
+- Mobile-friendly
 
-### Reklam Grubu 3 - Sosyal
-**Başlık 1:** Yeni İnsanlarla Tanış
-**Başlık 2:** Topluluklara Katıl
-**Başlık 3:** Etkinlik Bul
-**Açıklama:** Sosyal çevreni genişlet. Video odalarında yeni arkadaşlar edin.
+**Tech:** React, Socket.IO, Node.js, SQLite
+
+It's in beta right now. Try it out and let me know what you think!
 
 ---
 
-## 📊 Takip Edilecekler
+## 🐦 Twitter/X Posts
 
-### 1. Haftalık
-- [ ] Google Search Console performans kontrolü
-- [ ] Sosyal medya paylaşımları (3-4 post/hafta)
-- [ ] Kullanıcı geri bildirimleri
+### Launch Tweet
+🎬 Arkadaşlarınla aynı anda YouTube izle, müzik paylaş, sohbet et!
 
-### 2. Aylık
-- [ ] SEO sıralama kontrolü
-- [ ] Reklam kampanyası sonuçları
-- [ ] Yeni özellik duyuruları
+Couple Meeting ücretsiz canlı video odası platformu 🚀
 
-### 3. 3 Aylık
-- [ ] Uygulama mağazası başvurusu (PWA wrapper)
-- [ ] Ortaklık programı başlatma
-- [ ] Bütçe planlaması
+👉 couplemeeting.com.tr
+
+#CoupleMeeting #video #müzik #sohbet #ücretsiz
+
+### Feature Tweet
+Yeni özellikler geldi! 🎉
+
+🎬 YouTube senkron izleme
+🎵 Müzik paylaşımı
+🎤 Sesli sohbet
+💬 Canlı chat
+🔒 Şifreli odalar
+
+Hemen dene: couplemeeting.com.tr
+
+### Turkish Community
+Arkadaşlarla film gecesi yapmak isteyenler? 🎬🍿
+
+couplemeeting.com.tr ile aynı anda aynı videoyu izleyebilir, sohbet edebilirsiniz. Ücretsiz!
+
+#arkadaşlarlafilm #müzikgecesi #canlısohbet
+
+---
+
+## 🟠 Hacker News Post
+
+**Title:** Couple Meeting – Free real-time YouTube sync with friends (React + Socket.IO)
+
+**Body:**
+Hey HN! I built Couple Meeting, a free web app for watching YouTube videos with friends in real-time sync.
+
+Key features:
+- YouTube video sync across participants
+- Voice chat and text chat
+- Private rooms with passwords
+- Screen sharing
+- Playlist management
+- Mobile-friendly (no app needed)
+
+Built with React 19, Socket.IO, Express, and SQLite.
+
+Looking for feedback on the architecture and any suggestions for scaling.
+
+Try it: couplemeeting.com.tr
+
+---
+
+## 🚀 Product Hunt
+
+**Name:** Couple Meeting
+**Tagline:** Watch YouTube with friends, for free
+**Description:** 
+Couple Meeting is a free platform that lets you watch YouTube videos with friends in real-time sync. Create a room, invite friends, and enjoy videos together — complete with voice chat, text chat, and playlist management. No download required, works on any device.
+
+**Maker Comment:**
+Hey! I built this because I wanted an easy way to watch videos with long-distance friends. Currently in beta with features like:
+- Real-time YouTube sync
+- Voice & text chat
+- Private rooms
+- Screen sharing
+- Mobile-friendly
+
+Would love your feedback!
+
+---
+
+## 📧 Outreach Email (Turkish)
+
+**Konu:** Couple Meeting - Ücretsiz Canlı Video Odası Platformu
+
+Merhaba,
+
+Couple Meeting, arkadaşlarınla aynı anda YouTube videosu izleyebileceğin, müzik paylaşabileceğin ve sohbet edebileceğin ücretsiz bir platform.
+
+Şu an beta aşamasındayız ve geri bildirim arıyoruz.
+
+Site: https://couplemeeting.com.tr
+Landing: https://couplemeeting.com.tr/landing
+
+İlgilenirseniz memnun oluruz!
+
+Saygılar,
+Couple Meeting Ekibi
+
+---
+
+## 📊 SEO Anahtar Kelimeler (Turkish)
+
+- canlı video odası
+- arkadaşlarla video izle
+- youtube birlikte izle
+- online sohbet odası
+- müzik paylaş
+- sesli sohbet
+- video chat türkçe
+- ücretsiz canlı yayın
+- arkadaşlarla buluş
+- çift buluşma

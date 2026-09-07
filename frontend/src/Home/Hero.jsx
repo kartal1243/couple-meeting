@@ -52,6 +52,20 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
             👤 Ücretsiz Hesap Aç
           </button>
         )}
+        <button
+          className="cm-big-btn"
+          onClick={() => {
+            if (navigator.share) {
+              navigator.share({ title: 'Couple Meeting', text: 'Arkadaşlarınla aynı anda video izle, müzik paylaş, sohbet et!', url: 'https://couplemeeting.com.tr' });
+            } else {
+              navigator.clipboard.writeText('https://couplemeeting.com.tr');
+              alert('Link kopyalandı!');
+            }
+          }}
+          style={{ background: 'rgba(168,85,247,.15)', border: '1px solid rgba(168,85,247,.25)', color: '#a855f7' }}
+        >
+          📤 Paylaş
+        </button>
       </div>
 
       {authUser && (
