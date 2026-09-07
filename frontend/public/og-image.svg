@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="50%" style="stop-color:#161b22"/>
+      <stop offset="100%" style="stop-color:#0d1117"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="100%" style="stop-color:#00b4d8"/>
+    </linearGradient>
+    <linearGradient id="pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff69b4"/>
+      <stop offset="100%" style="stop-color:#ec4899"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="50%" style="stop-color:#ec4899"/>
+      <stop offset="100%" style="stop-color:#a855f7"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-strong">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Center glow -->
+  <circle cx="600" cy="260" r="180" fill="rgba(168,85,247,0.08)"/>
+  <circle cx="600" cy="260" r="120" fill="rgba(236,72,153,0.06)"/>
+
+  <!-- Logo group - centered -->
+  <g transform="translate(600, 240)">
+    <!-- Heart glow background -->
+    <ellipse cx="0" cy="10" rx="100" ry="80" fill="rgba(168,85,247,0.15)" filter="url(#glow-strong)"/>
+
+    <!-- Left phone (cyan) -->
+    <g filter="url(#glow)">
+      <!-- Phone body -->
+      <path d="M-75,-65 Q-75,-85 -55,-85 L-15,-85 Q5,-85 5,-65 L5,65 Q5,85 -15,85 L-55,85 Q-75,85 -75,65 Z" 
+            fill="none" stroke="url(#cyan)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Play button -->
+      <polygon points="-55,-15 -35,0 -55,15" fill="url(#cyan)" opacity="0.8"/>
+      <!-- WiFi signal -->
+      <path d="M-85,-45 Q-95,-55 -85,-65" fill="none" stroke="url(#cyan)" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      <path d="M-95,-35 Q-110,-50 -95,-65" fill="none" stroke="url(#cyan)" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+    </g>
+
+    <!-- Right phone (pink) -->
+    <g filter="url(#glow)">
+      <!-- Phone body -->
+      <path d="M75,-65 Q75,-85 55,-85 L15,-85 Q-5,-85 -5,-65 L-5,65 Q-5,85 15,85 L55,85 Q75,85 75,65 Z" 
+            fill="none" stroke="url(#pink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Play button -->
+      <polygon points="55,-15 35,0 55,15" fill="url(#pink)" opacity="0.8"/>
+      <!-- WiFi signal -->
+      <path d="M85,-45 Q95,-55 85,-65" fill="none" stroke="url(#pink)" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      <path d="M95,-35 Q110,-50 95,-65" fill="none" stroke="url(#pink)" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+    </g>
+
+    <!-- Center heart -->
+    <g filter="url(#glow)">
+      <path d="M0,-25 C0,-55 -45,-55 -45,-25 C-45,5 0,40 0,55 C0,40 45,5 45,-25 C45,-55 0,-55 0,-25 Z" 
+            fill="none" stroke="url(#purple)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- Couple Meeting text -->
+  <text x="600" y="400" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="300" fill="#ffffff" text-anchor="middle" letter-spacing="2">Couple </text>
+  <text x="730" y="400" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" fill="url(#pink)" text-anchor="middle" letter-spacing="2">Meeting</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="445" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#6b7280" text-anchor="middle" letter-spacing="4">ARKADAŞLARINLA CANLI VİDEO ODALARINDA BULUŞ</text>
+
+  <!-- Feature badges -->
+  <g transform="translate(600, 500)">
+    <rect x="-200" y="-18" width="110" height="36" rx="18" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="-145" y="5" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#9ca3af" text-anchor="middle">🎬 Video</text>
+    
+    <rect x="-70" y="-18" width="110" height="36" rx="18" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="-15" y="5" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#9ca3af" text-anchor="middle">🎵 Müzik</text>
+    
+    <rect x="60" y="-18" width="110" height="36" rx="18" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="115" y="5" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#9ca3af" text-anchor="middle">💬 Sohbet</text>
+  </g>
+
+  <!-- URL -->
+  <text x="600" y="580" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#4b5563" text-anchor="middle">couplemeeting.com.tr</text>
+
+  <!-- BETA badge -->
+  <rect x="545" y="595" width="50" height="20" rx="10" fill="url(#purple)"/>
+  <text x="570" y="610" font-family="Arial, sans-serif" font-size="10" font-weight="900" fill="#fff" text-anchor="middle">BETA</text>
+</svg>
