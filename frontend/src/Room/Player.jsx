@@ -20,6 +20,7 @@ function Player({
   const remoteCanvasRef = useRef(null);
   const frameIntervalRef = useRef(null);
   const [remoteScreen, setRemoteScreen] = useState(false);
+  const [screenShareError, setScreenShareError] = useState('');
 
   const ytOpts = {
     height: '100%', width: '100%',
@@ -96,7 +97,14 @@ function Player({
       }, 100);
 
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
-    } catch {}
+    } catch (err) {
+      console.error('Ekran paylaşımı hatası:', err);
+      let msg = 'Ekran paylaşımı başarısız.';
+      if (err.name === 'NotAllowedError') msg = 'Ekran paylaşımı izni reddedildi.';
+      else if (err.name === 'NotFoundError') msg = 'Paylaşılacak ekran bulunamadı.';
+      setScreenShareError(msg);
+      setTimeout(() => setScreenShareError(''), 5000);
+    }
   };
 
   const stopScreenShare = () => {
@@ -253,6 +261,14 @@ function Player({
           }}>
           🖥️ Ekran Paylaş
         </button>
+      )}
+      {screenShareError && (
+        <div style={{
+          position: 'absolute', top: 50, right: 12, zIndex: 15,
+          background: 'rgba(239,68,68,.95)', color: '#fff', padding: '8px 14px',
+          borderRadius: 10, fontSize: 11, fontWeight: 700, maxWidth: 280,
+          boxShadow: '0 4px 15px rgba(239,68,68,.4)'
+        }}>⚠️ {screenShareError}</div>
       )}
     </div>
   );

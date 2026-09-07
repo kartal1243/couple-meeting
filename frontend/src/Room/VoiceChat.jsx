@@ -5,17 +5,31 @@ const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { u
 function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
   const [voiceActive, setVoiceActive] = useState(false);
   const [voiceUsers, setVoiceUsers] = useState([]);
+  const [voiceError, setVoiceError] = useState('');
   const localStreamRef = useRef(null);
   const peersRef = useRef({});
   const audioContainerRef = useRef(null);
 
   const startVoice = useCallback(async () => {
+    setVoiceError('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
       setVoiceActive(true);
       if (socket) socket.emit('voice_join', { roomId, token });
-    } catch (err) { console.error('Mikrofon erişimi reddedildi:', err); }
+    } catch (err) {
+      console.error('Mikrofon erişimi reddedildi:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setVoiceError('Mikrofon izni reddedildi. Tarayıcı ayarlarından izin verin.');
+      } else if (err.name === 'NotFoundError') {
+        setVoiceError('Mikrofon bulunamadı. Cihazda mikrofon olduğundan emin olun.');
+      } else if (err.name === 'NotReadableError') {
+        setVoiceError('Mikrofon başka bir uygulama tarafından kullanılıyor.');
+      } else {
+        setVoiceError('Mikrofon erişimi başarısız. Lütfen tekrar deneyin.');
+      }
+      setTimeout(() => setVoiceError(''), 5000);
+    }
   }, [socket, roomId]);
 
   const stopVoice = useCallback(() => {
@@ -85,6 +99,15 @@ function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
     <>
       <div ref={audioContainerRef} style={{ display: 'none' }} />
 
+      {voiceError && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(239,68,68,.95)', color: '#fff', padding: '10px 18px',
+          borderRadius: 12, fontSize: 12, fontWeight: 700, zIndex: 9999,
+          boxShadow: '0 8px 30px rgba(239,68,68,.4)', maxWidth: 350, textAlign: 'center'
+        }}>⚠️ {voiceError}</div>
+      )}
+
       {/* Voice user indicators */}
       {voiceActive && voiceUsers.length > 0 && (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginRight: 6 }}>
@@ -115,9 +138,9 @@ function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
         <button onClick={startVoice} title="Sesli Sohbet" style={{
           background: 'rgba(34,197,94,.12)', color: '#22c55e',
           border: '1px solid rgba(34,197,94,.2)', borderRadius: 10,
-          padding: '7px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+          padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
-          transition: 'all 0.2s'
+          transition: 'all 0.2s', minHeight: 36
         }}>🎤 Ses</button>
       ) : (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
