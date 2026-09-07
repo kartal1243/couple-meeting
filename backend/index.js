@@ -1478,8 +1478,6 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
 
   socket.on('search_music', async ({ query, token }) => {
-    const user = requireAuth(token);
-    if (!user) return socket.emit('search_results', []);
     if (checkRate('search', 10)) return socket.emit('search_results', []);
     try {
       const q = sanitize(query, 200);
@@ -1620,11 +1618,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('add_to_playlist', ({ roomId, item, token }) => {
-    const user = requireAuth(token);
-    if (!user) return;
+    const user = token ? requireAuth(token) : null;
+    const addedBy = user ? user.username : (socket.userId || 'Misafir');
     const room = rooms[sanitize(roomId, 50)];
     if (room && item && typeof item === 'object') {
-      const safeItem = { id: item.id || crypto.randomBytes(8).toString('hex'), title: sanitize(item.title, 200) || 'Video', type: sanitize(item.type, 20) || 'youtube', src: sanitize(item.src, 500) || '', addedBy: user.username };
+      const safeItem = { id: item.id || crypto.randomBytes(8).toString('hex'), title: sanitize(item.title, 200) || 'Video', type: sanitize(item.type, 20) || 'youtube', src: sanitize(item.src, 500) || '', addedBy: sanitize(addedBy, 24) };
       room.playlist.push(safeItem);
       io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
     }
