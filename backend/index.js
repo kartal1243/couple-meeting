@@ -451,6 +451,32 @@ app.get('/api/admin/maintenance', adminAuth, (req, res) => {
   res.json({ ok: true, maintenanceMode });
 });
 
+// Admin: Feedback listesi
+app.get('/api/admin/feedback', adminAuth, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const status = req.query.status || '';
+    let rows;
+    if (status) {
+      rows = db.getDb().prepare('SELECT * FROM feedback WHERE status = ? ORDER BY created_at DESC LIMIT ?').all(status, limit);
+    } else {
+      rows = db.getDb().prepare('SELECT * FROM feedback ORDER BY created_at DESC LIMIT ?').all(limit);
+    }
+    res.json({ ok: true, feedback: rows });
+  } catch (e) { res.json({ ok: true, feedback: [] }); }
+});
+
+// Admin: Feedback durumu güncelle
+app.post('/api/admin/feedback/:id', adminAuth, (req, res) => {
+  try {
+    const { status } = req.body;
+    const valid = ['open', 'in_progress', 'resolved', 'dismissed'];
+    if (!valid.includes(status)) return res.status(400).json({ ok: false });
+    db.getDb().prepare('UPDATE feedback SET status = ? WHERE id = ?').run(status, req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
 // ═══════════════════════════════════════════════════════════
 // FEEDBACK / HATA BILDIRIMI
 // ═══════════════════════════════════════════════════════════
