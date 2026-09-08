@@ -3,8 +3,7 @@ import { useState, useRef, useEffect, memo } from 'react';
 
 function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
-  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult, handleVideoUpload,
-  isHost, onStartShortsMode
+  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult, handleVideoUpload
 }) {
   const styles = getStyles(currentTheme);
   const [showResults, setShowResults] = useState(false);
@@ -106,14 +105,6 @@ function SearchBar({
         style={{ background: '#6366f1', color: '#fff', padding: '7px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '8px', whiteSpace: 'nowrap', border: 'none', cursor: uploading ? 'wait' : 'pointer' }}>
         {uploading ? '⏳' : '📁'}
       </button>
-      {isHost && searchResults.length > 0 && (
-        <button className="cm-search-btn" onClick={() => {
-          const videoIds = searchResults.map(s => s.src || s.id).filter(Boolean);
-          if (videoIds.length > 0) onStartShortsMode?.(videoIds);
-        }} style={{ background: '#e11d48', color: '#fff', padding: '7px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '8px', whiteSpace: 'nowrap', border: 'none', cursor: 'pointer' }}>
-          📱 Shorts
-        </button>
-      )}
 
       {showYouTubeResults && (
         <div className="cm-search-results" style={{

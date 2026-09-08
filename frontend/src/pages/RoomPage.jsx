@@ -2,7 +2,6 @@ import { useApp } from '../contexts/AppContext';
 import Header from '../Room/Header';
 import SearchBar from '../Room/SearchBar';
 import Player from '../Room/Player';
-import ShortsPlayer from '../Room/ShortsPlayer';
 import Controls from '../Room/Controls';
 import Chat from '../Room/Chat';
 import Playlist from '../Room/Playlist';
@@ -28,8 +27,7 @@ export default function RoomPage() {
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars, handleVideoUpload,
     toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
-    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken,
-    shortsMode, handleStartShortsMode, handleExitShortsMode
+    messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
 
   const isHost = hostUserId === userId;
@@ -126,31 +124,17 @@ export default function RoomPage() {
             currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
             handleVideoUpload={handleVideoUpload}
-            isHost={isHost} onStartShortsMode={handleStartShortsMode}
           />
-          {shortsMode?.active ? (
-            <ErrorBoundary fallbackMessage="Shorts oynatıcı yüklenirken hata oluştu.">
-              <ShortsPlayer
-                videoIds={shortsMode.videoIds}
-                currentIndex={shortsMode.currentIndex}
-                isHost={isHost}
-                socket={socket}
-                roomId={roomId}
-                onExit={handleExitShortsMode}
-              />
-            </ErrorBoundary>
-          ) : (
-            <ErrorBoundary fallbackMessage="Oynatıcı yüklenirken bir hata oluştu.">
-              <Player
-                mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
-                ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
-                openYouTubeExternally={openYouTubeExternally}
-                handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-                screenSharing={screenSharing} setScreenSharing={setScreenSharing}
-                socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken}
-              />
-            </ErrorBoundary>
-          )}
+          <ErrorBoundary fallbackMessage="Oynatıcı yüklenirken bir hata oluştu.">
+            <Player
+              mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
+              ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
+              openYouTubeExternally={openYouTubeExternally}
+              handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
+              screenSharing={screenSharing} setScreenSharing={setScreenSharing}
+              socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken}
+            />
+          </ErrorBoundary>
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />
         </div>
 
