@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Couple Meeting - Google Ads Görselleri</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0e14; padding: 40px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #fff; text-align: center; margin-bottom: 40px; font-size: 28px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 30px; }
+        .ad-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); }
+        .ad-label { background: rgba(255,255,255,.05); padding: 12px 20px; color: #94a3b8; font-size: 12px; font-weight: 700; }
+        
+        /* Ad 1: Ana */
+        .ad-1 {
+            width: 1200px; height: 628px;
+            background: linear-gradient(135deg, #0a0e14, #1a1040, #0f172a);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .ad-1::before {
+            content: ''; position: absolute; top: -100px; right: -100px;
+            width: 400px; height: 400px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,168,132,.2), transparent);
+        }
+        .ad-1::after {
+            content: ''; position: absolute; bottom: -150px; left: -100px;
+            width: 500px; height: 500px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(124,58,237,.15), transparent);
+        }
+        .ad-1-content { position: relative; z-index: 1; max-width: 600px; }
+        .ad-1-badge { display: inline-block; background: rgba(0,168,132,.15); color: #00a884; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+        .ad-1-title { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; }
+        .ad-1-title span { background: linear-gradient(135deg, #00a884, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .ad-1-desc { color: #94a3b8; font-size: 18px; line-height: 1.5; margin-bottom: 30px; }
+        .ad-1-cta { display: inline-block; background: linear-gradient(135deg, #00a884, #008f6f); color: #fff; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 800; text-decoration: none; }
+        .ad-1-visual { position: relative; z-index: 1; }
+        .ad-1-phone { width: 200px; height: 400px; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 30px; border: 3px solid rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; position: relative; }
+        .ad-1-phone::before { content: '📱'; font-size: 80px; }
+        .ad-1-heart { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; }
+        .ad-1-url { position: absolute; bottom: 20px; right: 20px; color: #64748b; font-size: 14px; z-index: 1; }
+
+        /* Ad 2: Film */
+        .ad-2 {
+            width: 1200px; height: 628px;
+            background: linear-gradient(135deg, #1a0a2e, #0f172a, #1a1040);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .ad-2::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' opacity='0.03' x='10'>🎬</text%3E%3C/svg%3E") repeat;
+            background-size: 80px;
+        }
+        .ad-2-content { position: relative; z-index: 1; max-width: 600px; }
+        .ad-2-badge { display: inline-block; background: rgba(124,58,237,.15); color: #a855f7; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+        .ad-2-title { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; }
+        .ad-2-title span { background: linear-gradient(135deg, #a855f7, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .ad-2-desc { color: #94a3b8; font-size: 18px; line-height: 1.5; margin-bottom: 30px; }
+        .ad-2-cta { display: inline-block; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 800; text-decoration: none; }
+        .ad-2-visual { position: relative; z-index: 1; }
+        .ad-2-screen { width: 300px; height: 200px; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px; border: 3px solid rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .ad-2-screen::before { content: '▶️'; font-size: 60px; position: absolute; }
+        .ad-2-screen::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #7c3aed, #a855f7); }
+        .ad-2-url { position: absolute; bottom: 20px; right: 20px; color: #64748b; font-size: 14px; z-index: 1; }
+
+        /* Ad 3: Müzik */
+        .ad-3 {
+            width: 1200px; height: 628px;
+            background: linear-gradient(135deg, #0f172a, #1a1040, #0a0e14);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .ad-3::before {
+            content: ''; position: absolute; top: -200px; right: -200px;
+            width: 600px; height: 600px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(236,72,153,.15), transparent);
+        }
+        .ad-3-content { position: relative; z-index: 1; max-width: 600px; }
+        .ad-3-badge { display: inline-block; background: rgba(236,72,153,.15); color: #ec4899; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+        .ad-3-title { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; }
+        .ad-3-title span { background: linear-gradient(135deg, #ec4899, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .ad-3-desc { color: #94a3b8; font-size: 18px; line-height: 1.5; margin-bottom: 30px; }
+        .ad-3-cta { display: inline-block; background: linear-gradient(135deg, #ec4899, #db2777); color: #fff; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 800; text-decoration: none; }
+        .ad-3-visual { position: relative; z-index: 1; }
+        .ad-3-music { width: 200px; height: 200px; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 50%; border: 3px solid rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; }
+        .ad-3-music::before { content: '🎵'; font-size: 80px; }
+        .ad-3-url { position: absolute; bottom: 20px; right: 20px; color: #64748b; font-size: 14px; z-index: 1; }
+
+        /* Ad 4: Uzak Mesafe */
+        .ad-4 {
+            width: 1200px; height: 628px;
+            background: linear-gradient(135deg, #0f172a, #1a1040, #0a0e14);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .ad-4::before {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 400px; height: 400px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,168,132,.1), transparent);
+        }
+        .ad-4-content { position: relative; z-index: 1; max-width: 600px; }
+        .ad-4-badge { display: inline-block; background: rgba(0,168,132,.15); color: #00a884; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+        .ad-4-title { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; }
+        .ad-4-title span { background: linear-gradient(135deg, #00a884, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .ad-4-desc { color: #94a3b8; font-size: 18px; line-height: 1.5; margin-bottom: 30px; }
+        .ad-4-cta { display: inline-block; background: linear-gradient(135deg, #00a884, #008f6f); color: #fff; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 800; text-decoration: none; }
+        .ad-4-visual { position: relative; z-index: 1; display: flex; gap: 20px; align-items: center; }
+        .ad-4-phone { width: 120px; height: 240px; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 20px; border: 2px solid rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; }
+        .ad-4-phone::before { content: '📱'; font-size: 50px; }
+        .ad-4-heart { font-size: 40px; }
+        .ad-4-url { position: absolute; bottom: 20px; right: 20px; color: #64748b; font-size: 14px; z-index: 1; }
+
+        /* Ad 5: Ücretsiz */
+        .ad-5 {
+            width: 1200px; height: 628px;
+            background: linear-gradient(135deg, #00a884, #008f6f, #006b54);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .ad-5::before {
+            content: ''; position: absolute; top: -100px; right: -100px;
+            width: 400px; height: 400px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,.1), transparent);
+        }
+        .ad-5-content { position: relative; z-index: 1; max-width: 600px; }
+        .ad-5-badge { display: inline-block; background: rgba(255,255,255,.2); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+        .ad-5-title { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; }
+        .ad-5-desc { color: rgba(255,255,255,.8); font-size: 18px; line-height: 1.5; margin-bottom: 30px; }
+        .ad-5-cta { display: inline-block; background: #fff; color: #00a884; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 800; text-decoration: none; }
+        .ad-5-visual { position: relative; z-index: 1; }
+        .ad-5-badge-big { width: 150px; height: 150px; background: rgba(255,255,255,.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .ad-5-badge-big span:first-child { font-size: 50px; }
+        .ad-5-badge-big span:last-child { color: #fff; font-size: 14px; font-weight: 800; margin-top: 8px; }
+        .ad-5-url { position: absolute; bottom: 20px; right: 20px; color: rgba(255,255,255,.5); font-size: 14px; z-index: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Google Ads Görselleri — Couple Meeting</h1>
+        <p style="color: #64748b; text-align: center; margin-bottom: 40px;">Her görselin üzerine tıklayarak tam boyutta açabilirsin. Sağ tıkla → Resmi farklı kaydet.</p>
+        
+        <div class="grid">
+            <!-- Ad 1: Ana -->
+            <div class="ad-card">
+                <div class="ad-label">1. ANA REKLAM (1200x628)</div>
+                <div class="ad-1">
+                    <div class="ad-1-content">
+                        <div class="ad-1-badge">ÜCRETSİZ • KAYIT GEREKMEZ</div>
+                        <div class="ad-1-title">Arkadaşlarınla<br><span>YouTube İzle!</span></div>
+                        <div class="ad-1-desc">Ücretsiz, kayıt gerekmez. Tek link ile oda oluştur, arkadaşlarını davet et, birlikte izleyin.</div>
+                        <div class="ad-1-cta">🚀 Hemen Başla</div>
+                    </div>
+                    <div class="ad-1-visual">
+                        <div class="ad-1-phone">
+                            <div class="ad-1-heart">💚</div>
+                        </div>
+                    </div>
+                    <div class="ad-1-url">couplemeeting.com.tr</div>
+                </div>
+            </div>
+
+            <!-- Ad 2: Film -->
+            <div class="ad-card">
+                <div class="ad-label">2. FİLM GECEşi (1200x628)</div>
+                <div class="ad-2">
+                    <div class="ad-2-content">
+                        <div class="ad-2-badge">FİLM GECEşi</div>
+                        <div class="ad-2-title">Film Gecesi<br><span>Yap!</span></div>
+                        <div class="ad-2-desc">Arkadaşlarınla aynı anda film izle, yorumlarını paylaş. Ücretsiz film gecesi platformu.</div>
+                        <div class="ad-2-cta">🎬 Hemen Dene</div>
+                    </div>
+                    <div class="ad-2-visual">
+                        <div class="ad-2-screen"></div>
+                    </div>
+                    <div class="ad-2-url">couplemeeting.com.tr</div>
+                </div>
+            </div>
+
+            <!-- Ad 3: Müzik -->
+            <div class="ad-card">
+                <div class="ad-label">3. MÜZİK GECEşi (1200x628)</div>
+                <div class="ad-3">
+                    <div class="ad-3-content">
+                        <div class="ad-3-badge">MÜZİK GECEşi</div>
+                        <div class="ad-3-title">Müzik Gecesi<br><span>Yap!</span></div>
+                        <div class="ad-3-desc">Favori şarkılarını arkadaşlarınla paylaş, birlikte dinleyin. Ücretsiz müzik gecesi platformu.</div>
+                        <div class="ad-3-cta">🎵 Hemen Başla</div>
+                    </div>
+                    <div class="ad-3-visual">
+                        <div class="ad-3-music"></div>
+                    </div>
+                    <div class="ad-3-url">couplemeeting.com.tr</div>
+                </div>
+            </div>
+
+            <!-- Ad 4: Uzak Mesafe -->
+            <div class="ad-card">
+                <div class="ad-label">4. UZAK MESAFE (1200x628)</div>
+                <div class="ad-4">
+                    <div class="ad-4-content">
+                        <div class="ad-4-badge">MESAFE ENGELİ YOK</div>
+                        <div class="ad-4-title">Uzaktaki Sevgiliyle<br><span>Birlikte İzle!</span></div>
+                        <div class="ad-4-desc">Mesafe engeli olmadan birlikte izle. Ücretsiz, kolay, eğlenceli.</div>
+                        <div class="ad-4-cta">💚 Hemen Dene</div>
+                    </div>
+                    <div class="ad-4-visual">
+                        <div class="ad-4-phone"></div>
+                        <div class="ad-4-heart">💚</div>
+                        <div class="ad-4-phone"></div>
+                    </div>
+                    <div class="ad-4-url">couplemeeting.com.tr</div>
+                </div>
+            </div>
+
+            <!-- Ad 5: Ücretsiz -->
+            <div class="ad-card">
+                <div class="ad-label">5. ÜCRETSİZ (1200x628)</div>
+                <div class="ad-5">
+                    <div class="ad-5-content">
+                        <div class="ad-5-badge">%100 ÜCRETSİZ</div>
+                        <div class="ad-5-title">Kayıt Gerekmez,<br>Hemen Başla!</div>
+                        <div class="ad-5-desc">Tamamen ücretsiz, kayıt gerekmez. Misafir olarak giriş yap, hemen oda oluştur.</div>
+                        <div class="ad-5-cta">🚀 Hemen Başla</div>
+                    </div>
+                    <div class="ad-5-visual">
+                        <div class="ad-5-badge-big">
+                            <span>FREE</span>
+                            <span>%100 ÜCRETSİZ</span>
+                        </div>
+                    </div>
+                    <div class="ad-5-url">couplemeeting.com.tr</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
