@@ -6,7 +6,10 @@ import { BACKEND_URL, THEMES, HOME_CSS } from './constants';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
+import { isApp } from './utils/platform';
 import AppContext from './contexts/AppContext';
+import BottomNavBar from './components/mobile/BottomNavBar';
+import OnboardingScreen from './components/mobile/OnboardingScreen';
 
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
@@ -56,6 +59,10 @@ function App() {
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
   const [toast, setToast] = useState(null);
   const [typingUsers, setTypingUsers] = useState({});
+  
+  // Mobile app only
+  const [showOnboarding, setShowOnboarding] = useState(() => isApp() && !localStorage.getItem('cm_onboarding_done'));
+  const [mobileTab, setMobileTab] = useState('home');
   const [messageReactions, setMessageReactions] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
 
@@ -1325,6 +1332,8 @@ function App() {
         </div>
       )}
 
+      {showOnboarding && <OnboardingScreen onComplete={() => setShowOnboarding(false)} />}
+
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/room/:roomIdParam" element={<RoomPage />} />
@@ -1448,6 +1457,8 @@ function App() {
       {showProfileModal && (
         <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
       )}
+      
+      {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </AppContext.Provider>
   );
 }

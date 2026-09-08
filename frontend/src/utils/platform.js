@@ -1,7 +1,9 @@
-import { Capacitor } from '@capacitor/core';
-
-export const isApp = () => Capacitor.isNativePlatform();
-export const isPlatform = (p) => Capacitor.getPlatform() === p;
-export const isAndroid = () => Capacitor.getPlatform() === 'android';
-export const isIOS = () => Capacitor.getPlatform() === 'ios';
-export const isWeb = () => Capacitor.getPlatform() === 'web';
+export const isApp = () => {
+  try { return window.Capacitor?.isNativePlatform?.() || false; } catch { return false; }
+};
+export const isPlatform = (p) => {
+  try { return window.Capacitor?.getPlatform?.() === p; } catch { return false; }
+};
+export const isAndroid = () => isPlatform('android');
+export const isIOS = () => isPlatform('ios');
+export const isWeb = () => !isApp();
