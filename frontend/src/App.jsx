@@ -317,7 +317,14 @@ function App() {
 
   const sendDm = (to, text) => {
     if (!text.trim() || !authToken) return;
-    socket.emit('dm_send', { to, text: text.trim(), token: authToken });
+    const msgId = 'dm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const localMsg = {
+      id: msgId, sender: authUser?.username || username, text: text.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now(), isLocal: true
+    };
+    setDmMessages(prev => ({ ...prev, [to]: [...(prev[to] || []), localMsg] }));
+    socket.emit('dm_send', { to, text: text.trim(), token: authToken, msgId });
   };
 
   const sendDmTyping = (to) => { if (authToken) socket.emit('typing_start', { to, token: authToken }); };
@@ -1013,11 +1020,27 @@ function App() {
       if (dmActiveChat?.username === withUser || dmActiveChat === withUser) setDmMessages(messages || []);
       else if (!dmActiveChat && messages) setDmMessages(messages || []);
     });
-    socket.on('dm_sent', (msg) => { setDmMessages((prev) => [...prev, msg]); loadDmList(); });
+    socket.on('dm_sent', (msg) => {
+      setDmMessages((prev) => {
+        const chatKey = msg.to;
+        const msgs = prev[chatKey] || [];
+        const exists = msgs.find(m => m.id === msg.id || m.id === msg.localMsgId);
+        if (exists) return { ...prev, [chatKey]: msgs.map(m => (m.id === msg.localMsgId ? { ...m, id: msg.id, isLocal: false } : m)) };
+        return { ...prev, [chatKey]: [...msgs, msg] };
+      });
+      loadDmList();
+    });
     socket.on('dm_status', (data) => { if (data?.message) { setToast({ msg: data.message, sender: 'Sistem', id: Date.now() }); setTimeout(() => setToast(null), 4000); } });
     socket.on('dm_received', (msg) => {
-      if (dmActiveChat?.username === msg.from) { setDmMessages((prev) => [...prev, msg]); socket.emit('dm_read', { withUser: msg.from, token: authToken }); }
-      else {
+      const activeChat = typeof dmActiveChat === 'string' ? dmActiveChat : dmActiveChat?.username;
+      if (activeChat === msg.from) {
+        setDmMessages((prev) => {
+          const msgs = prev[msg.from] || [];
+          if (msgs.find(m => m.id === msg.id)) return prev;
+          return { ...prev, [msg.from]: [...msgs, msg] };
+        });
+        socket.emit('dm_read', { withUser: msg.from, token: authToken });
+      } else {
         setToast({ msg: `${msg.from}: ${msg.text}`, sender: msg.from, id: Date.now() });
         setTimeout(() => setToast(null), 4000);
         if ('Notification' in window && Notification.permission === 'granted') {

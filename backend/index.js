@@ -1476,8 +1476,8 @@ io.on('connection', (socket) => {
   const dmMessages = globalDmMessages;
   const chatGroups = globalChatGroups;
 
-  socket.on('dm_send', ({ to, text, token } = {}) => {
-    if (checkRate('chat', 20)) return;
+  socket.on('dm_send', ({ to, text, token, msgId } = {}) => {
+    if (checkRate('chat', 30)) return;
     const from = db.getUserByToken(token);
     if (!from) return;
     const cleanText = sanitize(text, 500);
@@ -1488,7 +1488,7 @@ io.on('connection', (socket) => {
     if (db.isBlocked(toUser.username, from.username)) return socket.emit('dm_status', { message: 'Bu kullanıcı sizi engelledi.' });
     if (db.isBlocked(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Bu kullanıcıyı engellediniz. Engellemek için kaldırın.' });
     const msg = {
-      id: crypto.randomBytes(8).toString('hex'),
+      id: msgId || crypto.randomBytes(8).toString('hex'),
       from: from.username, fromAvatar: from.avatar,
       to: toUser.username, toAvatar: toUser.avatar,
       text: cleanText,
@@ -1501,8 +1501,7 @@ io.on('connection', (socket) => {
     dmMessages[key].push(msg);
     if (dmMessages[key].length > 200) dmMessages[key] = dmMessages[key].slice(-200);
     emitToUser(toUser.username, 'dm_received', msg);
-    db.createNotification(toUser.username, 'dm', from.username, 'Yeni Mesaj', `${from.username}: ${cleanText.slice(0, 80)}`, { from: from.username });
-    socket.emit('dm_sent', msg);
+    socket.emit('dm_sent', { ...msg, localMsgId: msgId });
   });
 
   socket.on('dm_history', ({ withUser, token }) => {
