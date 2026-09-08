@@ -477,6 +477,165 @@ app.post('/api/admin/feedback/:id', adminAuth, (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// ADMIN: DETAYLI KULLANICI PROFİLİ
+// ═══════════════════════════════════════════════════════════
+app.get('/api/admin/users/:username/detail', adminAuth, (req, res) => {
+  try {
+    const uname = sanitize(req.params.username, 30);
+    const user = db.getUser(uname);
+    if (!user) return res.status(404).json({ ok: false, message: 'Kullanıcı bulunamadı' });
+
+    const friendCount = db.getDb().prepare('SELECT COUNT(*) as c FROM friendships WHERE user1 = ? OR user2 = ?').get(uname, uname)?.c || 0;
+    const messageCount = db.getDb().prepare('SELECT COUNT(*) as c FROM dm_messages WHERE from_username = ? OR to_username = ?').get(uname, uname)?.c || 0;
+    const roomCount = db.getDb().prepare('SELECT COUNT(*) as c FROM rooms WHERE host_user_id = ?').get(uname)?.c || 0;
+    const logCount = db.getDb().prepare('SELECT COUNT(*) as c FROM connection_logs WHERE username = ?').get(uname)?.c || 0;
+    const lastLogs = db.getDb().prepare('SELECT * FROM connection_logs WHERE username = ? ORDER BY created_at DESC LIMIT 10').all(uname);
+    const reportCount = db.getDb().prepare('SELECT COUNT(*) as c FROM user_reports WHERE reporter = ? OR reported = ?').get(uname, uname)?.c || 0;
+    const followCount = db.getDb().prepare('SELECT COUNT(*) as c FROM follows WHERE follower = ?').get(uname)?.c || 0;
+    const followerCount = db.getDb().prepare('SELECT COUNT(*) as c FROM follows WHERE following = ?').get(uname)?.c || 0;
+
+    res.json({
+      ok: true,
+      user: { ...db.formatUser(user), created_at: user.created_at, last_seen: user.last_seen },
+      stats: { friendCount, messageCount, roomCount, logCount, reportCount, followCount, followerCount },
+      recentLogs: lastLogs.map(l => ({ ip: l.ip, room_id: l.room_id, action: l.action, created_at: l.created_at }))
+    });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN: HESAP YÖNETİMİ
+// ═══════════════════════════════════════════════════════════
+app.post('/api/admin/users/reset-password', adminAuth, async (req, res) => {
+  try {
+    const { username } = req.body;
+    const uname = sanitize(username, 30);
+    const user = db.getUser(uname);
+    if (!user) return res.status(404).json({ ok: false, message: 'Kullanıcı bulunamadı' });
+    const crypto = require('crypto');
+    const newPass = crypto.randomBytes(8).toString('hex');
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(newPass, 10);
+    db.updateUser(uname, { password_hash: hash });
+    res.json({ ok: true, newPassword: newPass });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+app.post('/api/admin/users/change-email', adminAuth, (req, res) => {
+  try {
+    const { username, newEmail } = req.body;
+    const uname = sanitize(username, 30);
+    const email = sanitize(newEmail, 100);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, message: 'Geçersiz e-posta' });
+    const existing = db.getUserByEmail(email);
+    if (existing && existing.username !== uname) return res.status(400).json({ ok: false, message: 'Bu e-posta zaten kayıtlı' });
+    db.updateUser(uname, { email });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+app.post('/api/admin/users/freeze', adminAuth, (req, res) => {
+  try {
+    const { username, frozen } = req.body;
+    const uname = sanitize(username, 30);
+    db.updateUser(uname, { frozen: frozen ? 1 : 0 });
+    logger.info(`[ADMIN] Hesap donduruldu: ${uname} -> ${frozen}`);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN: GELİŞMİŞ ANALİTİK
+// ═══════════════════════════════════════════════════════════
+app.get('/api/admin/analytics', adminAuth, (req, res) => {
+  try {
+    const now = Date.now();
+    const day = 86400000;
+    const usersToday = db.getDb().prepare('SELECT COUNT(*) as c FROM users WHERE created_at > ?').get(now - day)?.c || 0;
+    const usersWeek = db.getDb().prepare('SELECT COUNT(*) as c FROM users WHERE created_at > ?').get(now - 7 * day)?.c || 0;
+    const usersMonth = db.getDb().prepare('SELECT COUNT(*) as c FROM users WHERE created_at > ?').get(now - 30 * day)?.c || 0;
+    const activeToday = db.getDb().prepare('SELECT COUNT(DISTINCT username) as c FROM connection_logs WHERE created_at > ?').get(now - day)?.c || 0;
+    const activeWeek = db.getDb().prepare('SELECT COUNT(DISTINCT username) as c FROM connection_logs WHERE created_at > ?').get(now - 7 * day)?.c || 0;
+    const roomsCreatedToday = db.getDb().prepare('SELECT COUNT(*) as c FROM rooms WHERE created_at > ?').get(now - day)?.c || 0;
+    const roomsCreatedWeek = db.getDb().prepare('SELECT COUNT(*) as c FROM rooms WHERE created_at > ?').get(now - 7 * day)?.c || 0;
+    const messagesToday = db.getDb().prepare('SELECT COUNT(*) as c FROM dm_messages WHERE created_at > ?').get(now - day)?.c || 0;
+    const messagesWeek = db.getDb().prepare('SELECT COUNT(*) as c FROM dm_messages WHERE created_at > ?').get(now - 7 * day)?.c || 0;
+    const topRooms = db.getDb().prepare('SELECT room_id, COUNT(*) as visits FROM connection_logs WHERE created_at > ? GROUP BY room_id ORDER BY visits DESC LIMIT 10').all(now - day);
+    const dailySignups = db.getDb().prepare("SELECT date(created_at/1000, 'unixepoch') as day, COUNT(*) as count FROM users WHERE created_at > ? GROUP BY day ORDER BY day DESC LIMIT 30").all(now - 30 * day);
+
+    res.json({
+      ok: true,
+      analytics: {
+        users: { today: usersToday, week: usersWeek, month: usersMonth },
+        active: { today: activeToday, week: activeWeek },
+        rooms: { today: roomsCreatedToday, week: roomsCreatedWeek },
+        messages: { today: messagesToday, week: messagesWeek },
+        topRooms,
+        dailySignups
+      }
+    });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN: TOPLU İLETİŞİM
+// ═══════════════════════════════════════════════════════════
+app.post('/api/admin/bulk-message', adminAuth, (req, res) => {
+  try {
+    const { target, message, type } = req.body;
+    const msg = sanitize(message, 1000);
+    if (!msg) return res.status(400).json({ ok: false, message: 'Mesaj boş olamaz' });
+
+    if (type === 'all') {
+      const users = db.getDb().prepare('SELECT username FROM users').all();
+      let count = 0;
+      for (const u of users) {
+        try {
+          db.createNotification(u.username, 'admin_broadcast', 'admin', 'Admin Duyurusu', msg, {});
+          count++;
+        } catch {}
+      }
+      logger.info(`[ADMIN] Toplu mesaj gönderildi: ${count} kullanıcıya`);
+      res.json({ ok: true, sentCount: count });
+    } else if (type === 'vip') {
+      const users = db.getDb().prepare('SELECT username FROM users WHERE is_vip = 1').all();
+      let count = 0;
+      for (const u of users) {
+        try {
+          db.createNotification(u.username, 'admin_broadcast', 'admin', 'VIP Duyurusu', msg, {});
+          count++;
+        } catch {}
+      }
+      res.json({ ok: true, sentCount: count });
+    } else if (type === 'single' && target) {
+      const uname = sanitize(target, 30);
+      db.createNotification(uname, 'admin_broadcast', 'admin', 'Admin Mesajı', msg, {});
+      res.json({ ok: true, sentCount: 1 });
+    } else {
+      res.status(400).json({ ok: false, message: 'Geçersiz hedef' });
+    }
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+app.post('/api/admin/send-email', adminAuth, async (req, res) => {
+  try {
+    const { to, subject, body } = req.body;
+    if (!nodemailer) return res.status(500).json({ ok: false, message: 'E-posta servisi mevcut değil' });
+    const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: 587, secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
+    if (to === 'all') {
+      const users = db.getDb().prepare('SELECT email FROM users WHERE email IS NOT NULL AND email != ""').all();
+      const emails = users.map(u => u.email);
+      if (emails.length === 0) return res.json({ ok: true, sentCount: 0 });
+      await transporter.sendMail({ from: process.env.SMTP_USER || 'noreply@couplemeeting.com.tr', to: emails.join(','), subject: sanitize(subject, 200), html: sanitize(body, 5000) });
+      res.json({ ok: true, sentCount: emails.length });
+    } else {
+      await transporter.sendMail({ from: process.env.SMTP_USER || 'noreply@couplemeeting.com.tr', to: sanitize(to, 100), subject: sanitize(subject, 200), html: sanitize(body, 5000) });
+      res.json({ ok: true, sentCount: 1 });
+    }
+  } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════
 // FEEDBACK / HATA BILDIRIMI
 // ═══════════════════════════════════════════════════════════
 app.post('/api/feedback', (req, res) => {

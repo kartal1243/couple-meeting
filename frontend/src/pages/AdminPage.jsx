@@ -30,6 +30,15 @@ function AdminPage() {
   const [vipPlan, setVipPlan] = useState('yearly');
   const [toast, setToast] = useState(null);
   const [livePing, setLivePing] = useState(Date.now());
+  const [analytics, setAnalytics] = useState(null);
+  const [userDetail, setUserDetail] = useState(null);
+  const [showUserDetail, setShowUserDetail] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState('');
+  const [bulkTarget, setBulkTarget] = useState('all');
+  const [bulkType, setBulkType] = useState('notification');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailTarget, setEmailTarget] = useState('all');
   const navigate = useNavigate();
   const activityFeedRef = useRef([]);
   const chartRef = useRef([]);
@@ -125,6 +134,59 @@ function AdminPage() {
     const interval = setInterval(fetchLogs, 30000);
     return () => clearInterval(interval);
   }, [authed, fetchLogs]);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const res = await api('/api/admin/analytics');
+      if (res.ok) setAnalytics(res.analytics);
+    } catch {}
+  }, [api]);
+
+  const fetchUserDetail = useCallback(async (username) => {
+    try {
+      const res = await api(`/api/admin/users/${encodeURIComponent(username)}/detail`);
+      if (res.ok) { setUserDetail(res); setShowUserDetail(true); }
+    } catch {}
+  }, [api]);
+
+  const resetPassword = async (username) => {
+    if (!confirm(`${username} kullanıcısının şifresini sıfırlamak istediğine emin misin?`)) return;
+    const res = await api('/api/admin/users/reset-password', { method: 'POST', body: JSON.stringify({ username }) });
+    if (res.ok) alert(`Yeni şifre: ${res.newPassword}\nBu şifreyi kaydet!`);
+  };
+
+  const changeEmail = async (username) => {
+    const newEmail = prompt(`${username} için yeni e-posta adresi:`);
+    if (!newEmail) return;
+    const res = await api('/api/admin/users/change-email', { method: 'POST', body: JSON.stringify({ username, newEmail }) });
+    if (res.ok) showToast('E-posta güncellendi');
+    else showToast(res.message || 'Hata', 'error');
+  };
+
+  const freezeAccount = async (username, frozen) => {
+    if (!confirm(`${username} hesabını ${frozen ? 'dondurmayı kaldır' : 'dondur'}mak istediğine emin misin?`)) return;
+    await api('/api/admin/users/freeze', { method: 'POST', body: JSON.stringify({ username, frozen: !frozen }) });
+    showToast(`Hesap ${frozen ? 'dondurması kaldırıldı' : 'donduruldu'}`);
+  };
+
+  const sendBulkMessage = async (target, message) => {
+    const msg = message || bulkMessage;
+    const tgt = target || bulkTarget;
+    if (!msg.trim()) return;
+    const type = tgt === 'all' ? 'all' : tgt === 'vip' ? 'vip' : 'single';
+    const res = await api('/api/admin/bulk-message', { method: 'POST', body: JSON.stringify({ target: tgt, message: msg, type }) });
+    if (res.ok) { showToast(`${res.sentCount} kullanıcıya mesaj gönderildi`); setBulkMessage(''); }
+  };
+
+  const sendBulkEmail = async () => {
+    if (!emailSubject.trim() || !emailBody.trim()) return;
+    const res = await api('/api/admin/send-email', { method: 'POST', body: JSON.stringify({ to: emailTarget, subject: emailSubject, body: emailBody }) });
+    if (res.ok) { showToast(`${res.sentCount} kullanıcıya e-posta gönderildi`); setEmailSubject(''); setEmailBody(''); }
+  };
+
+  useEffect(() => {
+    if (authed && tab === 'analytics') fetchAnalytics();
+  }, [authed, tab, fetchAnalytics]);
 
   // ── ACTIONS ──
   const closeRoom = async (roomId) => {
@@ -237,6 +299,8 @@ function AdminPage() {
     { key: 'dashboard', icon: '📊', label: 'Gösterge Paneli' },
     { key: 'rooms', icon: '🏠', label: `Odalar (${totalRoomsCount})` },
     { key: 'users', icon: '👥', label: `Kullanıcılar (${users.length})` },
+    { key: 'analytics', icon: '📈', label: 'Analitik' },
+    { key: 'broadcast', icon: '📢', label: 'Toplu İletişim' },
     { key: 'feedback', icon: '🐛', label: `Geri Bildirim (${feedbackList.length})` },
     { key: 'logs', icon: '📋', label: 'Loglar' },
     { key: 'reports', icon: '🚨', label: `Raporlar (${reports.length})` },
@@ -480,6 +544,7 @@ function AdminPage() {
                       <div style={{ fontSize: 12, fontWeight: 700 }}>{u.username}</div>
                       <div style={{ fontSize: 10, color: '#475569' }}>{formatTime(u.createdAt)}</div>
                     </div>
+                    {u.frozen && <span style={{ fontSize: 9, background: 'rgba(239,68,68,.12)', color: '#ef4444', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>❄️</span>}
                     {u.isVip && <span style={{ fontSize: 9, background: 'rgba(234,179,8,.12)', color: '#eab308', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>👑</span>}
                   </div>
                 ))}
@@ -579,6 +644,7 @@ function AdminPage() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 800, fontSize: 14 }}>{u.username}</span>
+                        {u.frozen && <span style={{ fontSize: 9, background: 'rgba(239,68,68,.12)', color: '#ef4444', padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>❄️ Dondurulmuş</span>}
                         {u.isVip && <span style={{ fontSize: 9, background: 'rgba(234,179,8,.12)', color: '#eab308', padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>👑 {u.vipPlan}</span>}
                         {u.isBanned && <span style={{ fontSize: 9, background: 'rgba(239,68,68,.12)', color: '#ef4444', padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>🚫 BANNED</span>}
                       </div>
@@ -593,6 +659,10 @@ function AdminPage() {
                     <button onClick={(e) => { e.stopPropagation(); toggleBan(u.username, u.isBanned); }} className="admin-action"
                       style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: u.isBanned ? 'rgba(0,168,132,.12)' : 'rgba(239,68,68,.12)', color: u.isBanned ? '#00a884' : '#ef4444', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>
                       {u.isBanned ? '✅ Unban' : '🚫 Ban'}
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); fetchUserDetail(u.username); }} className="admin-action"
+                      style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'rgba(59,130,246,.12)', color: '#3b82f6', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>
+                      📋 Detay
                     </button>
                   </div>
                 </div>
@@ -838,6 +908,167 @@ function AdminPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ ANALYTICS ═══════════ */}
+        {tab === 'analytics' && (
+          <div style={{ animation: 'fadeIn .4s ease-out' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }} className="admin-stat-grid">
+              {[{ l: 'Bugün Kayıt', v: analytics?.users?.today || 0, c: '#00a884', icon: '👤' },
+                { l: 'Bu Hafta Kayıt', v: analytics?.users?.week || 0, c: '#3b82f6', icon: '📈' },
+                { l: 'Bu Ay Kayıt', v: analytics?.users?.month || 0, c: '#8b5cf6', icon: '📊' },
+                { l: 'Bugün Aktif', v: analytics?.active?.today || 0, c: '#f59e0b', icon: '🔥' },
+                { l: 'Bu Hafta Aktif', v: analytics?.active?.week || 0, c: '#ef4444', icon: '⚡' },
+                { l: 'Bugün Mesaj', v: analytics?.messages?.today || 0, c: '#06b6d4', icon: '💬' },
+                { l: 'Bu Hafta Mesaj', v: analytics?.messages?.week || 0, c: '#ec4899', icon: '💌' },
+                { l: 'Bugün Oda', v: analytics?.rooms?.today || 0, c: '#10b981', icon: '🏠' }
+              ].map((item, i) => (
+                <div key={i} style={{ background: 'rgba(255,255,255,.02)', borderRadius: 16, padding: '18px 16px', border: '1px solid rgba(255,255,255,.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 18 }}>{item.icon}</span>
+                    <span style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{item.l}</span>
+                  </div>
+                  <div style={{ color: item.c, fontSize: 28, fontWeight: 900 }}>{item.v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 14 }} className="admin-grid">
+              <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 22, border: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8', marginBottom: 14 }}>🏆 En Çok Ziyaret Edilen Odalar (Bugün)</div>
+                {analytics?.topRooms?.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {analytics.topRooms.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(255,255,255,.03)', borderRadius: 10 }}>
+                        <span style={{ color: '#64748b', fontSize: 12, fontWeight: 800, width: 24 }}>#{i + 1}</span>
+                        <span style={{ color: '#e2e8f0', fontSize: 13, flex: 1 }}>{r.room_id}</span>
+                        <span style={{ color: '#00a884', fontSize: 12, fontWeight: 800 }}>{r.visits} ziyaret</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p style={{ color: '#64748b', fontSize: 12 }}>Veri yok</p>}
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 22, border: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8', marginBottom: 14 }}>📅 Günlük Kayıtlar (Son 30 Gün)</div>
+                {analytics?.dailySignups?.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+                    {analytics.dailySignups.map((d, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'rgba(255,255,255,.03)', borderRadius: 8 }}>
+                        <span style={{ color: '#64748b', fontSize: 12, width: 90 }}>{d.day}</span>
+                        <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(255,255,255,.05)' }}>
+                          <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #7c3aed, #a855f7)', width: `${Math.min(100, (d.count / Math.max(...analytics.dailySignups.map(x => x.count))) * 100)}%` }} />
+                        </div>
+                        <span style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 800, width: 30, textAlign: 'right' }}>{d.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p style={{ color: '#64748b', fontSize: 12 }}>Veri yok</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ BULK COMMUNICATION ═══════════ */}
+        {tab === 'broadcast' && (
+          <div style={{ animation: 'fadeIn .4s ease-out' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 14 }} className="admin-grid">
+              <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 22, border: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8', marginBottom: 14 }}>📢 Bildirim Gönder</div>
+                <p style={{ color: '#64748b', fontSize: 11, marginBottom: 12 }}>Seçili kullanıcılara bildirim olarak gider.</p>
+                <select value={bulkTarget} onChange={e => setBulkTarget(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, marginBottom: 10 }}>
+                  <option value="all">Tüm Kullanıcılar</option>
+                  <option value="vip">Sadece VIP'ler</option>
+                  <option value="single">Tek Kullanıcı</option>
+                </select>
+                {bulkTarget === 'single' && (
+                  <input id="bulkSingleUser" placeholder="Kullanıcı adı" style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, marginBottom: 10 }} />
+                )}
+                <textarea value={bulkMessage} onChange={e => setBulkMessage(e.target.value)} placeholder="Mesajınızı yazın..."
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 100, marginBottom: 10 }} />
+                <button onClick={() => { const u = bulkTarget === 'single' ? document.getElementById('bulkSingleUser')?.value : null; if (bulkTarget === 'single' && !u) return showToast('Kullanıcı adı girin', 'error'); sendBulkMessage(u, bulkMessage); }} className="admin-action" style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>📤 Bildirim Gönder</button>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 22, border: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8', marginBottom: 14 }}>✉️ E-posta Gönder</div>
+                <p style={{ color: '#64748b', fontSize: 11, marginBottom: 12 }}>Seçili kullanıcılara e-posta gönderir. SMTP yapılandırması gerekir.</p>
+                <select value={emailTarget} onChange={e => setEmailTarget(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, marginBottom: 10 }}>
+                  <option value="all">Tüm Kullanıcılar (E-postası olan)</option>
+                  <option value="single">Tek Kullanıcı</option>
+                </select>
+                {emailTarget === 'single' && (
+                  <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Alıcı e-posta" style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, marginBottom: 10 }} />
+                )}
+                <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Konu" style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, marginBottom: 10 }} />
+                <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} placeholder="E-posta içeriği (HTML destekler)..."
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', color: '#e2e8f0', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 100, marginBottom: 10 }} />
+                <button onClick={sendBulkEmail} className="admin-action" style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>✉️ E-posta Gönder</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ USER DETAIL MODAL ═══════════ */}
+        {showUserDetail && userDetail && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50000, background: 'rgba(0,0,0,.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }} onClick={() => setShowUserDetail(false)}>
+            <div style={{ width: 'min(600px, 100%)', maxHeight: '90vh', background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(10,14,20,.98))', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: 28, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h3 style={{ color: '#fff', margin: 0, fontSize: 18, fontWeight: 900 }}>👤 Kullanıcı Detayı</h3>
+                <button onClick={() => setShowUserDetail(false)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', width: 32, height: 32, borderRadius: 16, cursor: 'pointer', fontSize: 16 }}>✕</button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: 16, background: 'rgba(255,255,255,.03)', borderRadius: 14 }}>
+                <div style={{ width: 60, height: 60, borderRadius: 30, background: 'rgba(0,168,132,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>{userDetail.user?.avatar || '🐱'}</div>
+                <div>
+                  <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>{userDetail.user?.username}</div>
+                  <div style={{ color: '#64748b', fontSize: 12 }}>{userDetail.user?.email}</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    {userDetail.user?.isVip && <span style={{ background: 'rgba(234,179,8,.15)', color: '#eab308', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800 }}>VIP</span>}
+                    {userDetail.user?.frozen ? <span style={{ background: 'rgba(239,68,68,.15)', color: '#ef4444', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800 }}>Dondurulmuş</span> : null}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 20 }}>
+                {[{ l: 'Arkadaş', v: userDetail.stats?.friendCount || 0, c: '#3b82f6' },
+                  { l: 'Mesaj', v: userDetail.stats?.messageCount || 0, c: '#00a884' },
+                  { l: 'Oda', v: userDetail.stats?.roomCount || 0, c: '#8b5cf6' },
+                  { l: 'Log', v: userDetail.stats?.logCount || 0, c: '#64748b' },
+                  { l: 'Takip', v: userDetail.stats?.followCount || 0, c: '#ec4899' },
+                  { l: 'Takipçi', v: userDetail.stats?.followerCount || 0, c: '#f59e0b' },
+                  { l: 'Rapor', v: userDetail.stats?.reportCount || 0, c: '#ef4444' }
+                ].map((item, i) => (
+                  <div key={i} style={{ background: 'rgba(255,255,255,.03)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+                    <div style={{ color: item.c, fontSize: 22, fontWeight: 900 }}>{item.v}</div>
+                    <div style={{ color: '#64748b', fontSize: 10, marginTop: 2 }}>{item.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 20 }}>
+                <button onClick={() => resetPassword(userDetail.user?.username)} style={{ padding: '8px 0', borderRadius: 8, border: 'none', background: 'rgba(239,68,68,.12)', color: '#ef4444', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>🔑 Şifre Sıfırla</button>
+                <button onClick={() => changeEmail(userDetail.user?.username)} style={{ padding: '8px 0', borderRadius: 8, border: 'none', background: 'rgba(59,130,246,.12)', color: '#3b82f6', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>✉️ E-posta Değiştir</button>
+                <button onClick={() => freezeAccount(userDetail.user?.username, userDetail.user?.frozen)} style={{ padding: '8px 0', borderRadius: 8, border: 'none', background: userDetail.user?.frozen ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)', color: userDetail.user?.frozen ? '#10b981' : '#f59e0b', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{userDetail.user?.frozen ? '🔄 Dondurmayı Kaldır' : '❄️ Hesabı Dondur'}</button>
+                <button onClick={() => setVip(userDetail.user?.username, !userDetail.user?.isVip)} style={{ padding: '8px 0', borderRadius: 8, border: 'none', background: userDetail.user?.isVip ? 'rgba(239,68,68,.12)' : 'rgba(234,179,8,.12)', color: userDetail.user?.isVip ? '#ef4444' : '#eab308', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{userDetail.user?.isVip ? '⭐ VIP Kaldır' : '⭐ VIP Ver'}</button>
+              </div>
+
+              {userDetail.recentLogs?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#94a3b8', marginBottom: 10 }}>Son Bağlantılar</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+                    {userDetail.recentLogs.map((log, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'rgba(255,255,255,.03)', borderRadius: 8, fontSize: 11 }}>
+                        <span style={{ color: '#64748b', width: 80 }}>{formatTime(log.created_at)}</span>
+                        <span style={{ color: '#e2e8f0', flex: 1 }}>{log.room_id || '-'}</span>
+                        <span style={{ color: '#3b82f6' }}>{log.ip}</span>
+                        <span style={{ color: '#64748b' }}>{log.action}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

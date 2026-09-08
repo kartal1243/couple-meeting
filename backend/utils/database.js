@@ -58,7 +58,8 @@ function initTables() {
       avatar TEXT DEFAULT '🐱', bio TEXT DEFAULT '', status TEXT DEFAULT '',
       is_vip INTEGER DEFAULT 0, vip_expiry INTEGER DEFAULT 0, vip_plan TEXT DEFAULT '',
       vip_activated_at INTEGER DEFAULT 0, stripe_customer_id TEXT DEFAULT '',
-      stripe_subscription_id TEXT DEFAULT '', created_at INTEGER NOT NULL, last_seen INTEGER DEFAULT 0
+      stripe_subscription_id TEXT DEFAULT '', created_at INTEGER NOT NULL, last_seen INTEGER DEFAULT 0,
+      frozen INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS tokens (
       token TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER NOT NULL,
@@ -342,6 +343,7 @@ function initTables() {
   try { db.exec(`ALTER TABLE users ADD COLUMN reset_token TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN reset_expiry INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN frozen INTEGER DEFAULT 0`); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -392,7 +394,7 @@ function createUser(username, email, passwordHash, avatar, bio) {
   }
 }
 
-const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'reset_expiry', 'email_verified', 'is_vip', 'vip_expiry', 'vip_plan', 'vip_activated_at', 'stripe_customer_id', 'stripe_subscription_id', 'last_seen', 'totp_secret', 'two_factor_enabled', 'is_banned', 'role']);
+const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'reset_expiry', 'email_verified', 'is_vip', 'vip_expiry', 'vip_plan', 'vip_activated_at', 'stripe_customer_id', 'stripe_subscription_id', 'last_seen', 'totp_secret', 'two_factor_enabled', 'is_banned', 'role', 'frozen']);
 
 function updateUser(username, fields) {
   const safeFields = {};
@@ -581,7 +583,8 @@ function formatUser(row) {
     stripeSubscriptionId: row.stripe_subscription_id || row.stripeSubscriptionId || '',
     resetToken: row.reset_token || row.resetToken || '',
     resetExpiry: row.reset_expiry || row.resetExpiry || 0,
-    createdAt: row.created_at || row.createdAt, lastSeen: row.last_seen || row.lastSeen
+    createdAt: row.created_at || row.createdAt, lastSeen: row.last_seen || row.lastSeen,
+    frozen: !!(row.frozen)
   };
 }
 
