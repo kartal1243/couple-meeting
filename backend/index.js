@@ -1953,44 +1953,44 @@ io.on('connection', (socket) => {
     }
     if (socket.socialUsername) { setOffline(socket.socialUsername, socket.id); broadcastOnlineStatus(socket.socialUsername); }
   });
-});
 
-// ═══════════════════════════════════════════════════════════
-// 7.7 SHORTS MODE
-// ═══════════════════════════════════════════════════════════
+  // ──────────────────────────────────────────────────────
+  // 7.7 SHORTS MODE
+  // ──────────────────────────────────────────────────────
 
-socket.on('start_shorts_mode', ({ roomId, videoIds } = {}) => {
-  const room = rooms[sanitize(roomId, 50)];
-  if (!room) return;
-  const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
-  if (!isHost) return;
-  if (!Array.isArray(videoIds) || videoIds.length === 0) return;
-  room.shortsMode = { active: true, videoIds: videoIds.slice(0, 50), currentIndex: 0, startedAt: Date.now() };
-  io.to(sanitize(roomId, 50)).emit('shorts_mode_started', { videoIds: room.shortsMode.videoIds, currentIndex: 0 });
-  broadcastRooms();
-});
+  socket.on('start_shorts_mode', ({ roomId, videoIds } = {}) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room) return;
+    const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+    if (!isHost) return;
+    if (!Array.isArray(videoIds) || videoIds.length === 0) return;
+    room.shortsMode = { active: true, videoIds: videoIds.slice(0, 50), currentIndex: 0, startedAt: Date.now() };
+    io.to(sanitize(roomId, 50)).emit('shorts_mode_started', { videoIds: room.shortsMode.videoIds, currentIndex: 0 });
+    broadcastRooms();
+  });
 
-socket.on('shorts_navigate', ({ roomId, direction } = {}) => {
-  const room = rooms[sanitize(roomId, 50)];
-  if (!room || !room.shortsMode?.active) return;
-  const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
-  if (!isHost) return;
-  if (direction === 'next') {
-    room.shortsMode.currentIndex = Math.min(room.shortsMode.currentIndex + 1, room.shortsMode.videoIds.length - 1);
-  } else if (direction === 'prev') {
-    room.shortsMode.currentIndex = Math.max(room.shortsMode.currentIndex - 1, 0);
-  }
-  io.to(sanitize(roomId, 50)).emit('shorts_navigated', { currentIndex: room.shortsMode.currentIndex, videoId: room.shortsMode.videoIds[room.shortsMode.currentIndex] });
-});
+  socket.on('shorts_navigate', ({ roomId, direction } = {}) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room || !room.shortsMode?.active) return;
+    const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+    if (!isHost) return;
+    if (direction === 'next') {
+      room.shortsMode.currentIndex = Math.min(room.shortsMode.currentIndex + 1, room.shortsMode.videoIds.length - 1);
+    } else if (direction === 'prev') {
+      room.shortsMode.currentIndex = Math.max(room.shortsMode.currentIndex - 1, 0);
+    }
+    io.to(sanitize(roomId, 50)).emit('shorts_navigated', { currentIndex: room.shortsMode.currentIndex, videoId: room.shortsMode.videoIds[room.shortsMode.currentIndex] });
+  });
 
-socket.on('exit_shorts_mode', ({ roomId } = {}) => {
-  const room = rooms[sanitize(roomId, 50)];
-  if (!room) return;
-  const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
-  if (!isHost) return;
-  room.shortsMode = { active: false, videoIds: [], currentIndex: 0 };
-  io.to(sanitize(roomId, 50)).emit('shorts_mode_exited');
-  broadcastRooms();
+  socket.on('exit_shorts_mode', ({ roomId } = {}) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room) return;
+    const isHost = room.hostUserId === socket.userId || room.hostUserId === socket.socialUsername;
+    if (!isHost) return;
+    room.shortsMode = { active: false, videoIds: [], currentIndex: 0 };
+    io.to(sanitize(roomId, 50)).emit('shorts_mode_exited');
+    broadcastRooms();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
