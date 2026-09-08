@@ -584,6 +584,7 @@ function App() {
   };
 
   const handleSaveSettings = () => {
+    if (currentRoomIdRef.current) localStorage.setItem(`cm_theme_${currentRoomIdRef.current}`, roomTheme);
     socket.emit('update_room_settings', {
       roomId: currentRoomIdRef.current,
       newName: editRoomNameInput.trim() || roomName,
@@ -858,7 +859,8 @@ function App() {
       setRoomId(data.roomId);
       setRoomName(data.roomName || data.roomId);
       setHostUserId(data.hostUserId);
-      setRoomTheme(data.theme || 'default');
+      const savedTheme = localStorage.getItem(`cm_theme_${data.roomId}`);
+      setRoomTheme(savedTheme || data.theme || 'default');
       setMySocketId(data.socketId);
       if (data.users) setRoomUsersList(data.users);
       setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
@@ -896,7 +898,10 @@ function App() {
       if (data.users) setRoomUsersList(data.users);
       if (data.hostUserId) setHostUserId(data.hostUserId);
       if (data.roomName) setRoomName(data.roomName);
-      if (data.theme) setRoomTheme(data.theme);
+      if (data.theme) {
+        setRoomTheme(data.theme);
+        if (currentRoomIdRef.current) localStorage.setItem(`cm_theme_${currentRoomIdRef.current}`, data.theme);
+      }
     });
 
     socket.on('room_host_changed', (data) => {
@@ -906,7 +911,10 @@ function App() {
 
     socket.on('room_settings_updated', (data) => {
       if (data.roomName) setRoomName(data.roomName);
-      if (data.theme) setRoomTheme(data.theme);
+      if (data.theme) {
+        setRoomTheme(data.theme);
+        if (currentRoomIdRef.current) localStorage.setItem(`cm_theme_${currentRoomIdRef.current}`, data.theme);
+      }
       if (data.hostUserId) setHostUserId(data.hostUserId);
       if (data.maxUsers) setCurrentRoomInfo((prev) => ({ ...prev, maxUsers: data.maxUsers }));
     });

@@ -1,16 +1,28 @@
-import { useState, memo } from 'react';
+import { useState, memo, useEffect } from 'react';
 
 function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
-  roomUsersList, hostUserId
+  roomUsersList, hostUserId, onCloseRoom
 }) {
   const [showUsers, setShowUsers] = useState(false);
+  const [showQuickLeave, setShowQuickLeave] = useState(false);
   const liveDotStyle = {
     width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#22c55e' : '#ef4444',
     boxShadow: isConnected ? '0 0 8px rgba(34,197,94,.6)' : 'none',
     animation: isConnected ? 'cmPulseLive 2s ease-in-out infinite' : 'none'
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowQuickLeave(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <header style={{
@@ -132,25 +144,84 @@ function Header({
           fontWeight: 800, fontSize: 13, transition: 'all 0.2s'
         }}>👤</button>
         {authUser && (
-          <div style={{
+          <div onClick={() => setShowProfileModal(true)} style={{
             background: 'linear-gradient(135deg, rgba(0,168,132,.1), rgba(0,168,132,.05))',
             color: '#00a884', border: '1px solid rgba(0,168,132,.2)',
             padding: '6px 10px', borderRadius: 10, fontWeight: 800, fontSize: 11,
-            display: 'flex', alignItems: 'center', gap: 4
-          }}>
+            display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,168,132,.2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,168,132,.1), rgba(0,168,132,.05))'; }}
+          >
             <span>{authUser.avatar || myAvatar}</span>
             <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {authUser.username}
             </span>
           </div>
         )}
-        <button onClick={handleLeaveRoom} style={{
+        <button onClick={() => setShowQuickLeave(true)} style={{
           background: 'rgba(239,68,68,.1)', color: '#ef4444',
           border: '1px solid rgba(239,68,68,.2)',
           padding: '6px 12px', borderRadius: 10, cursor: 'pointer',
           fontWeight: 800, fontSize: 11, transition: 'all 0.2s'
         }}>✕ Çıkış</button>
       </div>
+
+      {/* Quick Leave Modal */}
+      {showQuickLeave && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: 'rgba(0,0,0,.85)', backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14
+        }} onClick={() => setShowQuickLeave(false)}>
+          <div style={{
+            width: 'min(340px, 100%)',
+            background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(10,14,20,.98))',
+            border: '1px solid rgba(255,255,255,.08)',
+            borderRadius: 20, padding: 24, textAlign: 'center'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🚪</div>
+            <h3 style={{ color: '#fff', margin: '0 0 6px', fontSize: 16, fontWeight: 900 }}>Odadan Çık</h3>
+            <p style={{ color: '#64748b', fontSize: 11, margin: '0 0 16px' }}>Emin misin?</p>
+            
+            {hostUserId === (authUser?.username || myAvatar) && (
+              <button onClick={() => { setShowQuickLeave(false); onCloseRoom?.(); }} style={{
+                width: '100%', padding: '11px', marginBottom: 6, borderRadius: 12, border: 'none',
+                background: 'rgba(239,68,68,.15)', color: '#ef4444',
+                fontWeight: 800, fontSize: 12, cursor: 'pointer',
+                border: '1px solid rgba(239,68,68,.25)', transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,.25)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,.15)'; }}
+              >
+                🗑️ Odayı Kapat & Çık
+              </button>
+            )}
+            <button onClick={() => { setShowQuickLeave(false); handleLeaveRoom(); }} style={{
+              width: '100%', padding: '11px', marginBottom: 6, borderRadius: 12, border: 'none',
+              background: 'rgba(0,168,132,.15)', color: '#00a884',
+              fontWeight: 800, fontSize: 12, cursor: 'pointer',
+              border: '1px solid rgba(0,168,132,.25)', transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,168,132,.25)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,168,132,.15)'; }}
+            >
+              👋 Sadece Çık
+            </button>
+            <button onClick={() => setShowQuickLeave(false)} style={{
+              width: '100%', padding: '10px', borderRadius: 12, border: 'none',
+              background: 'transparent', color: '#475569',
+              fontWeight: 700, fontSize: 11, cursor: 'pointer'
+            }}>
+              İptal (ESC)
+            </button>
+            <div style={{ marginTop: 10, fontSize: 10, color: '#475569' }}>
+              💡 ESC tuşu ile de açabilirsin
+            </div>
+          </div>
+        </div>
+      )}
 
     </header>
   );

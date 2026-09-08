@@ -250,7 +250,8 @@ function Player({
         </div>
       ))}
 
-      {isHost && !screenSharing && (
+      {/* Ekran paylaşımı şu an için devre dışı */}
+      {false && isHost && !screenSharing && (
         <button onClick={startScreenShare} title="Ekran Paylaş"
           style={{
             position: 'absolute', top: 12, right: 12, zIndex: 15,

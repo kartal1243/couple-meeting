@@ -328,7 +328,7 @@ function SettingsModal({
                   return (
                     <button key={key} type="button"
                       disabled={isLocked || !isHost}
-                      onClick={() => { if (isHost) setRoomTheme(key); }}
+                      onClick={() => { if (isHost) { setRoomTheme(key); if (roomId) localStorage.setItem(`cm_theme_${roomId}`, key); } }}
                       style={{
                         padding: '14px', borderRadius: 14,
                         border: isActive ? `2px solid ${theme.primary}` : '1px solid rgba(255,255,255,.06)',
