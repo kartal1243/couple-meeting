@@ -16,6 +16,7 @@ import AdminPage from './pages/AdminPage';
 import Communities from './pages/Communities';
 import Events from './pages/Events';
 import BlogPage from './pages/BlogPage';
+import AdsPage from './pages/AdsPage';
 
 import AuthModal from './Modals/AuthModal';
 import SocialModal from './Modals/SocialModal';
@@ -1298,6 +1299,8 @@ function App() {
         <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />
         <Route path="/events" element={<Events currentTheme={currentTheme} token={authToken} username={authUser?.username} socket={socket} />} />
         <Route path="/blog" element={<BlogPage />} />
+
+        <Route path="/ads" element={<AdsPage />} />
 
         <Route path="/landing" element={<LandingPage />} />
         <Route path="*" element={<NotFoundPage />} />
