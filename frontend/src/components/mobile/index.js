@@ -6,3 +6,5 @@ export { default as CameraCapture } from './CameraCapture';
 export { default as SwipeHandler } from './SwipeHandler';
 export { default as PullToRefresh } from './PullToRefresh';
 export { default as MobileLayout } from './MobileLayout';
+export { default as AboutPage } from './AboutPage';
+export { default as ProfilePage } from './ProfilePage';

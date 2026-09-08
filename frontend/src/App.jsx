@@ -10,6 +10,8 @@ import { isApp } from './utils/platform';
 import AppContext from './contexts/AppContext';
 import BottomNavBar from './components/mobile/BottomNavBar';
 import OnboardingScreen from './components/mobile/OnboardingScreen';
+import AboutPage from './components/mobile/AboutPage';
+import ProfilePage from './components/mobile/ProfilePage';
 
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
@@ -1457,6 +1459,9 @@ function App() {
       {showProfileModal && (
         <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
       )}
+      
+      {isApp() && mobileTab === 'about' && <AboutPage />}
+      {isApp() && mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
       
       {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </AppContext.Provider>
