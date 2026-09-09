@@ -43,12 +43,17 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
   useEffect(() => {
     socket.emit('community_list', { token });
-    socket.on('community_list_result', (data) => setCommunities(data.communities || []));
+    socket.on('community_list_result', (data) => setCommunities(Array.isArray(data?.communities) ? data.communities : []));
     socket.on('community_info_result', (data) => {
-      setMembers(data.members || []);
+      setMembers(Array.isArray(data?.members) ? data.members : []);
       setSelected(data.community);
     });
-    socket.on('community_posts_result', (data) => setPosts(data.posts || []));
+    socket.on('community_posts_result', (data) => setPosts(Array.isArray(data?.posts) ? data.posts : []));
+    socket.on('community_new_post', (data) => {
+      if (data?.post && selected) {
+        setPosts(prev => [data.post, ...(Array.isArray(prev) ? prev : [])]);
+      }
+    });
     socket.on('community_created', () => {
       setShowCreate(false);
       socket.emit('community_list', { token });
@@ -57,6 +62,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
       socket.off('community_list_result');
       socket.off('community_info_result');
       socket.off('community_posts_result');
+      socket.off('community_new_post');
       socket.off('community_created');
     };
   }, [token]);
@@ -112,7 +118,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-          {posts.map(post => (
+          {(Array.isArray(posts) ? posts : []).map(post => (
             <div key={post.id} className="cm-comm-post-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{post.avatar || '🐱'}</span>
@@ -127,12 +133,12 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
               </button>
             </div>
           ))}
-          {posts.length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 24, fontSize: 13 }}>Henüz gönderi yok</div>}
+          {(Array.isArray(posts) ? posts : []).length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 24, fontSize: 13 }}>Henüz gönderi yok</div>}
         </div>
 
         <div className="cm-comm-members-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
-          <div style={{ color: '#fff', fontWeight: 800, marginBottom: 10, fontSize: 14 }}>Üyeler ({members.length})</div>
-          {members.map(m => (
+          <div style={{ color: '#fff', fontWeight: 800, marginBottom: 10, fontSize: 14 }}>Üyeler ({(Array.isArray(members) ? members : []).length})</div>
+          {(Array.isArray(members) ? members : []).map(m => (
             <div key={m.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
               <span style={{ fontSize: 18, flexShrink: 0 }}>{m.avatar || '🐱'}</span>
               <span style={{ color: '#e2e8f0', fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.username}</span>
