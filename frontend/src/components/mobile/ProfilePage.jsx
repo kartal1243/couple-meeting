@@ -1,54 +1,197 @@
-import CameraCapture from './CameraCapture';
-import ShareButton from './ShareButton';
-import DarkModeToggle from './DarkModeToggle';
+import { useState, useRef } from 'react';
+import { useApp } from '../../contexts/AppContext';
 
 const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
+  const {
+    openAuth, setShowVipModal, notifications, unreadCount,
+    profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
+    friends, friendRequests, followingList, followersList, saveProfile
+  } = useApp();
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [editName, setEditName] = useState(authUser?.username || '');
+  const [editBio, setEditBio] = useState(authUser?.bio || profileBioInput || '');
+  const [editStatus, setEditStatus] = useState(profileStatusInput || '');
+  const [showShareToast, setShowShareToast] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleAvatarClick = () => fileInputRef.current?.click();
+
+  const handleAvatarFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => onAvatarChange(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setProfileBioInput(editBio);
+    setProfileStatusInput(editStatus);
+    saveProfile({ bio: editBio, status: editStatus });
+    setTimeout(() => { setShowSettings(false); setSaving(false); }, 400);
+  };
+
+  const handleShare = async () => {
+    const text = authUser
+      ? `${authUser.username} ile Couple Meeting'te bulus! https://couplemeeting.com.tr`
+      : 'Couple Meeting - Arkadaslarinla canli video odalarinda bulus! https://couplemeeting.com.tr';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Couple Meeting', text, url: 'https://couplemeeting.com.tr' });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      }
+    } catch (e) { /* cancelled */ }
+  };
+
+  const isVip = authUser?.vip && new Date(authUser.vip) > new Date();
+
+  if (!authUser) {
+    return (
+      <div className="mobile-page profile-page">
+        <div className="profile-guest">
+          <div className="profile-guest-icon anim-float">👤</div>
+          <h2>Hosgeldiniz!</h2>
+          <p>Giris yaparak ozelliklerin keyfini cikarin</p>
+          <div className="profile-guest-btns">
+            <button className="profile-btn-primary touch-feedback" onClick={() => openAuth('login')}>Giris Yap</button>
+            <button className="profile-btn-secondary touch-feedback" onClick={() => openAuth('register')}>Kayit Ol</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mobile-page profile-page">
-      <div className="profile-header">
-        <CameraCapture onCapture={onAvatarChange} currentAvatar={myAvatar} />
-        <h2 className="profile-name">{authUser?.username || 'Ziyaretci'}</h2>
-        <p className="profile-bio">{authUser?.bio || 'Hosgeldiniz!'}</p>
+      {showShareToast && <div className="profile-toast">Panoya kopyalandi!</div>}
+
+      <div className="profile-top-bar">
+        <span className="profile-top-title">Profilim</span>
+        <button className="profile-settings-btn touch-feedback" onClick={() => setShowSettings(true)}>
+          Ayarlar
+        </button>
+      </div>
+
+      <div className="profile-card">
+        <div className="profile-avatar-wrap" onClick={handleAvatarClick}>
+          {myAvatar ? (
+            <img src={myAvatar} alt="avatar" className="profile-avatar-img" />
+          ) : (
+            <div className="profile-avatar-letter">{authUser.username?.[0]?.toUpperCase() || '?'}</div>
+          )}
+          <div className="profile-avatar-badge">
+            {isVip ? '💎' : '📷'}
+          </div>
+        </div>
+        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarFile} />
+
+        <h2 className="profile-name">{authUser.username}</h2>
+        <p className="profile-bio">{profileStatusInput || 'Merhaba, ben Couple Meeting kullaniciyim!'}</p>
+
+        {isVip && <div className="profile-vip-badge">💎 VIP Uye</div>}
       </div>
 
       <div className="profile-stats">
         <div className="profile-stat">
-          <span className="profile-stat-num">{authUser?.friendCount || 0}</span>
+          <span className="profile-stat-num">{friends?.length || 0}</span>
           <span className="profile-stat-label">Arkadas</span>
         </div>
+        <div className="profile-stat-divider"></div>
         <div className="profile-stat">
-          <span className="profile-stat-num">{authUser?.followerCount || 0}</span>
+          <span className="profile-stat-num">{followersList?.length || 0}</span>
           <span className="profile-stat-label">Takipci</span>
         </div>
+        <div className="profile-stat-divider"></div>
         <div className="profile-stat">
-          <span className="profile-stat-num">{authUser?.followingCount || 0}</span>
+          <span className="profile-stat-num">{followingList?.length || 0}</span>
           <span className="profile-stat-label">Takip</span>
         </div>
       </div>
 
-      <div className="profile-actions">
-        <DarkModeToggle isDark={document.body.classList.contains('dark')} onToggle={() => document.body.classList.toggle('dark')} />
-        
-        <ShareButton />
-        
-        <button className="profile-action-btn touch-feedback">
-          ⚙️ Ayarlar
+      <div className="profile-menu">
+        <button className="profile-menu-item touch-feedback" onClick={handleShare}>
+          <span className="profile-menu-icon">📤</span>
+          <span className="profile-menu-text">Profili Paylas</span>
+          <span className="profile-menu-arrow">›</span>
         </button>
-        
-        <button className="profile-action-btn touch-feedback">
-          🔔 Bildirimler
+
+        <button className="profile-menu-item touch-feedback" onClick={() => setShowVipModal(true)}>
+          <span className="profile-menu-icon">💎</span>
+          <span className="profile-menu-text">VIP Ol</span>
+          {isVip && <span className="profile-menu-badge">Aktif</span>}
+          <span className="profile-menu-arrow">›</span>
         </button>
-        
-        <button className="profile-action-btn touch-feedback">
-          💎 VIP Ol
+
+        <button className="profile-menu-item touch-feedback">
+          <span className="profile-menu-icon">🔔</span>
+          <span className="profile-menu-text">Bildirimler</span>
+          {unreadCount > 0 && <span className="profile-menu-badge">{unreadCount}</span>}
+          <span className="profile-menu-arrow">›</span>
         </button>
-        
-        {authUser && (
-          <button className="profile-action-btn logout touch-feedback" onClick={onLogout}>
-            🚪 Cikis Yap
-          </button>
-        )}
+
+        <button className="profile-menu-item touch-feedback" onClick={() => setShowSettings(true)}>
+          <span className="profile-menu-icon">⚙️</span>
+          <span className="profile-menu-text">Ayarlar</span>
+          <span className="profile-menu-arrow">›</span>
+        </button>
+
+        <button className="profile-menu-item touch-feedback" onClick={onLogout}>
+          <span className="profile-menu-icon">🚪</span>
+          <span className="profile-menu-text">Cikis Yap</span>
+          <span className="profile-menu-arrow">›</span>
+        </button>
       </div>
+
+      <div className="profile-footer">
+        <p>Couple Meeting v1.0</p>
+      </div>
+
+      {/* SETTINGS OVERLAY */}
+      {showSettings && (
+        <div className="profile-settings-overlay">
+          <div className="profile-settings">
+            <div className="profile-settings-header">
+              <button className="profile-settings-back" onClick={() => setShowSettings(false)}>Geri</button>
+              <h2>Ayarlar</h2>
+              <button className="profile-settings-save" onClick={handleSave} disabled={saving}>
+                {saving ? '...' : 'Kaydet'}
+              </button>
+            </div>
+
+            <div className="profile-settings-body">
+              <div className="profile-settings-avatar" onClick={handleAvatarClick}>
+                {myAvatar ? (
+                  <img src={myAvatar} alt="avatar" />
+                ) : (
+                  <span>{authUser.username?.[0]?.toUpperCase() || '?'}</span>
+                )}
+                <div className="profile-settings-avatar-edit">Kamera ile degistir</div>
+              </div>
+
+              <div className="profile-settings-field">
+                <label>Kullanici Adi</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Kullanici adin" />
+              </div>
+
+              <div className="profile-settings-field">
+                <label>Durum</label>
+                <input value={editStatus} onChange={(e) => setEditStatus(e.target.value)} placeholder="Su an ne yapiyorsun?" />
+              </div>
+
+              <div className="profile-settings-field">
+                <label>Hakkinda</label>
+                <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="Kendinden bahset..." rows={4} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
