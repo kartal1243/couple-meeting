@@ -153,13 +153,13 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
   }
   .cm-room-header-actions { display: flex !important; gap: 6px !important; }
   .cm-room-header-actions button { padding: 6px 10px !important; font-size: 11px !important; }
-  .cm-room-layout {
+  .cm-room-root {
     margin-top: 60px !important;
     flex-direction: column !important;
     height: calc(100dvh - 60px) !important;
     overflow-y: auto !important;
   }
-  .cm-player-column { width: 100% !important; min-height: auto !important; overflow: visible !important; }
+  .cm-player-col { width: 100% !important; min-height: auto !important; overflow: visible !important; background: transparent !important; }
   .cm-search-bar { flex-wrap: wrap !important; padding: 8px !important; position: relative !important; z-index: 100 !important; }
   .cm-search-bar input { flex: 1 1 100% !important; min-width: 0 !important; }
   .cm-search-bar .cm-action-btn { flex: 1 1 calc(50% - 5px) !important; }
@@ -195,11 +195,12 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
 .cm-player-col > * { min-height: 0; }
 .cm-sidebar > * { min-height: 0; }
 @media (max-width: 900px) {
-  .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 52px 1fr auto; }
-  .cm-sidebar { grid-row: 3; grid-column: 1; border-left: none; border-top: 1px solid rgba(255,255,255,.06); max-height: 45vh; overflow: hidden; }
+  .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 52px auto 1fr; }
+  .cm-player-col { background: transparent; flex-shrink: 0; }
+  .cm-sidebar { grid-row: 3; grid-column: 1; border-left: none; border-top: 1px solid rgba(255,255,255,.06); max-height: none; overflow: hidden; }
 }
 @media (max-width: 480px) {
-  .cm-room-root { grid-template-rows: 46px 1fr auto; }
+  .cm-room-root { grid-template-rows: 46px auto 1fr; }
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .cm-room-root { grid-template-rows: 44px 1fr; grid-template-columns: 1fr 320px; }
@@ -965,15 +966,8 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
 }
 .mobile-app-mode { position: relative; overflow: hidden; }
 
-/* Mobile siyah yer fix */
+/* Mobile modal overflow fix */
 @media (max-width: 768px) {
-  .mobile-app-mode .room-layout,
-  .mobile-app-mode .room-main,
-  .mobile-app-mode .chat-section,
-  .mobile-app-mode .video-section { margin: 0 !important; padding: 0 !important; }
-  .mobile-app-mode [style*="margin-bottom"],
-  .mobile-app-mode [style*="marginBottom"] { margin-bottom: 0 !important; }
-  
   .mobile-app-mode [style*="position: fixed"][style*="z-index"] > div {
     max-height: 90vh !important;
     overflow-y: auto !important;
