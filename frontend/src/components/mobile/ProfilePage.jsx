@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 
 const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
   const {
-    openAuth, setShowVipModal, unreadCount, setShowNotifPanel,
+    openAuth, setShowVipModal, unreadCount, setShowNotifPanel, setShowSocialModal,
     profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
     friends, followingList, followersList, saveProfile
   } = useApp();
@@ -121,7 +121,7 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
           <span className="profile-menu-arrow">›</span>
         </button>
 
-        <button className="profile-menu-item touch-feedback" onClick={() => setShowNotifPanel(true)}>
+        <button className="profile-menu-item touch-feedback" onClick={() => { setShowNotifPanel(true); setShowSocialModal && setShowSocialModal(true); }}>
           <span className="profile-menu-icon">🔔</span>
           <span className="profile-menu-text">Bildirimler</span>
           {unreadCount > 0 && <span className="profile-menu-badge">{unreadCount}</span>}

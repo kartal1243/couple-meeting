@@ -679,6 +679,15 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
   background: rgba(124,58,237,0.15); display: flex;
   align-items: center; justify-content: center; font-size: 16px;
 }
+.friends-request-actions { display: flex; gap: 8px; }
+.friends-accept-btn, .friends-decline-btn {
+  width: 36px; height: 36px; border-radius: 10px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; cursor: pointer; transition: transform 0.2s;
+}
+.friends-accept-btn { background: rgba(16,185,129,0.2); color: #10b981; }
+.friends-decline-btn { background: rgba(239,68,68,0.2); color: #ef4444; }
+.friends-accept-btn:active, .friends-decline-btn:active { transform: scale(0.9); }
 .friends-no-friends { text-align: center; padding: 30px 20px; color: #6b7280; }
 .friends-no-friends span { font-size: 40px; display: block; margin-bottom: 10px; }
 .friends-no-friends p { margin: 4px 0; font-size: 13px; }
@@ -977,6 +986,29 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
 .mobile-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+}
+
+/* === MOBILE APP CONTAINER === */
+.mobile-app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: #0a0f14;
+  overflow: hidden;
+}
+.mobile-app-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 70px;
+}
+.mobile-app-container .mobile-page {
+  min-height: calc(100vh - 70px);
+  min-height: calc(100dvh - 70px);
+}
   background: #0a0e14;
   z-index: 9990;
   overflow-y: auto;

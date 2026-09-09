@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 
 const ChatPage = () => {
   const {
-    globalMessages, globalChatInput, setGlobalChatInput, sendGlobalMessage,
+    globalMessages, sendGlobalMessage,
     authUser, openAuth, socket, authToken
   } = useApp();
   const messagesEndRef = useRef(null);
@@ -31,10 +31,10 @@ const ChatPage = () => {
       <div className="chat-messages">
         {globalMessages && globalMessages.length > 0 ? (
           globalMessages.map((msg, i) => (
-            <div key={msg.id || i} className={`chat-msg ${msg.sender === authUser?.username ? 'mine' : ''}`}>
+            <div key={msg.id || i} className={`chat-msg ${(msg.username || msg.sender) === authUser?.username ? 'mine' : ''}`}>
               <div className="chat-msg-avatar">{msg.avatar || '👤'}</div>
               <div className="chat-msg-content">
-                <span className="chat-msg-sender">{msg.sender}</span>
+                <span className="chat-msg-sender">{msg.username || msg.sender}</span>
                 <p className="chat-msg-text">{msg.text}</p>
                 <span className="chat-msg-time">{msg.time}</span>
               </div>

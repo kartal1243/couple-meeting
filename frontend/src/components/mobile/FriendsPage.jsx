@@ -3,11 +3,13 @@ import { useApp } from '../../contexts/AppContext';
 const FriendsPage = () => {
   const {
     friends, friendRequests, openAuth, authUser,
-    dmConversations, openDm
+    dmConversations, openDm, setShowSocialModal, setSocialTab, respondFriendRequest
   } = useApp();
 
   const handleOpenDm = (friend) => {
     if (openDm) openDm(friend.username);
+    setSocialTab('dm');
+    setShowSocialModal(true);
   };
 
   return (
@@ -37,8 +39,12 @@ const FriendsPage = () => {
                     <div className="friends-avatar">{req.avatar || '👤'}</div>
                   </div>
                   <div className="friends-info">
-                    <h3>{req.username}</h3>
+                    <h3>{req.from_username || req.username}</h3>
                     <p>Arkadaslik istegi</p>
+                  </div>
+                  <div className="friends-request-actions">
+                    {respondFriendRequest && <button className="friends-accept-btn" onClick={() => respondFriendRequest(req.id || req.requestId, 'accept')}>✓</button>}
+                    {respondFriendRequest && <button className="friends-decline-btn" onClick={() => respondFriendRequest(req.id || req.requestId, 'decline')}>✕</button>}
                   </div>
                 </div>
               ))}
