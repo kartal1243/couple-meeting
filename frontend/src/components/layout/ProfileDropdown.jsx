@@ -22,7 +22,6 @@ export default function ProfileDropdown({ authUser, myAvatar, friendRequests, fr
         border: '1px solid rgba(255,255,255,.1)', borderRadius: 12, cursor: 'pointer',
         color: '#fff', transition: 'all 0.2s'
       }}>
-        <span style={{ fontSize: 22 }}>{authUser.avatar || myAvatar}</span>
         <span style={{ fontWeight: 800, fontSize: 13, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser.username}</span>
         {friendRequests.length > 0 && (
           <span style={{
