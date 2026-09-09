@@ -14,6 +14,8 @@ import AboutPage from './components/mobile/AboutPage';
 import ProfilePage from './components/mobile/ProfilePage';
 import MobileHomePage from './components/mobile/MobileHomePage';
 import RoomsPage from './components/mobile/RoomsPage';
+import ChatPage from './components/mobile/ChatPage';
+import FriendsPage from './components/mobile/FriendsPage';
 
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
@@ -1467,6 +1469,8 @@ function App() {
       )}
       
       {isApp() && mobileTab === 'rooms' && <RoomsPage />}
+      {isApp() && mobileTab === 'chat' && <ChatPage />}
+      {isApp() && mobileTab === 'friends' && <FriendsPage />}
       {isApp() && mobileTab === 'about' && <AboutPage />}
       {isApp() && mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
       

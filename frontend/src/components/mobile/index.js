@@ -10,3 +10,5 @@ export { default as AboutPage } from './AboutPage';
 export { default as ProfilePage } from './ProfilePage';
 export { default as MobileHomePage } from './MobileHomePage';
 export { default as RoomsPage } from './RoomsPage';
+export { default as ChatPage } from './ChatPage';
+export { default as FriendsPage } from './FriendsPage';
