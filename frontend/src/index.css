@@ -247,7 +247,7 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
 /* === TOAST ANIMATION (from App.jsx) === */
 @keyframes cmGlobalToastIn { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
 
-/* === MOBILE APP STYLES === */
+/* === MOBILE FIXES === */
 .mobile-app-mode .mobile-bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: rgba(15, 15, 25, 0.95); backdrop-filter: blur(20px);
@@ -964,6 +964,22 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
   to { opacity: 1; transform: translateY(0); }
 }
 .mobile-app-mode { position: relative; overflow: hidden; }
+
+/* Mobile siyah yer fix */
+@media (max-width: 768px) {
+  .mobile-app-mode .room-layout,
+  .mobile-app-mode .room-main,
+  .mobile-app-mode .chat-section,
+  .mobile-app-mode .video-section { margin: 0 !important; padding: 0 !important; }
+  .mobile-app-mode [style*="margin-bottom"],
+  .mobile-app-mode [style*="marginBottom"] { margin-bottom: 0 !important; }
+  
+  .mobile-app-mode [style*="position: fixed"][style*="z-index"] > div {
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .mobile-app-mode .social-modal-container { max-height: 80vh !important; overflow-y: auto !important; }
+}
 .mobile-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
