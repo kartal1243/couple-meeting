@@ -1444,16 +1444,6 @@ function App() {
         <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} />
       )}
       
-      {isApp() && mobileTab !== 'home' && (
-        <div className="mobile-overlay">
-          {mobileTab === 'rooms' && <RoomsPage />}
-          {mobileTab === 'chat' && <ChatPage />}
-          {mobileTab === 'friends' && <FriendsPage />}
-          {mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
-        </div>
-      )}
-      {isApp() && mobileTab === 'home' && <MobileHomeCenter />}
-      
       {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
 
       {showJoinModal && joinRoomTarget && (
