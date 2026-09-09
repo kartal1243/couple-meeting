@@ -65,7 +65,11 @@ function App() {
   
   // Mobile app only
   const [showOnboarding, setShowOnboarding] = useState(() => isApp() && !localStorage.getItem('cm_onboarding_done'));
-  const [mobileTab, setMobileTab] = useState('home');
+  const [mobileTab, setMobileTab] = useState('rooms');
+
+  useEffect(() => {
+    if (isApp()) document.body.classList.add('mobile-app-mode');
+  }, []);
   const [messageReactions, setMessageReactions] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
 
