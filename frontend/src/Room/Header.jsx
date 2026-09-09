@@ -1,4 +1,5 @@
 import { useState, memo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
@@ -169,7 +170,7 @@ function Header({
       </div>
 
       {/* Quick Leave Modal */}
-      {showQuickLeave && (
+      {showQuickLeave && createPortal(
         <div style={{
           position: 'fixed', inset: 0, zIndex: 99999,
           background: 'rgba(0,0,0,.85)', backdropFilter: 'blur(12px)',
@@ -220,7 +221,8 @@ function Header({
               💡 ESC tuşu ile de açabilirsin
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </header>
