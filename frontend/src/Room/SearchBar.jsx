@@ -15,12 +15,17 @@ function SearchBar({
   useEffect(() => {
     const handleOutside = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setTimeout(() => setShowResults(false), 150);
+        setShowResults(false);
       }
     };
     document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('touchstart', handleOutside);
-    return () => { document.removeEventListener('mousedown', handleOutside); document.removeEventListener('touchstart', handleOutside); };
+    document.addEventListener('touchstart', handleOutside, { passive: true });
+    document.addEventListener('click', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+      document.removeEventListener('click', handleOutside);
+    };
   }, []);
 
   const handlePlay = () => {

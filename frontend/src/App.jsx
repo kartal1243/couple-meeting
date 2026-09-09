@@ -8,7 +8,6 @@ import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
 import { isApp } from './utils/platform';
 import AppContext from './contexts/AppContext';
-import BottomNavBar from './components/mobile/BottomNavBar';
 import OnboardingScreen from './components/mobile/OnboardingScreen';
 import AboutPage from './components/mobile/AboutPage';
 import ProfilePage from './components/mobile/ProfilePage';
@@ -69,7 +68,6 @@ function App() {
   
   // Mobile app only
   const [showOnboarding, setShowOnboarding] = useState(() => isApp() && !localStorage.getItem('cm_onboarding_done'));
-  const [mobileTab, setMobileTab] = useState('home');
 
   useEffect(() => {
     if (isApp()) document.body.classList.add('mobile-app-mode');
@@ -1443,8 +1441,6 @@ function App() {
       {showSettingsModal && (
         <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} />
       )}
-      
-      {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
 
       {showJoinModal && joinRoomTarget && (
         <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
