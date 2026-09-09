@@ -24,6 +24,7 @@ function Player({
 
   const ytOpts = {
     height: '100%', width: '100%',
+    host: 'https://www.youtube-nocookie.com',
     playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1 }
   };
 
