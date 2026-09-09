@@ -28,7 +28,7 @@ function checkFull(card, called) {
 }
 
 function Tombala({ socket, roomId, mySocketId, userId, hostUserId, roomUsersList, token }) {
-  const isHost = hostUserId === userId;
+  const isHost = hostUserId === (authUser?.username || username);
   const [gameActive, setGameActive] = useState(false);
   const [myCard, setMyCard] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);

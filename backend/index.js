@@ -1814,6 +1814,8 @@ io.on('connection', (socket) => {
     const room = rooms[cleanRoomId];
     if (room) {
       if (type === 'ROOM_CLOSED') {
+        // Sadece host odayı kapatabilir
+        if (room.hostUserId !== socket.socialUsername) return;
         io.to(cleanRoomId).emit('room_action', { type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
         for (const u of room.users) {
           io.sockets.sockets.get(u.socketId)?.leave(cleanRoomId);
@@ -2024,6 +2026,9 @@ io.on('connection', (socket) => {
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
+      // Host transfer: kullanıcıyı silmeden önce username'i kaydet
+      const leftUser = rooms[rId].users.find(u => u.socketId === socket.id);
+      const leftUsername = leftUser?.username;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       rooms[rId].lastActivityAt = Date.now();
       socket.leave(rId); socket.currentRoom = null;
@@ -2036,7 +2041,6 @@ io.on('connection', (socket) => {
         updateRoomUsers(rId);
       } else {
         // Host ayrıldıysa transfer et
-        const leftUsername = rooms[rId].users.find(u => u.socketId === socket.id)?.username;
         if (rooms[rId].hostUserId === leftUsername) {
           const newHost = rooms[rId].users[0];
           rooms[rId].hostUserId = newHost.username;
@@ -2060,6 +2064,9 @@ io.on('connection', (socket) => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom; const sid = socket.id;
       if (rooms[rId]) {
+        // Host transfer: kullanıcıyı silmeden önce username'i kaydet
+        const leftUser = rooms[rId].users.find(u => u.socketId === sid);
+        const leftUsername = leftUser?.username;
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
         if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
         rooms[rId].lastActivityAt = Date.now();
@@ -2075,7 +2082,7 @@ io.on('connection', (socket) => {
           updateRoomUsers(rId);
         } else {
           // Host ayrıldıysa sıradaki kullanıcıya host ver
-          if (rooms[rId].hostUserId === rooms[rId].users.find(u => u.socketId === sid)?.username && rooms[rId].users.length > 0) {
+          if (rooms[rId].hostUserId === leftUsername && rooms[rId].users.length > 0) {
             const newHost = rooms[rId].users[0];
             rooms[rId].hostUserId = newHost.username;
             io.to(rId).emit('room_host_changed', { hostUserId: newHost.username, message: `${newHost.username} artık oda sahibi!` });

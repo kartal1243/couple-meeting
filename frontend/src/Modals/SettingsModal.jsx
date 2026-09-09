@@ -245,7 +245,7 @@ function SettingsModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {roomUsersList.map(u => {
                 const isUserHost = u.userId === hostUserId;
-                const isMe = u.userId === userId;
+                const isMe = u.userId === (authUser?.username || userId);
                 const color = getAvatarColor(u.username);
                 return (
                   <div key={u.userId} style={{

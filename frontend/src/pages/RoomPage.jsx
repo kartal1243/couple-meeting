@@ -30,7 +30,7 @@ export default function RoomPage() {
     messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
 
-  const isHost = hostUserId === userId;
+  const isHost = hostUserId === (authUser?.username || username);
 
   const handleLeaveClick = () => {
     if (isHost) {

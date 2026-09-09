@@ -145,7 +145,7 @@ function Player({
   }, []);
 
   const showPlayer = mediaType !== 'none' && mediaSrc && !youtubeError;
-  const isHost = hostUserId === userId;
+  const isHost = hostUserId === (authUser?.username || username);
 
   return (
     <div className="cm-video-wrap" style={{
