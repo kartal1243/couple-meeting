@@ -66,11 +66,28 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
   if (selected) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 20 }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 'clamp(12px, 3vw, 20px)' }}>
+        <style>{`
+          @media (max-width: 600px) {
+            .cm-community-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+            .cm-community-header button { width: 100% !important; }
+            .cm-community-create-form { padding: 14px !important; }
+            .cm-community-create-form input { font-size: 14px !important; padding: 12px !important; }
+            .cm-community-create-icons { gap: 4px !important; }
+            .cm-community-create-icons button { width: 36px !important; height: 36px !important; font-size: 18px !important; }
+            .cm-community-post-input { flex-direction: column !important; }
+            .cm-community-post-input input { min-height: 44px !important; }
+            .cm-community-post-input button { width: 100% !important; padding: 12px !important; }
+            .cm-community-card { padding: 14px !important; }
+            .cm-community-card-name { font-size: 14px !important; }
+            .cm-community-detail-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+            .cm-community-detail-header span:first-child { font-size: 32px !important; }
+          }
+        `}</style>
         <button onClick={() => { setSelected(null); setPosts([]); setMembers([]); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: 16, fontSize: 14 }}>
           ← Geri
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div className="cm-community-detail-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <span style={{ fontSize: 40 }}>{selected.icon}</span>
           <div>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>{selected.name}</div>
@@ -79,7 +96,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
         </div>
 
         {/* Create Post */}
-        <div style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 16, marginBottom: 20, display: 'flex', gap: 8 }}>
+        <div className="cm-community-post-input" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 16, marginBottom: 20, display: 'flex', gap: 8 }}>
           <input value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Bir gönderi yaz..." onKeyDown={e => e.key === 'Enter' && sendPost()} style={{ flex: 1, background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '8px 12px', color: '#e2e8f0', fontSize: 13 }} />
           <button onClick={sendPost} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, cursor: 'pointer' }}>Gönder</button>
         </div>
@@ -120,8 +137,8 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 'clamp(12px, 3vw, 20px)' }}>
+      <div className="cm-community-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ color: '#fff', fontWeight: 800, fontSize: 24 }}>🏘️ Topluluklar</div>
         <button onClick={() => setShowCreate(true)} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
           + Yeni Topluluk
@@ -129,9 +146,9 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
       </div>
 
       {showCreate && (
-        <div style={{ background: 'rgba(30,41,59,.95)', borderRadius: 14, padding: 20, marginBottom: 20, border: `1px solid ${currentTheme.primary}33` }}>
+        <div className="cm-community-create-form" style={{ background: 'rgba(30,41,59,.95)', borderRadius: 14, padding: 20, marginBottom: 20, border: `1px solid ${currentTheme.primary}33` }}>
           <div style={{ color: '#fff', fontWeight: 800, marginBottom: 12 }}>Yeni Topluluk Oluştur</div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <div className="cm-community-create-icons" style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             {ICONS.map(icon => (
               <button key={icon} onClick={() => setNewIcon(icon)} style={{ background: newIcon === icon ? currentTheme.primary : '#1f2c34', border: 'none', borderRadius: 8, padding: 6, cursor: 'pointer', fontSize: 20 }}>{icon}</button>
             ))}
@@ -147,11 +164,11 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {communities.map(c => (
-          <div key={c.id} onClick={() => selectCommunity(c.id)} style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 16, cursor: 'pointer', border: `1px solid ${currentTheme.primary}22`, transition: 'border-color .2s' }}>
+          <div key={c.id} onClick={() => selectCommunity(c.id)} className="cm-community-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 16, cursor: 'pointer', border: `1px solid ${currentTheme.primary}22`, transition: 'border-color .2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 32 }}>{c.icon}</span>
               <div style={{ flex: 1 }}>
-                <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{c.name}</div>
+                <div className="cm-community-card-name" style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{c.name}</div>
                 <div style={{ color: '#94a3b8', fontSize: 12 }}>{c.description || 'Açıklama yok'}</div>
                 <div style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>👥 {c.member_count} üye</div>
               </div>
