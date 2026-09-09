@@ -281,7 +281,7 @@ function SocialModal({
               </div>
             )}
             {socialTab === 'dm' && dmActiveChat && (
-              <DmChat activeChat={dmActiveChat} messages={dmMessages} input={dmInput} setInput={setDmInput} onSend={(text) => sendDm(dmActiveChat.username, text)} onBack={() => { setDmActiveChat(null); setDmMessages([]); }} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} followUser={followUser} unfollowUser={unfollowUser} isFollowingUser={isFollowingUser} />
+              <DmChat activeChat={dmActiveChat} messages={dmMessages[dmActiveChat.username] || []} input={dmInput} setInput={setDmInput} onSend={(text) => sendDm(dmActiveChat.username, text)} onBack={() => { setDmActiveChat(null); }} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} followUser={followUser} unfollowUser={unfollowUser} isFollowingUser={isFollowingUser} />
             )}
 
             {/* Groups */}

@@ -187,7 +187,7 @@ function App() {
   const [profileStatusInput, setProfileStatusInput] = useState('');
   const [dmConversations, setDmConversations] = useState([]);
   const [dmActiveChat, setDmActiveChat] = useState(null);
-  const [dmMessages, setDmMessages] = useState([]);
+  const [dmMessages, setDmMessages] = useState({});
   const [dmInput, setDmInput] = useState('');
   const [chatGroups, setChatGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState(null);
@@ -1042,8 +1042,7 @@ function App() {
 
     socket.on('dm_list', ({ conversations }) => setDmConversations(conversations || []));
     socket.on('dm_history', ({ messages, withUser }) => {
-      if (dmActiveChat?.username === withUser || dmActiveChat === withUser) setDmMessages(messages || []);
-      else if (!dmActiveChat && messages) setDmMessages(messages || []);
+      setDmMessages(prev => ({ ...prev, [withUser]: messages || [] }));
     });
     socket.on('dm_sent', (msg) => {
       setDmMessages((prev) => {
@@ -1146,15 +1145,33 @@ function App() {
     });
 
     socket.on('dm_read_receipt', (data) => {
-      setDmMessages(prev => prev.map(m => m.from === data.from && !m.read ? { ...m, read: true } : m));
+      setDmMessages(prev => {
+        const next = {};
+        for (const [k, msgs] of Object.entries(prev)) {
+          next[k] = Array.isArray(msgs) ? msgs.map(m => m.from === data.from && !m.read ? { ...m, read: true } : m) : msgs;
+        }
+        return next;
+      });
     });
 
     socket.on('dm_deleted', (data) => {
-      setDmMessages(prev => prev.filter(m => m.id !== data.messageId));
+      setDmMessages(prev => {
+        const next = {};
+        for (const [k, msgs] of Object.entries(prev)) {
+          next[k] = Array.isArray(msgs) ? msgs.filter(m => m.id !== data.messageId) : msgs;
+        }
+        return next;
+      });
     });
 
     socket.on('dm_edited', (data) => {
-      setDmMessages(prev => prev.map(m => m.id === data.messageId ? { ...m, text: data.text, edited: true } : m));
+      setDmMessages(prev => {
+        const next = {};
+        for (const [k, msgs] of Object.entries(prev)) {
+          next[k] = Array.isArray(msgs) ? msgs.map(m => m.id === data.messageId ? { ...m, text: data.text, edited: true } : m) : msgs;
+        }
+        return next;
+      });
     });
 
     socket.on('reactions_update', (data) => {
