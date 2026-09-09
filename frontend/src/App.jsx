@@ -13,6 +13,7 @@ import OnboardingScreen from './components/mobile/OnboardingScreen';
 import AboutPage from './components/mobile/AboutPage';
 import ProfilePage from './components/mobile/ProfilePage';
 import MobileHomePage from './components/mobile/MobileHomePage';
+import RoomsPage from './components/mobile/RoomsPage';
 
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
@@ -1342,7 +1343,7 @@ function App() {
       {showOnboarding && <OnboardingScreen onComplete={() => setShowOnboarding(false)} />}
 
       <Routes>
-        <Route path="/" element={isApp() && mobileTab === 'rooms' ? <MobileHomePage /> : <HomePage />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/room/:roomIdParam" element={<RoomPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />
@@ -1465,6 +1466,7 @@ function App() {
         <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
       )}
       
+      {isApp() && mobileTab === 'rooms' && <RoomsPage />}
       {isApp() && mobileTab === 'about' && <AboutPage />}
       {isApp() && mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
       
