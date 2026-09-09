@@ -13,6 +13,7 @@ import OnboardingScreen from './components/mobile/OnboardingScreen';
 import AboutPage from './components/mobile/AboutPage';
 import ProfilePage from './components/mobile/ProfilePage';
 import MobileHomePage from './components/mobile/MobileHomePage';
+import MobileHomeCenter from './components/mobile/MobileHomeCenter';
 import RoomsPage from './components/mobile/RoomsPage';
 import ChatPage from './components/mobile/ChatPage';
 import FriendsPage from './components/mobile/FriendsPage';
@@ -68,7 +69,7 @@ function App() {
   
   // Mobile app only
   const [showOnboarding, setShowOnboarding] = useState(() => isApp() && !localStorage.getItem('cm_onboarding_done'));
-  const [mobileTab, setMobileTab] = useState('rooms');
+  const [mobileTab, setMobileTab] = useState('home');
 
   useEffect(() => {
     if (isApp()) document.body.classList.add('mobile-app-mode');
@@ -1473,10 +1474,10 @@ function App() {
           {mobileTab === 'rooms' && <RoomsPage />}
           {mobileTab === 'chat' && <ChatPage />}
           {mobileTab === 'friends' && <FriendsPage />}
-          {mobileTab === 'about' && <AboutPage />}
           {mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
         </div>
       )}
+      {isApp() && mobileTab === 'home' && <MobileHomeCenter />}
       
       {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </AppContext.Provider>
