@@ -74,6 +74,13 @@ function App() {
   useEffect(() => {
     if (isApp()) document.body.classList.add('mobile-app-mode');
   }, []);
+
+  useEffect(() => {
+    if (isApp()) {
+      document.body.style.overflow = inRoom ? 'hidden' : '';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [inRoom]);
   const [messageReactions, setMessageReactions] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
 
@@ -1425,6 +1432,28 @@ function App() {
         </div>
       )}
 
+      {showProfileModal && (
+        <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
+      )}
+      {showFolderModal && (
+        <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
+      )}
+      {showSettingsModal && (
+        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} />
+      )}
+      
+      {isApp() && mobileTab !== 'home' && (
+        <div className="mobile-overlay">
+          {mobileTab === 'rooms' && <RoomsPage />}
+          {mobileTab === 'chat' && <ChatPage />}
+          {mobileTab === 'friends' && <FriendsPage />}
+          {mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
+        </div>
+      )}
+      {isApp() && mobileTab === 'home' && <MobileHomeCenter />}
+      
+      {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
+
       {showJoinModal && joinRoomTarget && (
         <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
           <div style={{ width:'min(380px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
@@ -1459,28 +1488,6 @@ function App() {
           </div>
         </div>
       )}
-
-      {showFolderModal && (
-        <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
-      )}
-      {showSettingsModal && (
-        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} />
-      )}
-      {showProfileModal && (
-        <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
-      )}
-      
-      {isApp() && mobileTab !== 'home' && (
-        <div className="mobile-overlay">
-          {mobileTab === 'rooms' && <RoomsPage />}
-          {mobileTab === 'chat' && <ChatPage />}
-          {mobileTab === 'friends' && <FriendsPage />}
-          {mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
-        </div>
-      )}
-      {isApp() && mobileTab === 'home' && <MobileHomeCenter />}
-      
-      {isApp() && <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </AppContext.Provider>
   );
 }
