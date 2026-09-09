@@ -1039,6 +1039,7 @@ function App() {
 
     socket.on('global_chat_history', (items) => setGlobalMessages(Array.isArray(items) ? items : []));
     socket.on('global_chat_message', (msg) => setGlobalMessages((prev) => [...prev.slice(-79), msg]));
+    socket.on('global_chat_cleared', () => { setGlobalMessages([]); setToast({ msg: 'Canlı sohbet admin tarafından temizlendi', sender: 'Sistem', id: Date.now() }); setTimeout(() => setToast(null), 4000); });
 
     socket.on('dm_list', ({ conversations }) => setDmConversations(conversations || []));
     socket.on('dm_history', ({ messages, withUser }) => {
@@ -1277,7 +1278,7 @@ function App() {
       socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
       socket.off('room_sync_data');
-      socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('social_profile'); socket.off('auth_result');
+      socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('global_chat_cleared'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('global_online_update'); socket.off('vip_activated');
       socket.off('typing_indicator'); socket.off('dm_read_receipt'); socket.off('dm_deleted'); socket.off('dm_edited');

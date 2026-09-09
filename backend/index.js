@@ -578,6 +578,21 @@ app.get('/api/admin/analytics', adminAuth, (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// ADMIN: CANLI SOHBET TEMİZLEME
+// ═══════════════════════════════════════════════════════════
+app.delete('/api/admin/clear-global-chat', adminAuth, (req, res) => {
+  try {
+    db.clearGlobalMessages();
+    logger.info('[ADMIN] Canlı sohbet mesajları temizlendi');
+    io.emit('global_chat_cleared', { by: req.admin?.username || 'admin' });
+    res.json({ ok: true, message: 'Canlı sohbet temizlendi' });
+  } catch (err) {
+    logger.error('[ADMIN] Canlı sohbet temizleme hatası:', err.message);
+    res.status(500).json({ ok: false, message: 'Temizleme hatası' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // ADMIN: TOPLU İLETİŞİM
 // ═══════════════════════════════════════════════════════════
 app.post('/api/admin/bulk-message', adminAuth, (req, res) => {

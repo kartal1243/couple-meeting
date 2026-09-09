@@ -588,6 +588,16 @@ function formatUser(row) {
   };
 }
 
+function clearGlobalMessages() {
+  if (getDb()) {
+    db.prepare('DELETE FROM global_messages').run();
+    return true;
+  }
+  jsonFallback.globalMessages = [];
+  saveJson();
+  return true;
+}
+
 function closeDb() {
   if (db) { try { db.close(); } catch {} db = null; }
 }
@@ -1197,7 +1207,7 @@ module.exports = {
   getDb, getUser, getUserByEmail, getUserByToken, getUserByResetToken, createUser, updateUser, updateLastSeen,
   createToken, cleanOldTokens, sendFriendRequest, getPendingFriendRequests, getFriendRequest,
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
-  searchUsers, addGlobalMessage, getGlobalMessages, getAllUsers, closeDb,
+  searchUsers, addGlobalMessage, getGlobalMessages, clearGlobalMessages, getAllUsers, closeDb,
   addConnectionLog, getConnectionLogs, getLogStats,
   saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
   saveGroupMessage, getGroupHistory,
