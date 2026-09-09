@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 
 const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
   const {
-    openAuth, setShowVipModal, notifications, unreadCount,
+    openAuth, setShowVipModal, notifications, unreadCount, setShowNotifPanel,
     profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
     friends, friendRequests, followingList, followersList, saveProfile
   } = useApp();
@@ -22,7 +22,12 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => onAvatarChange(ev.target.result);
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      onAvatarChange(dataUrl);
+      localStorage.setItem('cm_user_avatar', dataUrl);
+      saveProfile({ avatar: dataUrl });
+    };
     reader.readAsDataURL(file);
   };
 
@@ -30,7 +35,7 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
     setSaving(true);
     setProfileBioInput(editBio);
     setProfileStatusInput(editStatus);
-    saveProfile({ bio: editBio, status: editStatus });
+    saveProfile({ bio: editBio, status: editStatus, username: editName });
     setTimeout(() => { setShowSettings(false); setSaving(false); }, 400);
   };
 
@@ -46,7 +51,7 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
         setShowShareToast(true);
         setTimeout(() => setShowShareToast(false), 2000);
       }
-    } catch (e) { /* cancelled */ }
+    } catch (e) {}
   };
 
   const isVip = authUser?.vip && new Date(authUser.vip) > new Date();
@@ -55,12 +60,20 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
     return (
       <div className="mobile-page profile-page">
         <div className="profile-guest">
-          <div className="profile-guest-icon anim-float">👤</div>
+          <div className="profile-guest-avatar anim-float">
+            <span>👤</span>
+          </div>
           <h2>Hosgeldiniz!</h2>
           <p>Giris yaparak ozelliklerin keyfini cikarin</p>
           <div className="profile-guest-btns">
             <button className="profile-btn-primary touch-feedback" onClick={() => openAuth('login')}>Giris Yap</button>
             <button className="profile-btn-secondary touch-feedback" onClick={() => openAuth('register')}>Kayit Ol</button>
+          </div>
+          <div className="profile-guest-features">
+            <div className="profile-guest-feat"><span>🎬</span> Video izle</div>
+            <div className="profile-guest-feat"><span>💬</span> Sohbet et</div>
+            <div className="profile-guest-feat"><span>👥</span> Arkadas edin</div>
+            <div className="profile-guest-feat"><span>🎤</span> Sesli konus</div>
           </div>
         </div>
       </div>
@@ -73,27 +86,24 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
 
       <div className="profile-top-bar">
         <span className="profile-top-title">Profilim</span>
-        <button className="profile-settings-btn touch-feedback" onClick={() => setShowSettings(true)}>
+        <button className="profile-settings-btn touch-feedback" onClick={() => { setEditName(authUser.username || ''); setEditBio(authUser.bio || profileBioInput || ''); setEditStatus(profileStatusInput || ''); setShowSettings(true); }}>
           Ayarlar
         </button>
       </div>
 
       <div className="profile-card">
         <div className="profile-avatar-wrap" onClick={handleAvatarClick}>
-          {myAvatar ? (
+          {myAvatar && myAvatar.length > 2 ? (
             <img src={myAvatar} alt="avatar" className="profile-avatar-img" />
           ) : (
             <div className="profile-avatar-letter">{authUser.username?.[0]?.toUpperCase() || '?'}</div>
           )}
-          <div className="profile-avatar-badge">
-            {isVip ? '💎' : '📷'}
-          </div>
+          <div className="profile-avatar-badge">{isVip ? '💎' : '📷'}</div>
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarFile} />
 
         <h2 className="profile-name">{authUser.username}</h2>
         <p className="profile-bio">{profileStatusInput || 'Merhaba, ben Couple Meeting kullaniciyim!'}</p>
-
         {isVip && <div className="profile-vip-badge">💎 VIP Uye</div>}
       </div>
 
@@ -128,20 +138,20 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
           <span className="profile-menu-arrow">›</span>
         </button>
 
-        <button className="profile-menu-item touch-feedback">
+        <button className="profile-menu-item touch-feedback" onClick={() => setShowNotifPanel(true)}>
           <span className="profile-menu-icon">🔔</span>
           <span className="profile-menu-text">Bildirimler</span>
           {unreadCount > 0 && <span className="profile-menu-badge">{unreadCount}</span>}
           <span className="profile-menu-arrow">›</span>
         </button>
 
-        <button className="profile-menu-item touch-feedback" onClick={() => setShowSettings(true)}>
+        <button className="profile-menu-item touch-feedback" onClick={() => { setEditName(authUser.username || ''); setEditBio(authUser.bio || profileBioInput || ''); setEditStatus(profileStatusInput || ''); setShowSettings(true); }}>
           <span className="profile-menu-icon">⚙️</span>
           <span className="profile-menu-text">Ayarlar</span>
           <span className="profile-menu-arrow">›</span>
         </button>
 
-        <button className="profile-menu-item touch-feedback" onClick={onLogout}>
+        <button className="profile-menu-item danger touch-feedback" onClick={onLogout}>
           <span className="profile-menu-icon">🚪</span>
           <span className="profile-menu-text">Cikis Yap</span>
           <span className="profile-menu-arrow">›</span>
@@ -152,21 +162,17 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
         <p>Couple Meeting v1.0</p>
       </div>
 
-      {/* SETTINGS OVERLAY */}
       {showSettings && (
         <div className="profile-settings-overlay">
           <div className="profile-settings">
             <div className="profile-settings-header">
               <button className="profile-settings-back" onClick={() => setShowSettings(false)}>Geri</button>
               <h2>Ayarlar</h2>
-              <button className="profile-settings-save" onClick={handleSave} disabled={saving}>
-                {saving ? '...' : 'Kaydet'}
-              </button>
+              <button className="profile-settings-save" onClick={handleSave} disabled={saving}>{saving ? '...' : 'Kaydet'}</button>
             </div>
-
             <div className="profile-settings-body">
               <div className="profile-settings-avatar" onClick={handleAvatarClick}>
-                {myAvatar ? (
+                {myAvatar && myAvatar.length > 2 ? (
                   <img src={myAvatar} alt="avatar" />
                 ) : (
                   <span>{authUser.username?.[0]?.toUpperCase() || '?'}</span>
