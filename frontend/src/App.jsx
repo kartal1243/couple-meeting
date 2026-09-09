@@ -582,12 +582,14 @@ function App() {
       setJoinModalError(msg);
       socket.off('room_joined', onJoined);
     };
-    const onJoined = () => {
+    const onJoined = (data) => {
       clearTimeout(timeoutId);
       socket.off('room_error', onError);
       setShowJoinModal(false);
       setJoinRoomTarget(null);
       setJoinModalPass('');
+      setInRoom(true);
+      setTimeout(() => navigate('/room/' + encodeURIComponent(data.roomId)), 50);
     };
     socket.once('room_error', onError);
     socket.once('room_joined', onJoined);
