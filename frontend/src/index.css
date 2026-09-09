@@ -671,6 +671,12 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
   to { opacity: 1; transform: translateY(0); }
 }
 .mobile-app-mode { position: relative; overflow: hidden; }
-.mobile-pages-container { position: relative; }
-.mobile-page-wrapper { position: relative; min-height: 100vh; }
-.mobile-page-wrapper[style*="display: block"] { animation: fadeSlideIn 0.2s ease-out; }
+.mobile-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #0a0e14;
+  z-index: 9990;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mobile-overlay .mobile-page { padding-bottom: 80px; }

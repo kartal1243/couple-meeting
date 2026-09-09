@@ -1468,23 +1468,13 @@ function App() {
         <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
       )}
       
-      {isApp() && (
-        <div className="mobile-pages-container">
-          <div className="mobile-page-wrapper" style={{ display: mobileTab === 'rooms' ? 'block' : 'none' }}>
-            <RoomsPage />
-          </div>
-          <div className="mobile-page-wrapper" style={{ display: mobileTab === 'chat' ? 'block' : 'none' }}>
-            <ChatPage />
-          </div>
-          <div className="mobile-page-wrapper" style={{ display: mobileTab === 'friends' ? 'block' : 'none' }}>
-            <FriendsPage />
-          </div>
-          <div className="mobile-page-wrapper" style={{ display: mobileTab === 'about' ? 'block' : 'none' }}>
-            <AboutPage />
-          </div>
-          <div className="mobile-page-wrapper" style={{ display: mobileTab === 'profile' ? 'block' : 'none' }}>
-            <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />
-          </div>
+      {isApp() && mobileTab !== 'home' && (
+        <div className="mobile-overlay">
+          {mobileTab === 'rooms' && <RoomsPage />}
+          {mobileTab === 'chat' && <ChatPage />}
+          {mobileTab === 'friends' && <FriendsPage />}
+          {mobileTab === 'about' && <AboutPage />}
+          {mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onAvatarChange={setMyAvatar} onLogout={handleLogout} />}
         </div>
       )}
       
