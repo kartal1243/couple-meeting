@@ -4,9 +4,10 @@ import { useApp } from '../../contexts/AppContext';
 const ChatPage = () => {
   const {
     globalMessages, globalChatInput, setGlobalChatInput, sendGlobalMessage,
-    authUser, openAuth
+    authUser, openAuth, socket, authToken
   } = useApp();
   const messagesEndRef = useRef(null);
+  const [localInput, setLocalInput] = useState('');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -14,8 +15,10 @@ const ChatPage = () => {
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!globalChatInput.trim()) return;
-    sendGlobalMessage();
+    const text = localInput.trim();
+    if (!text || !socket) return;
+    socket.emit('global_chat_message', { text, token: authToken || '' });
+    setLocalInput('');
   };
 
   return (
@@ -50,12 +53,12 @@ const ChatPage = () => {
       <form className="chat-input" onSubmit={handleSend}>
         <input
           type="text"
-          value={globalChatInput}
-          onChange={(e) => setGlobalChatInput(e.target.value)}
+          value={localInput}
+          onChange={(e) => setLocalInput(e.target.value)}
           placeholder={authUser ? "Mesajini yaz..." : "Giris yaparak mesaj gonder"}
           disabled={!authUser}
         />
-        <button type="submit" disabled={!authUser || !globalChatInput.trim()}>
+        <button type="submit" disabled={!authUser || !localInput.trim()}>
           📤
         </button>
       </form>
@@ -64,3 +67,4 @@ const ChatPage = () => {
 };
 
 export default ChatPage;
+

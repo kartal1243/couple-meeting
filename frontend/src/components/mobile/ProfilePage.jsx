@@ -18,15 +18,34 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
-  const handleAvatarFile = (e) => {
+  const compressImage = (dataUrl, maxSize = 200) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = dataUrl;
+    });
+  };
+
+  const handleAvatarFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
-      onAvatarChange(dataUrl);
-      localStorage.setItem('cm_user_avatar', dataUrl);
-      saveProfile({ avatar: dataUrl });
+    reader.onload = async (ev) => {
+      const compressed = await compressImage(ev.target.result, 200);
+      onAvatarChange(compressed);
+      localStorage.setItem('cm_user_avatar', compressed);
+      saveProfile({ avatar: compressed });
     };
     reader.readAsDataURL(file);
   };
