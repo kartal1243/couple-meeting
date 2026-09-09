@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 
 const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
   const {
-    openAuth, setShowVipModal, notifications, unreadCount, setShowNotifPanel,
+    openAuth, setShowVipModal, unreadCount, setShowNotifPanel,
     profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput,
-    friends, friendRequests, followingList, followersList, saveProfile
+    friends, followingList, followersList, saveProfile
   } = useApp();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -14,43 +14,8 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
   const [editStatus, setEditStatus] = useState(profileStatusInput || '');
   const [showShareToast, setShowShareToast] = useState(false);
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
 
-  const handleAvatarClick = () => fileInputRef.current?.click();
-
-  const compressImage = (dataUrl, maxSize = 200) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height;
-        if (w > maxSize || h > maxSize) {
-          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-          else { w = Math.round(w * maxSize / h); h = maxSize; }
-        }
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
-      };
-      img.src = dataUrl;
-    });
-  };
-
-  const handleAvatarFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const compressed = await compressImage(ev.target.result, 200);
-      onAvatarChange(compressed);
-      localStorage.setItem('cm_user_avatar', compressed);
-      saveProfile({ avatar: compressed });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = async () => {
+  const handleSave = () => {
     setSaving(true);
     setProfileBioInput(editBio);
     setProfileStatusInput(editStatus);
@@ -111,15 +76,14 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
       </div>
 
       <div className="profile-card">
-        <div className="profile-avatar-wrap" onClick={handleAvatarClick}>
+        <div className="profile-avatar-wrap">
           {myAvatar && myAvatar.length > 2 ? (
             <img src={myAvatar} alt="avatar" className="profile-avatar-img" />
           ) : (
             <div className="profile-avatar-letter">{authUser.username?.[0]?.toUpperCase() || '?'}</div>
           )}
-          <div className="profile-avatar-badge">{isVip ? '💎' : '📷'}</div>
+          {isVip && <div className="profile-avatar-badge">💎</div>}
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarFile} />
 
         <h2 className="profile-name">{authUser.username}</h2>
         <p className="profile-bio">{profileStatusInput || 'Merhaba, ben Couple Meeting kullaniciyim!'}</p>
@@ -190,13 +154,8 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
               <button className="profile-settings-save" onClick={handleSave} disabled={saving}>{saving ? '...' : 'Kaydet'}</button>
             </div>
             <div className="profile-settings-body">
-              <div className="profile-settings-avatar" onClick={handleAvatarClick}>
-                {myAvatar && myAvatar.length > 2 ? (
-                  <img src={myAvatar} alt="avatar" />
-                ) : (
-                  <span>{authUser.username?.[0]?.toUpperCase() || '?'}</span>
-                )}
-                <div className="profile-settings-avatar-edit">Kamera ile degistir</div>
+              <div className="profile-settings-avatar">
+                <span>{authUser.username?.[0]?.toUpperCase() || '?'}</span>
               </div>
 
               <div className="profile-settings-field">
