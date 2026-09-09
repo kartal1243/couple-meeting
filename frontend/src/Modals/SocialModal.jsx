@@ -10,6 +10,54 @@ function formatLastSeen(ts) {
   return `${Math.floor(diff / 86400000)} gün önce`;
 }
 
+const MOBILE_CSS = `
+@media (max-width: 768px) {
+  .cm-social-root { padding: 0 !important; }
+  .cm-social-box { width: 100% !important; height: 100% !important; border-radius: 0 !important; max-height: 100vh !important; max-height: 100dvh !important; }
+  .cm-social-header { padding: 10px 12px !important; flex-wrap: wrap !important; gap: 6px !important; }
+  .cm-social-header-title { font-size: 15px !important; }
+  .cm-social-header-actions { gap: 4px !important; }
+  .cm-social-header-actions button { padding: 6px 8px !important; font-size: 10px !important; }
+  .cm-social-layout { flex-direction: column !important; }
+  .cm-social-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid #25313a !important; padding: 6px 8px !important; flex-direction: row !important; overflow-x: auto !important; overflow-y: hidden !important; gap: 4px !important; -webkit-overflow-scrolling: touch; }
+  .cm-social-sidebar::-webkit-scrollbar { display: none; }
+  .cm-social-sidebar-btn { padding: 8px 12px !important; font-size: 11px !important; white-space: nowrap !important; flex-shrink: 0 !important; }
+  .cm-social-sidebar-footer { display: none !important; }
+  .cm-social-content { padding: 10px !important; }
+  .cm-social-content-title { font-size: 15px !important; margin-bottom: 10px !important; }
+  .cm-social-msg-input { padding: 10px !important; font-size: 14px !important; }
+  .cm-social-msg-btn { padding: 10px 12px !important; }
+  .cm-social-msg-row { flex-direction: column !important; gap: 6px !important; }
+  .cm-social-msg-row input { min-height: 44px !important; font-size: 14px !important; }
+  .cm-social-msg-row button { width: 100% !important; padding: 12px !important; }
+  .cm-social-card { padding: 10px !important; gap: 8px !important; margin-bottom: 6px !important; }
+  .cm-social-card-avatar { font-size: 20px !important; }
+  .cm-social-card-name { font-size: 13px !important; }
+  .cm-social-card-sub { font-size: 10px !important; }
+  .cm-social-card-btns { gap: 3px !important; }
+  .cm-social-card-btns button { padding: 5px 7px !important; font-size: 9px !important; }
+  .cm-social-feed-layout { flex-direction: column !important; }
+  .cm-social-feed-sidebar { width: 100% !important; border-left: none !important; border-top: 1px solid #25313a !important; padding: 10px !important; max-height: none !important; }
+  .cm-social-profile-avatar { width: 52px !important; height: 52px !important; font-size: 34px !important; border-radius: 14px !important; }
+  .cm-social-profile-name { font-size: 18px !important; }
+  .cm-social-profile-avatar-grid button { width: 36px !important; height: 36px !important; font-size: 18px !important; }
+  .cm-social-dm-header { padding: 8px 10px !important; gap: 6px !important; }
+  .cm-social-dm-header-name { font-size: 13px !important; }
+  .cm-social-dm-msgs { padding: 10px !important; gap: 6px !important; }
+  .cm-social-dm-bubble { max-width: 82% !important; padding: 7px 10px !important; font-size: 12px !important; }
+  .cm-social-dm-input { padding: 8px !important; gap: 6px !important; }
+  .cm-social-dm-input input { padding: 10px !important; font-size: 14px !important; }
+  .cm-social-follow-row { padding: 8px 10px !important; }
+  .cm-social-notif-panel { top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important; max-height: 60vh !important; border-radius: 18px 18px 0 0 !important; }
+  .cm-social-verify-box { width: 100% !important; padding: 18px !important; }
+  .cm-social-2fa-box { width: 100% !important; padding: 18px !important; }
+  .cm-social-delete-box { width: 100% !important; }
+  .cm-social-followers-box { width: 100% !important; max-height: 80vh !important; }
+  .cm-social-group-create-box { width: 100% !important; max-height: 85vh !important; overflow-y: auto !important; }
+  .cm-social-group-create-box > div { width: 100% !important; max-width: none !important; }
+}
+`;
+
 const DmChat = memo(function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser }) {
   const endRef = useRef(null);
   const typingTimeout = useRef(null);
@@ -25,31 +73,29 @@ const DmChat = memo(function DmChat({ activeChat, messages, input, setInput, onS
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 16, fontWeight: 900 }}>←</button>
-        <div style={{ fontSize: 18, position: 'relative' }}>
+      <div className="cm-social-dm-header" style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: '4px 6px' }}>←</button>
+        <div style={{ fontSize: 18, position: 'relative', flexShrink: 0 }}>
           {activeChat.avatar}
           <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: activeChat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
         </div>
-        <div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{activeChat.username}</div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="cm-social-dm-header-name" style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{activeChat.username}</div>
           <div style={{ color: activeChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? '✏️ yazıyor...' : (activeChat.isOnline ? '🟢 Çevrimiçi' : 'Çevrimdışı')}</div>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <button type="button" onClick={() => isFollowingUser ? unfollowUser(activeChat.username) : followUser(activeChat.username)}
-            style={{ background: isFollowingUser ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>
-            {isFollowingUser ? '✕ Takipten Çık' : '👆 Takip Et'}
-          </button>
-        </div>
+        <button type="button" onClick={() => isFollowingUser ? unfollowUser(activeChat.username) : followUser(activeChat.username)}
+          style={{ background: isFollowingUser ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>
+          {isFollowingUser ? '✕ Takipten Çık' : '👆 Takip Et'}
+        </button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="cm-social-dm-msgs" style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henüz mesaj yok. İlk mesajı sen gönder!</div>}
         {messages.map((m, i) => {
           const msgFrom = m.from || m.from_username;
           const isMe = msgFrom !== activeChat.username;
           return (
             <div key={m.id || i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-              <div style={{ maxWidth: '75%', padding: '8px 12px', borderRadius: 14, background: isMe ? '#005c4b' : '#1f2c34', borderBottomRightRadius: isMe ? 4 : 14, borderBottomLeftRadius: isMe ? 14 : 4 }}>
+              <div className="cm-social-dm-bubble" style={{ maxWidth: '75%', padding: '8px 12px', borderRadius: 14, background: isMe ? '#005c4b' : '#1f2c34', borderBottomRightRadius: isMe ? 4 : 14, borderBottomLeftRadius: isMe ? 14 : 4 }}>
                 <div style={{ fontSize: 12, color: '#e9edef', wordBreak: 'break-word' }}>{m.text}{m.edited && <span style={{ fontSize: 9, color: '#667781', marginLeft: 4 }}>(düzenlendi)</span>}</div>
                 <div style={{ fontSize: 9, color: '#667781', textAlign: 'right', marginTop: 3 }}>{m.time}</div>
               </div>
@@ -58,7 +104,7 @@ const DmChat = memo(function DmChat({ activeChat, messages, input, setInput, onS
         })}
         <div ref={endRef} />
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
+      <form className="cm-social-dm-input" onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
         <input value={input} onChange={handleInputChange} placeholder="Mesaj yaz..." style={{ flex: 1, background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '9px 12px', borderRadius: 10, fontSize: 13, outline: 'none' }} />
         <button type="submit" style={{ background: '#00a884', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: 10, fontWeight: 900, cursor: 'pointer' }}>➤</button>
       </form>
@@ -71,18 +117,18 @@ const GroupChat = memo(function GroupChat({ group, messages, input, setInput, on
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 16, fontWeight: 900 }}>←</button>
+      <div className="cm-social-dm-header" style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: '4px 6px' }}>←</button>
         <div>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>👥 {group.name}</div>
           <div style={{ color: '#7f8c98', fontSize: 10 }}>{group.members?.length || 0} üye</div>
         </div>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="cm-social-dm-msgs" style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henüz mesaj yok.</div>}
         {messages.map((m, i) => (
           <div key={m.id || i} style={{ display: 'flex', gap: 8 }}>
-            <div style={{ fontSize: 18 }}>{m.fromAvatar || '🐱'}</div>
+            <div style={{ fontSize: 18, flexShrink: 0 }}>{m.fromAvatar || '🐱'}</div>
             <div style={{ background: '#1f2c34', padding: '7px 10px', borderRadius: 12, maxWidth: '75%' }}>
               <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 900 }}>{m.from} <span style={{ color: '#667781', fontWeight: 600 }}>• {m.time}</span></div>
               <div style={{ fontSize: 12, color: '#e9edef', marginTop: 2, wordBreak: 'break-word' }}>{m.text}</div>
@@ -91,7 +137,7 @@ const GroupChat = memo(function GroupChat({ group, messages, input, setInput, on
         ))}
         <div ref={endRef} />
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
+      <form className="cm-social-dm-input" onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Gruba mesaj yaz..." style={{ flex: 1, background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '9px 12px', borderRadius: 10, fontSize: 13, outline: 'none' }} />
         <button type="submit" style={{ background: '#00a884', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: 10, fontWeight: 900, cursor: 'pointer' }}>➤</button>
       </form>
@@ -138,15 +184,16 @@ function SocialModal({
   ];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 19000, background: 'rgba(0,0,0,.78)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
-      <div style={{ width: 'min(900px, 100%)', height: 'min(760px, 94vh)', background: '#0f171d', border: '1px solid #2a3942', borderRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 35px 100px rgba(0,0,0,.5)' }}>
+    <div className="cm-social-root" style={{ position: 'fixed', inset: 0, zIndex: 19000, background: 'rgba(0,0,0,.78)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+      <style>{MOBILE_CSS}</style>
+      <div className="cm-social-box" style={{ width: 'min(900px, 100%)', height: 'min(760px, 94vh)', background: '#0f171d', border: '1px solid #2a3942', borderRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 35px 100px rgba(0,0,0,.5)' }}>
         {/* Header */}
-        <div style={{ padding: '14px 16px', background: '#111b21', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="cm-social-header" style={{ padding: '14px 16px', background: '#111b21', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ color: '#53e6bc', fontSize: 10, fontWeight: 900 }}>COUPLE MEETING SOCIAL</div>
-            <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>🌍 Topluluk</div>
+            <div className="cm-social-header-title" style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>🌍 Topluluk</div>
           </div>
-          <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+          <div className="cm-social-header-actions" style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
             {authUser && (
               <button type="button" onClick={() => { if (showNotifPanel) { setShowNotifPanel(false); } else { loadNotifications(); markNotifsRead(); } }}
                 style={{ position: 'relative', background: showNotifPanel ? '#00a884' : '#202c33', color: '#fff', border: '1px solid #2c3b44', padding: '8px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
@@ -167,39 +214,39 @@ function SocialModal({
           </div>
         </div>
 
-        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <div className="cm-social-layout" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {/* Sidebar */}
-          <div style={{ width: 200, borderRight: '1px solid #25313a', background: '#0b141a', padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="cm-social-sidebar" style={{ width: 200, borderRight: '1px solid #25313a', background: '#0b141a', padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {tabs.map(({ tab, label }) => (
-              <button key={tab} type="button" onClick={() => { setSocialTab(tab); setDmActiveChat(null); setActiveGroup(null); }}
+              <button key={tab} type="button" className="cm-social-sidebar-btn" onClick={() => { setSocialTab(tab); setDmActiveChat(null); setActiveGroup(null); }}
                 style={{ padding: '10px 12px', border: 'none', borderRadius: 10, textAlign: 'left', background: socialTab === tab ? '#00a884' : '#111b21', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: 12 }}>
                 {label}
               </button>
             ))}
-            <div style={{ marginTop: 'auto', padding: 10, borderRadius: 12, background: '#111b21', color: '#7f8c98', fontSize: 10, lineHeight: 1.5 }}>
+            <div className="cm-social-sidebar-footer" style={{ marginTop: 'auto', padding: 10, borderRadius: 12, background: '#111b21', color: '#7f8c98', fontSize: 10, lineHeight: 1.5 }}>
               {authUser ? 'Hesabın aktif.' : 'Misafir olarak sohbet edebilirsin.'}
             </div>
           </div>
 
           {/* Content */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="cm-social-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Global Chat */}
             {socialTab === 'global' && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                 <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {globalMessages.map((m, i) => (
                     <div key={m.id || i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: 22 }}>{m.avatar || '🐱'}</div>
-                      <div style={{ background: '#111b21', padding: '8px 10px', borderRadius: 12, maxWidth: '80%' }}>
+                      <div style={{ fontSize: 22, flexShrink: 0 }}>{m.avatar || '🐱'}</div>
+                      <div style={{ background: '#111b21', padding: '8px 10px', borderRadius: 12, maxWidth: '80%', minWidth: 0 }}>
                         <div style={{ fontSize: 11, color: '#53e6bc', fontWeight: 900 }}>{m.username || 'Misafir'} <span style={{ color: '#63727d', fontWeight: 600 }}>• {m.time || ''}</span></div>
                         <div style={{ fontSize: 13, color: '#e9edef', marginTop: 3, wordBreak: 'break-word' }}>{m.text}</div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <form onSubmit={sendGlobalMessage} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
-                  <input value={globalChatInput} onChange={(e) => setGlobalChatInput(e.target.value)} placeholder="Global sohbete bir şey yaz..." style={{ ...styles.input, flex: 1 }} />
-                  <button type="submit" style={{ ...styles.buttonPrimary, padding: '10px 14px' }}>➤</button>
+                <form className="cm-social-msg-row" onSubmit={sendGlobalMessage} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
+                  <input className="cm-social-msg-input" value={globalChatInput} onChange={(e) => setGlobalChatInput(e.target.value)} placeholder="Global sohbete bir şey yaz..." style={{ ...styles.input, flex: 1 }} />
+                  <button type="submit" className="cm-social-msg-btn" style={{ ...styles.buttonPrimary, padding: '10px 14px' }}>➤</button>
                 </form>
               </div>
             )}
@@ -212,20 +259,20 @@ function SocialModal({
                 ) : dmConversations.length === 0 ? (
                   <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Henüz konuşmanın yok. Arkadaşlarından birine mesaj gönder!</div>
                 ) : dmConversations.map(c => (
-                  <div key={c.username} onClick={() => openDm(c)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer', transition: 'background 0.2s' }}
+                  <div key={c.username} onClick={() => openDm(c)} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer', transition: 'background 0.2s' }}
                     onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'} onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}>
-                    <div style={{ fontSize: 24, position: 'relative' }}>
+                    <div className="cm-social-card-avatar" style={{ fontSize: 24, position: 'relative', flexShrink: 0 }}>
                       {c.avatar}
                       <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: c.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{c.username}</span>
+                        <span className="cm-social-card-name" style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{c.username}</span>
                         <span style={{ color: c.isOnline ? '#25d366' : '#63727d', fontSize: 10 }}>{c.isOnline ? '●' : '○'}</span>
                       </div>
-                      <div style={{ color: '#7f8c98', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMessage}</div>
+                      <div className="cm-social-card-sub" style={{ color: '#7f8c98', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMessage}</div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                       <div style={{ color: '#667781', fontSize: 10 }}>{c.lastTime}</div>
                       {c.unread > 0 && <span style={{ background: '#00a884', color: '#fff', borderRadius: 10, padding: '2px 7px', fontSize: 10, fontWeight: 900 }}>{c.unread}</span>}
                     </div>
@@ -250,8 +297,7 @@ function SocialModal({
                     </div>
                     {showGroupCreate && (
                       <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowGroupCreate(false)}>
-                        <div style={{ width: '100%', maxWidth: 420, background: '#111827', border: '1px solid rgba(255,255,255,.08)', borderRadius: 18, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-                          {/* Header */}
+                        <div className="cm-social-group-create-box" style={{ width: '100%', maxWidth: 420, background: '#111827', border: '1px solid rgba(255,255,255,.08)', borderRadius: 18, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
                           <div style={{ padding: '20px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 900, margin: 0 }}>👥 Yeni Grup Oluştur</h3>
@@ -260,26 +306,16 @@ function SocialModal({
                             <button onClick={() => setShowGroupCreate(false)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', fontSize: 16, width: 32, height: 32, borderRadius: 8, cursor: 'pointer' }}>✕</button>
                           </div>
                           <div style={{ padding: 20 }}>
-                            {/* Grup adı */}
                             <div style={{ marginBottom: 16 }}>
                               <label style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>Grup Adı</label>
-                              <input value={groupNameInput} onChange={(e) => setGroupNameInput(e.target.value)}
-                                placeholder="ör: Oyun Ekibi, Film Gecesi..."
-                                maxLength={30}
-                                style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '11px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                              <input value={groupNameInput} onChange={(e) => setGroupNameInput(e.target.value)} placeholder="ör: Oyun Ekibi, Film Gecesi..." maxLength={30} style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '11px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                             </div>
-
-                            {/* Üyeler */}
                             <div style={{ marginBottom: 16 }}>
                               <label style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>
                                 Üye Ekle {groupMemberInput ? <span style={{ color: '#00a884' }}>({groupMemberInput.split(',').filter(m => m.trim()).length} seçildi)</span> : ''}
                               </label>
-                              <input value={groupMemberInput} onChange={(e) => setGroupMemberInput(e.target.value)}
-                                placeholder="Kullanıcı adlarını virgülle ayır"
-                                style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '11px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                              <input value={groupMemberInput} onChange={(e) => setGroupMemberInput(e.target.value)} placeholder="Kullanıcı adlarını virgülle ayır" style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '11px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                             </div>
-
-                            {/* Arkadaş listesinden seç */}
                             {friends && friends.length > 0 && (
                               <div style={{ marginBottom: 16 }}>
                                 <label style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 8 }}>Arkadaşlarından Seç</label>
@@ -289,37 +325,19 @@ function SocialModal({
                                     return (
                                       <button key={f.username} type="button" onClick={() => {
                                         const current = groupMemberInput.split(',').map(s => s.trim()).filter(Boolean);
-                                        if (isSelected) {
-                                          setGroupMemberInput(current.filter(u => u.toLowerCase() !== f.username.toLowerCase()).join(', '));
-                                        } else {
-                                          setGroupMemberInput([...current, f.username].join(', '));
-                                        }
-                                      }} style={{
-                                        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px',
-                                        background: isSelected ? 'rgba(0,168,132,.15)' : 'rgba(255,255,255,.04)',
-                                        border: `1px solid ${isSelected ? 'rgba(0,168,132,.4)' : 'rgba(255,255,255,.06)'}`,
-                                        borderRadius: 20, cursor: 'pointer', color: isSelected ? '#00a884' : '#94a3b8',
-                                        fontSize: 12, fontWeight: 700, transition: 'all .15s'
-                                      }}>
-                                        <span style={{ fontSize: 16 }}>{f.avatar || '🐱'}</span>
-                                        {f.username}
-                                        {isSelected && <span style={{ fontSize: 10 }}>✓</span>}
+                                        if (isSelected) setGroupMemberInput(current.filter(u => u.toLowerCase() !== f.username.toLowerCase()).join(', '));
+                                        else setGroupMemberInput([...current, f.username].join(', '));
+                                      }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: isSelected ? 'rgba(0,168,132,.15)' : 'rgba(255,255,255,.04)', border: `1px solid ${isSelected ? 'rgba(0,168,132,.4)' : 'rgba(255,255,255,.06)'}`, borderRadius: 20, cursor: 'pointer', color: isSelected ? '#00a884' : '#94a3b8', fontSize: 12, fontWeight: 700, transition: 'all .15s' }}>
+                                        <span style={{ fontSize: 16 }}>{f.avatar || '🐱'}</span>{f.username}{isSelected && <span style={{ fontSize: 10 }}>✓</span>}
                                       </button>
                                     );
                                   })}
                                 </div>
                               </div>
                             )}
-
-                            {/* Buttons */}
                             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                              <button onClick={() => setShowGroupCreate(false)}
-                                style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 10, color: '#94a3b8', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>İptal</button>
-                              <button onClick={() => { createGroup(); setShowGroupCreate(false); }}
-                                disabled={!groupNameInput.trim()}
-                                style={{ flex: 2, padding: '12px', background: groupNameInput.trim() ? 'linear-gradient(135deg, #00a884, #008f6f)' : 'rgba(0,168,132,.2)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 900, fontSize: 13, cursor: groupNameInput.trim() ? 'pointer' : 'not-allowed' }}>
-                                🚀 Grup Oluştur
-                              </button>
+                              <button onClick={() => setShowGroupCreate(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 10, color: '#94a3b8', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>İptal</button>
+                              <button onClick={() => { createGroup(); setShowGroupCreate(false); }} disabled={!groupNameInput.trim()} style={{ flex: 2, padding: '12px', background: groupNameInput.trim() ? 'linear-gradient(135deg, #00a884, #008f6f)' : 'rgba(0,168,132,.2)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 900, fontSize: 13, cursor: groupNameInput.trim() ? 'pointer' : 'not-allowed' }}>🚀 Grup Oluştur</button>
                             </div>
                           </div>
                         </div>
@@ -328,7 +346,7 @@ function SocialModal({
                     {chatGroups.length === 0 ? (
                       <div style={{ padding: 20, textAlign: 'center', color: '#7f8c98' }}>Henüz grubun yok. Yeni bir grup oluştur!</div>
                     ) : chatGroups.map(g => (
-                      <div key={g.id} onClick={() => openGroup(g.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer' }}
+                      <div key={g.id} onClick={() => openGroup(g.id)} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'} onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}>
                         <div style={{ fontSize: 24 }}>👥</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -352,7 +370,7 @@ function SocialModal({
                   <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Arkadaşlık sistemi için hesap açmalısın.<br/><button type="button" onClick={() => openAuth('register')} style={{ ...styles.buttonPrimary, marginTop: 12 }}>Ücretsiz Hesap Aç</button></div>
                 ) : (
                   <div>
-                    <div style={{ display: 'flex', gap: 7 }}>
+                    <div className="cm-social-msg-row" style={{ display: 'flex', gap: 7 }}>
                       <input value={friendSearch} onChange={(e) => setFriendSearch(e.target.value)} placeholder="Kullanıcı adı ara..." style={{ ...styles.input, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && searchFriends()} />
                       <button type="button" onClick={searchFriends} style={styles.buttonPrimary}>Ara</button>
                     </div>
@@ -360,18 +378,18 @@ function SocialModal({
                       <div style={{ marginTop: 14 }}>
                         <div style={{ color: '#7f8c98', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>Sonuçlar</div>
                         {friendSearchResults.map(u => (
-                          <div key={u.username} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 10, background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ position: 'relative' }}>
-                                <span style={{ fontSize: 24 }}>{u.avatar}</span>
+                          <div key={u.username} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 10, background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                              <div style={{ position: 'relative', flexShrink: 0 }}>
+                                <span className="cm-social-card-avatar" style={{ fontSize: 24 }}>{u.avatar}</span>
                                 <span style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: u.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
                               </div>
-                              <div>
-                                <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
-                                <div style={{ color: '#7f8c98', fontSize: 11 }}>{u.isOnline ? '🟢 Çevrimiçi' : (u.lastSeen ? `Son görülme: ${formatLastSeen(u.lastSeen)}` : 'Çevrimdışı')}</div>
+                              <div style={{ minWidth: 0 }}>
+                                <div className="cm-social-card-name" style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
+                                <div className="cm-social-card-sub" style={{ color: '#7f8c98', fontSize: 11 }}>{u.isOnline ? '🟢 Çevrimiçi' : (u.lastSeen ? `Son görülme: ${formatLastSeen(u.lastSeen)}` : 'Çevrimdışı')}</div>
                               </div>
                             </div>
-                            <button type="button" onClick={() => sendFriendRequest(u.username)} style={{ ...styles.buttonPrimary, padding: '7px 10px', fontSize: 11 }}>➕ Ekle</button>
+                            <button type="button" onClick={() => sendFriendRequest(u.username)} style={{ ...styles.buttonPrimary, padding: '7px 10px', fontSize: 11, flexShrink: 0 }}>➕ Ekle</button>
                           </div>
                         ))}
                       </div>
@@ -380,9 +398,9 @@ function SocialModal({
                       <div>
                         <div style={{ color: '#fff', fontWeight: 900, margin: '18px 0 8px' }}>📩 Gelen istekler</div>
                         {friendRequests.map(r => (
-                          <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 10, background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
-                            <span style={{ color: '#fff', fontWeight: 800 }}>{r.avatar || '🐱'} {r.fromUsername}</span>
-                            <div style={{ display: 'flex', gap: 6 }}>
+                          <div key={r.id} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 10, background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
+                            <span style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>{r.avatar || '🐱'} {r.fromUsername}</span>
+                            <div className="cm-social-card-btns" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                               <button type="button" onClick={() => respondFriendRequest(r.id, 'accept')} style={{ ...styles.buttonPrimary, padding: '7px 10px', fontSize: 11 }}>Kabul</button>
                               <button type="button" onClick={() => respondFriendRequest(r.id, 'reject')} style={{ background: '#202c33', color: '#fff', border: '1px solid #2d3b44', padding: '7px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer' }}>Sil</button>
                             </div>
@@ -397,18 +415,18 @@ function SocialModal({
                           const onlineStatus = friendOnlineStatuses[f.username];
                           const isOnline = f.isOnline || onlineStatus?.isOnline;
                           return (
-                            <div key={f.username} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, border: isOnline ? '1px solid rgba(37,211,102,0.25)' : '1px solid transparent' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{ position: 'relative' }}>
-                                  <span style={{ fontSize: 24 }}>{f.avatar}</span>
+                            <div key={f.username} className="cm-social-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, border: isOnline ? '1px solid rgba(37,211,102,0.25)' : '1px solid transparent' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                <div style={{ position: 'relative', flexShrink: 0 }}>
+                                  <span className="cm-social-card-avatar" style={{ fontSize: 24 }}>{f.avatar}</span>
                                   <span style={{ position: 'absolute', bottom: -1, right: -1, width: 10, height: 10, borderRadius: '50%', background: isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
                                 </div>
-                                <div>
-                                  <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{f.username}</div>
-                                  <div style={{ color: isOnline ? '#25d366' : '#7f8c98', fontSize: 11 }}>{isOnline ? '🟢 Çevrimiçi' : (onlineStatus?.lastSeen ? `Son görülme: ${formatLastSeen(onlineStatus.lastSeen)}` : 'Çevrimdışı')}</div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div className="cm-social-card-name" style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{f.username}</div>
+                                  <div className="cm-social-card-sub" style={{ color: isOnline ? '#25d366' : '#7f8c98', fontSize: 11 }}>{isOnline ? '🟢 Çevrimiçi' : (onlineStatus?.lastSeen ? `Son görülme: ${formatLastSeen(onlineStatus.lastSeen)}` : 'Çevrimdışı')}</div>
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', gap: 4 }}>
+                              <div className="cm-social-card-btns" style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                                 <button type="button" onClick={() => openDm(f)} style={{ background: '#00a884', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>💬</button>
                                 <button type="button" onClick={() => { if (confirm(`${f.username} arkadaşlığını silmek istediğine emin misin?`)) unfriendUser(f.username); }} style={{ background: '#ea0038', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>✕</button>
                               </div>
@@ -424,17 +442,15 @@ function SocialModal({
 
             {/* Feed */}
             {socialTab === 'feed' && (
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {!authUser ? (
                   <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Akışı görmek için hesap açmalısın.</div>
                 ) : (
-                  <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+                  <div className="cm-social-feed-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                     <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>📰 Akış</div>
+                      <div className="cm-social-content-title" style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>📰 Akış</div>
                       {feedItems.length === 0 ? (
-                        <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>
-                          Henüz akış yok. Takip ettiğin kişilerin aktiviteleri burada görünecek.
-                        </div>
+                        <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Henüz akış yok. Takip ettiğin kişilerin aktiviteleri burada görünecek.</div>
                       ) : feedItems.map((item, i) => {
                         let content = '';
                         try {
@@ -451,7 +467,7 @@ function SocialModal({
                         );
                       })}
                     </div>
-                    <div style={{ width: 200, borderLeft: '1px solid #25313a', background: '#0b141a', padding: 14, overflowY: 'auto' }}>
+                    <div className="cm-social-feed-sidebar" style={{ width: 200, borderLeft: '1px solid #25313a', background: '#0b141a', padding: 14, overflowY: 'auto' }}>
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 13, marginBottom: 12 }}>💡 Önerilen</div>
                       {suggestedFollows.map(s => (
                         <div key={s.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #25313a' }}>
@@ -477,9 +493,9 @@ function SocialModal({
                 ) : (
                   <div style={{ maxWidth: 520 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-                      <div style={{ fontSize: 44, width: 66, height: 66, borderRadius: 18, display: 'grid', placeItems: 'center', background: '#111b21', border: '1px solid #2a3942' }}>{authUser.avatar}</div>
+                      <div className="cm-social-profile-avatar" style={{ fontSize: 44, width: 66, height: 66, borderRadius: 18, display: 'grid', placeItems: 'center', background: '#111b21', border: '1px solid #2a3942' }}>{authUser.avatar}</div>
                       <div>
-                        <div style={{ fontSize: 20, color: '#fff', fontWeight: 900 }}>{authUser.username}</div>
+                        <div className="cm-social-profile-name" style={{ fontSize: 20, color: '#fff', fontWeight: 900 }}>{authUser.username}</div>
                         <div style={{ fontSize: 11, color: '#53e6bc' }}>{authUser.email}</div>
                         <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
                           <span onClick={() => loadFollowers(authUser.username)} style={{ color: '#7f8c98', fontSize: 11, cursor: 'pointer' }}><span style={{ color: '#fff', fontWeight: 900 }}>{followCounts.followers}</span> Takipçi</span>
@@ -492,7 +508,7 @@ function SocialModal({
                     <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 900 }}>HAKKINDA</label>
                     <textarea value={profileBioInput} onChange={(e) => setProfileBioInput(e.target.value)} placeholder="Kendinden biraz bahset..." style={{ ...styles.input, width: '100%', minHeight: 100, resize: 'vertical', margin: '6px 0 12px' }} />
                     <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 900 }}>AVATAR</label>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0 16px' }}>
+                    <div className="cm-social-profile-avatar-grid" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0 16px' }}>
                       {AVATARS.map(a => (
                         <button key={a} type="button" onClick={() => { setMyAvatar(a); localStorage.setItem('cm_user_avatar', a); }} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, cursor: 'pointer', background: myAvatar === a ? '#00a884' : '#111b21', border: myAvatar === a ? '2px solid #53e6bc' : '1px solid #2a3942' }}>{a}</button>
                       ))}
@@ -505,8 +521,7 @@ function SocialModal({
                           <div style={{ color: '#7f8c98', fontSize: 10 }}>{authUser?.email}</div>
                         </div>
                         {!authUser?.email_verified && (
-                          <button type="button" onClick={() => { sendVerificationEmail(); setShowVerifyModal(true); }}
-                            style={{ marginLeft: 'auto', background: '#00a884', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Doğrula</button>
+                          <button type="button" onClick={() => { sendVerificationEmail(); setShowVerifyModal(true); }} style={{ marginLeft: 'auto', background: '#00a884', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Doğrula</button>
                         )}
                       </div>
                     </div>
@@ -518,7 +533,7 @@ function SocialModal({
                           <div style={{ color: '#7f8c98', fontSize: 10 }}>Google Authenticator ile hesabını koru</div>
                         </div>
                         <button type="button" onClick={twoFAEnabled ? () => { setShow2FAModal(true); setTwoFACode(''); } : setup2FA}
-                          style={{ background: twoFAEnabled ? '#ea0038' : '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>
+                          style={{ background: twoFAEnabled ? '#ea0038' : '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>
                           {twoFAEnabled ? 'Devre Dışı Bırak' : 'Aktif Et'}
                         </button>
                       </div>
@@ -526,11 +541,7 @@ function SocialModal({
                     <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet ✓</button>
                     <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(234,0,56,.15)' }}>
                       <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tehlikeli Bölge</div>
-                      <button type="button" onClick={() => setShowDeleteAccount(true)} style={{
-                        width: '100%', padding: '10px 12px', background: 'rgba(234,0,56,.06)',
-                        border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, color: '#ea0038',
-                        fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center'
-                      }}>🗑️ Hesabımı Sil</button>
+                      <button type="button" onClick={() => setShowDeleteAccount(true)} style={{ width: '100%', padding: '10px 12px', background: 'rgba(234,0,56,.06)', border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, color: '#ea0038', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>🗑️ Hesabımı Sil</button>
                     </div>
                   </div>
                 )}
@@ -543,7 +554,7 @@ function SocialModal({
       {/* Takipçiler Modalı */}
       {showFollowersModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowFollowersModal(false)}>
-          <div style={{ width: 360, maxHeight: '70vh', background: '#111b21', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+          <div className="cm-social-followers-box" style={{ width: 360, maxHeight: '70vh', background: '#111b21', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#fff', fontWeight: 900 }}>👤 Takipçiler ({followersList.length})</span>
               <button onClick={() => setShowFollowersModal(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 16, cursor: 'pointer' }}>✕</button>
@@ -552,13 +563,13 @@ function SocialModal({
               {followersList.length === 0 ? (
                 <div style={{ color: '#7f8c98', textAlign: 'center', padding: 20 }}>Henüz takipçin yok.</div>
               ) : followersList.map(u => (
-                <div key={u.username} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0b141a', borderRadius: 12, marginBottom: 6 }}>
+                <div key={u.username} className="cm-social-follow-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0b141a', borderRadius: 12, marginBottom: 6 }}>
                   <span style={{ fontSize: 24 }}>{u.avatar}</span>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
                     {u.bio && <div style={{ color: '#7f8c98', fontSize: 10 }}>{u.bio.slice(0, 50)}</div>}
                   </div>
-                  <button type="button" onClick={() => { followUser(u.username); setShowFollowersModal(false); }} style={{ background: '#00a884', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Takip Et</button>
+                  <button type="button" onClick={() => { followUser(u.username); setShowFollowersModal(false); }} style={{ background: '#00a884', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>Takip Et</button>
                 </div>
               ))}
             </div>
@@ -569,7 +580,7 @@ function SocialModal({
       {/* Takip Edilenler Modalı */}
       {showFollowingModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowFollowingModal(false)}>
-          <div style={{ width: 360, maxHeight: '70vh', background: '#111b21', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+          <div className="cm-social-followers-box" style={{ width: 360, maxHeight: '70vh', background: '#111b21', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#fff', fontWeight: 900 }}>👥 Takip Edilen ({followingList.length})</span>
               <button onClick={() => setShowFollowingModal(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 16, cursor: 'pointer' }}>✕</button>
@@ -578,13 +589,13 @@ function SocialModal({
               {followingList.length === 0 ? (
                 <div style={{ color: '#7f8c98', textAlign: 'center', padding: 20 }}>Henüz kimseleri takip etmiyorsun.</div>
               ) : followingList.map(u => (
-                <div key={u.username} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0b141a', borderRadius: 12, marginBottom: 6 }}>
+                <div key={u.username} className="cm-social-follow-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0b141a', borderRadius: 12, marginBottom: 6 }}>
                   <span style={{ fontSize: 24 }}>{u.avatar}</span>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
                     {u.bio && <div style={{ color: '#7f8c98', fontSize: 10 }}>{u.bio.slice(0, 50)}</div>}
                   </div>
-                  <button type="button" onClick={() => { unfollowUser(u.username); setShowFollowingModal(false); }} style={{ background: '#ea0038', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Takipten Çık</button>
+                  <button type="button" onClick={() => { unfollowUser(u.username); setShowFollowingModal(false); }} style={{ background: '#ea0038', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>Takipten Çık</button>
                 </div>
               ))}
             </div>
@@ -594,7 +605,7 @@ function SocialModal({
 
       {/* Bildirim Paneli */}
       {showNotifPanel && (
-        <div style={{ position: 'fixed', top: 70, right: 30, zIndex: 21000, width: 360, maxHeight: 500, background: '#111b21', borderRadius: 18, border: '1px solid #25313a', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
+        <div className="cm-social-notif-panel" style={{ position: 'fixed', top: 70, right: 30, zIndex: 21000, width: 360, maxHeight: 500, background: '#111b21', borderRadius: 18, border: '1px solid #25313a', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>🔔 Bildirimler</span>
             <button onClick={() => setShowNotifPanel(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', fontSize: 14, cursor: 'pointer' }}>✕</button>
@@ -619,14 +630,13 @@ function SocialModal({
       {/* Email Doğrulama Modalı */}
       {showVerifyModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 22000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowVerifyModal(false)}>
-          <div style={{ width: 380, background: '#111b21', borderRadius: 18, padding: 24, border: '1px solid #25313a' }} onClick={e => e.stopPropagation()}>
+          <div className="cm-social-verify-box" style={{ width: 380, background: '#111b21', borderRadius: 18, padding: 24, border: '1px solid #25313a' }} onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>📧</div>
               <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>Email Doğrulama</div>
               <div style={{ color: '#7f8c98', fontSize: 12, marginTop: 6 }}>6 haneli doğrulama kodunu gir</div>
             </div>
-            <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="000000"
-              style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
+            <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="000000" style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
             <button type="button" onClick={verifyEmailCode} style={{ width: '100%', background: '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14, marginBottom: 10 }}>Doğrula</button>
             <button type="button" onClick={() => { sendVerificationEmail(); }} style={{ width: '100%', background: 'transparent', color: '#00a884', border: '1px solid #00a884', padding: '10px', borderRadius: 12, fontWeight: 800, cursor: 'pointer', fontSize: 12 }}>Tekrar Gönder</button>
           </div>
@@ -636,7 +646,7 @@ function SocialModal({
       {/* 2FA Modalı */}
       {show2FAModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 23000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShow2FAModal(false)}>
-          <div style={{ width: 400, background: '#111b21', borderRadius: 18, padding: 24, border: '1px solid #25313a' }} onClick={e => e.stopPropagation()}>
+          <div className="cm-social-2fa-box" style={{ width: 400, background: '#111b21', borderRadius: 18, padding: 24, border: '1px solid #25313a' }} onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>🔐</div>
               <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>{twoFAEnabled ? '2FA Devre Dışı Bırak' : '2FA Kurulumu'}</div>
@@ -648,34 +658,23 @@ function SocialModal({
                 <div style={{ color: '#7f8c98', fontSize: 10, marginTop: 8 }}>Secret: <span style={{ color: '#f59e0b', fontFamily: 'monospace' }}>{twoFASecret}</span></div>
               </div>
             )}
-            <input value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} placeholder="6 haneli kod"
-              style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
-            <button type="button" onClick={twoFAEnabled ? disable2FA : verify2FASetup}
-              style={{ width: '100%', background: twoFAEnabled ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14 }}>
+            <input value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} placeholder="6 haneli kod" style={{ width: '100%', background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '12px', borderRadius: 12, fontSize: 24, textAlign: 'center', letterSpacing: 8, outline: 'none', marginBottom: 14 }} maxLength={6} />
+            <button type="button" onClick={twoFAEnabled ? disable2FA : verify2FASetup} style={{ width: '100%', background: twoFAEnabled ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 14 }}>
               {twoFAEnabled ? 'Devre Dışı Bırak' : 'Doğrula ve Aktif Et'}
             </button>
-           </div>
+          </div>
         </div>
       )}
 
       {/* Hesap Silme Onay Modalı */}
       {showDeleteAccount && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowDeleteAccount(false); setDeletePass(''); }}>
-          <div style={{ width: 380, background: '#111827', border: '1px solid rgba(234,0,56,.2)', borderRadius: 18, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+          <div className="cm-social-delete-box" style={{ width: 380, background: '#111827', border: '1px solid rgba(234,0,56,.2)', borderRadius: 18, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
               <h3 style={{ color: '#ea0038', fontSize: 18, fontWeight: 900, margin: '0 0 8px' }}>Hesabını Silmek İstiyor Musun?</h3>
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 20px', lineHeight: 1.5 }}>
-                Bu işlem geri alınamaz!<br />
-                Tüm verilerin, arkadaşların, mesajların kalıcı olarak silinir.
-              </p>
-              <input
-                type="password"
-                value={deletePass}
-                onChange={(e) => setDeletePass(e.target.value)}
-                placeholder="Şifreni girerek onayla"
-                style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, padding: '12px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
-              />
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 20px', lineHeight: 1.5 }}>Bu işlem geri alınamaz!<br />Tüm verilerin, arkadaşların, mesajların kalıcı olarak silinir.</p>
+              <input type="password" value={deletePass} onChange={(e) => setDeletePass(e.target.value)} placeholder="Şifreni girerek onayla" style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, padding: '12px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }} />
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setShowDeleteAccount(false); setDeletePass(''); }} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 10, color: '#94a3b8', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>İptal</button>
                 <button onClick={deleteAccount} disabled={!deletePass} style={{ flex: 1, padding: '12px', background: deletePass ? '#ea0038' : 'rgba(234,0,56,.3)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 900, fontSize: 13, cursor: deletePass ? 'pointer' : 'not-allowed' }}>🗑️ Kalıcı Sil</button>
