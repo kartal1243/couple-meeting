@@ -1,5 +1,35 @@
 import React, { useState, useEffect, memo } from 'react';
 
+const MOBILE_STYLE = `
+@media (max-width: 600px) {
+  .cm-comm-root { padding: 12px !important; }
+  .cm-comm-title { font-size: 18px !important; }
+  .cm-comm-header { flex-direction: column !important; gap: 10px !important; align-items: stretch !important; }
+  .cm-comm-header button { width: 100% !important; text-align: center !important; padding: 12px !important; }
+  .cm-comm-card { padding: 12px !important; border-radius: 12px !important; }
+  .cm-comm-card-icon { font-size: 26px !important; }
+  .cm-comm-card-name { font-size: 14px !important; }
+  .cm-comm-card-desc { font-size: 11px !important; }
+  .cm-comm-card-members { font-size: 10px !important; }
+  .cm-comm-create { padding: 14px !important; border-radius: 12px !important; }
+  .cm-comm-icons { gap: 4px !important; }
+  .cm-comm-icons button { width: 34px !important; height: 34px !important; font-size: 17px !important; padding: 0 !important; border-radius: 8px !important; }
+  .cm-comm-input { padding: 12px !important; font-size: 15px !important; border-radius: 10px !important; }
+  .cm-comm-btn-row { flex-direction: column !important; gap: 8px !important; }
+  .cm-comm-btn-row button { width: 100% !important; padding: 14px !important; }
+  .cm-comm-detail-icon { font-size: 32px !important; }
+  .cm-comm-detail-name { font-size: 18px !important; }
+  .cm-comm-detail-meta { font-size: 12px !important; }
+  .cm-comm-post-row { flex-direction: column !important; gap: 8px !important; }
+  .cm-comm-post-input { padding: 12px !important; font-size: 15px !important; min-height: 44px !important; }
+  .cm-comm-post-btn { width: 100% !important; padding: 12px !important; }
+  .cm-comm-post-card { padding: 12px !important; }
+  .cm-comm-post-text { font-size: 13px !important; }
+  .cm-comm-members-card { padding: 12px !important; }
+  .cm-comm-empty { padding: 24px 12px !important; font-size: 13px !important; }
+}
+`;
+
 function Communities({ currentTheme, token, username, avatar, socket }) {
   const [communities, setCommunities] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -36,10 +66,6 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     socket.emit('community_create', { name: newName, description: newDesc, icon: newIcon, token });
   };
 
-  const joinCommunity = (id) => {
-    socket.emit('community_join', { communityId: id, token });
-  };
-
   const leaveCommunity = (id) => {
     socket.emit('community_leave', { communityId: id, token });
     setSelected(null);
@@ -66,116 +92,103 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
   if (selected) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 'clamp(12px, 3vw, 20px)' }}>
-        <style>{`
-          @media (max-width: 600px) {
-            .cm-community-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
-            .cm-community-header button { width: 100% !important; }
-            .cm-community-create-form { padding: 14px !important; }
-            .cm-community-create-form input { font-size: 14px !important; padding: 12px !important; }
-            .cm-community-create-icons { gap: 4px !important; }
-            .cm-community-create-icons button { width: 36px !important; height: 36px !important; font-size: 18px !important; }
-            .cm-community-post-input { flex-direction: column !important; }
-            .cm-community-post-input input { min-height: 44px !important; }
-            .cm-community-post-input button { width: 100% !important; padding: 12px !important; }
-            .cm-community-card { padding: 14px !important; }
-            .cm-community-card-name { font-size: 14px !important; }
-            .cm-community-detail-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
-            .cm-community-detail-header span:first-child { font-size: 32px !important; }
-          }
-        `}</style>
-        <button onClick={() => { setSelected(null); setPosts([]); setMembers([]); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: 16, fontSize: 14 }}>
+      <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40 }}>
+        <style>{MOBILE_STYLE}</style>
+        <button onClick={() => { setSelected(null); setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: 14, fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
           ← Geri
         </button>
-        <div className="cm-community-detail-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <span style={{ fontSize: 40 }}>{selected.icon}</span>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>{selected.name}</div>
-            <div style={{ color: '#94a3b8', fontSize: 13 }}>{selected.member_count} üye · {selected.description}</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <span className="cm-comm-detail-icon" style={{ fontSize: 40 }}>{selected.icon}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="cm-comm-detail-name" style={{ color: '#fff', fontWeight: 800, fontSize: 20, wordBreak: 'break-word' }}>{selected.name}</div>
+            <div className="cm-comm-detail-meta" style={{ color: '#94a3b8', fontSize: 13, wordBreak: 'break-word' }}>{selected.member_count} üye · {selected.description}</div>
           </div>
         </div>
 
-        {/* Create Post */}
-        <div className="cm-community-post-input" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 16, marginBottom: 20, display: 'flex', gap: 8 }}>
-          <input value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Bir gönderi yaz..." onKeyDown={e => e.key === 'Enter' && sendPost()} style={{ flex: 1, background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '8px 12px', color: '#e2e8f0', fontSize: 13 }} />
-          <button onClick={sendPost} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, cursor: 'pointer' }}>Gönder</button>
+        <div className="cm-comm-post-row" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14, marginBottom: 18, display: 'flex', gap: 8 }}>
+          <input className="cm-comm-post-input" value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Bir gönderi yaz..." onKeyDown={e => e.key === 'Enter' && sendPost()} style={{ flex: 1, background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, minWidth: 0 }} />
+          <button className="cm-comm-post-btn" onClick={sendPost} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontWeight: 700, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>Gönder</button>
         </div>
 
-        {/* Posts */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
           {posts.map(post => (
-            <div key={post.id} style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
+            <div key={post.id} className="cm-comm-post-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>{post.avatar || '🐱'}</span>
-                <div>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{post.avatar || '🐱'}</span>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{post.username}</div>
                   <div style={{ color: '#64748b', fontSize: 10 }}>{post.time}</div>
                 </div>
               </div>
-              <div style={{ color: '#e2e8f0', fontSize: 13, marginBottom: 8, lineHeight: 1.4 }}>{post.text}</div>
-              <button onClick={() => likePost(post.id)} style={{ background: 'none', border: 'none', color: post.liked ? '#ef4444' : '#64748b', cursor: 'pointer', fontSize: 12 }}>
+              <div className="cm-comm-post-text" style={{ color: '#e2e8f0', fontSize: 13, marginBottom: 8, lineHeight: 1.5, wordBreak: 'break-word' }}>{post.text}</div>
+              <button onClick={() => likePost(post.id)} style={{ background: 'none', border: 'none', color: post.liked ? '#ef4444' : '#64748b', cursor: 'pointer', fontSize: 12, padding: 0 }}>
                 ❤️ {post.likes}
               </button>
             </div>
           ))}
-          {posts.length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 20 }}>Henüz gönderi yok</div>}
+          {posts.length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 24, fontSize: 13 }}>Henüz gönderi yok</div>}
         </div>
 
-        {/* Members */}
-        <div style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
-          <div style={{ color: '#fff', fontWeight: 800, marginBottom: 10 }}>Üyeler ({members.length})</div>
+        <div className="cm-comm-members-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
+          <div style={{ color: '#fff', fontWeight: 800, marginBottom: 10, fontSize: 14 }}>Üyeler ({members.length})</div>
           {members.map(m => (
-            <div key={m.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-              <span style={{ fontSize: 16 }}>{m.avatar || '🐱'}</span>
-              <span style={{ color: '#e2e8f0', fontSize: 12 }}>{m.username}</span>
-              {m.role === 'admin' && <span style={{ color: currentTheme.primary, fontSize: 10, fontWeight: 700 }}>Yönetici</span>}
+            <div key={m.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{m.avatar || '🐱'}</span>
+              <span style={{ color: '#e2e8f0', fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.username}</span>
+              {m.role === 'admin' && <span style={{ color: currentTheme.primary, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>Yönetici</span>}
             </div>
           ))}
+          <button onClick={() => leaveCommunity(selected.id)} style={{ width: '100%', marginTop: 12, background: 'rgba(239,68,68,.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,.2)', borderRadius: 10, padding: '10px 0', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+            Topluluktan Ayrıl
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 'clamp(12px, 3vw, 20px)' }}>
-      <div className="cm-community-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ color: '#fff', fontWeight: 800, fontSize: 24 }}>🏘️ Topluluklar</div>
-        <button onClick={() => setShowCreate(true)} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-          + Yeni Topluluk
+    <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40 }}>
+      <style>{MOBILE_STYLE}</style>
+
+      <div className="cm-comm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="cm-comm-title" style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>🏘️ Topluluklar</div>
+        <button onClick={() => setShowCreate(true)} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>
+          + Yeni
         </button>
       </div>
 
       {showCreate && (
-        <div className="cm-community-create-form" style={{ background: 'rgba(30,41,59,.95)', borderRadius: 14, padding: 20, marginBottom: 20, border: `1px solid ${currentTheme.primary}33` }}>
-          <div style={{ color: '#fff', fontWeight: 800, marginBottom: 12 }}>Yeni Topluluk Oluştur</div>
-          <div className="cm-community-create-icons" style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div className="cm-comm-create" style={{ background: 'rgba(30,41,59,.95)', borderRadius: 14, padding: 18, marginBottom: 18, border: `1px solid ${currentTheme.primary}33` }}>
+          <div style={{ color: '#fff', fontWeight: 800, marginBottom: 12, fontSize: 15 }}>Yeni Topluluk Oluştur</div>
+          <div className="cm-comm-icons" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
             {ICONS.map(icon => (
-              <button key={icon} onClick={() => setNewIcon(icon)} style={{ background: newIcon === icon ? currentTheme.primary : '#1f2c34', border: 'none', borderRadius: 8, padding: 6, cursor: 'pointer', fontSize: 20 }}>{icon}</button>
+              <button key={icon} onClick={() => setNewIcon(icon)} style={{ background: newIcon === icon ? currentTheme.primary : '#1f2c34', border: 'none', borderRadius: 8, width: 40, height: 40, cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</button>
             ))}
           </div>
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Topluluk adı" style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }} />
-          <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Açıklama (isteğe bağlı)" style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setShowCreate(false)} style={{ flex: 1, background: '#1f2c34', color: '#94a3b8', border: 'none', borderRadius: 10, padding: '10px 0', fontWeight: 700, cursor: 'pointer' }}>İptal</button>
-            <button onClick={createCommunity} style={{ flex: 1, background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 0', fontWeight: 700, cursor: 'pointer' }}>Oluştur</button>
+          <input className="cm-comm-input" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Topluluk adı" style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '11px 12px', color: '#e2e8f0', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }} />
+          <input className="cm-comm-input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Açıklama (isteğe bağlı)" style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '11px 12px', color: '#e2e8f0', fontSize: 13, marginBottom: 14, boxSizing: 'border-box' }} />
+          <div className="cm-comm-btn-row" style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowCreate(false)} style={{ flex: 1, background: '#1f2c34', color: '#94a3b8', border: 'none', borderRadius: 10, padding: '11px 0', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>İptal</button>
+            <button onClick={createCommunity} style={{ flex: 1, background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '11px 0', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Oluştur</button>
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {communities.map(c => (
-          <div key={c.id} onClick={() => selectCommunity(c.id)} className="cm-community-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 16, cursor: 'pointer', border: `1px solid ${currentTheme.primary}22`, transition: 'border-color .2s' }}>
+          <div key={c.id} onClick={() => selectCommunity(c.id)} className="cm-comm-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14, cursor: 'pointer', border: `1px solid ${currentTheme.primary}22`, transition: 'border-color .2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 32 }}>{c.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div className="cm-community-card-name" style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{c.name}</div>
-                <div style={{ color: '#94a3b8', fontSize: 12 }}>{c.description || 'Açıklama yok'}</div>
-                <div style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>👥 {c.member_count} üye</div>
+              <span className="cm-comm-card-icon" style={{ fontSize: 32, flexShrink: 0 }}>{c.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="cm-comm-card-name" style={{ color: '#fff', fontWeight: 800, fontSize: 15, wordBreak: 'break-word' }}>{c.name}</div>
+                <div className="cm-comm-card-desc" style={{ color: '#94a3b8', fontSize: 12, wordBreak: 'break-word' }}>{c.description || 'Açıklama yok'}</div>
+                <div className="cm-comm-card-members" style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>👥 {c.member_count} üye</div>
               </div>
             </div>
           </div>
         ))}
-        {communities.length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 40 }}>Henüz topluluk yok. İlk topluluğu sen oluştur!</div>}
+        {communities.length === 0 && <div className="cm-comm-empty" style={{ color: '#64748b', textAlign: 'center', padding: 40, fontSize: 14 }}>Henüz topluluk yok. İlk topluluğu sen oluştur!</div>}
       </div>
     </div>
   );
