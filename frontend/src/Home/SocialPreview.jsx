@@ -55,9 +55,11 @@ export default function SocialPreview({ globalMessages, setShowSocialModal }) {
                     transition:'background .2s'
                   }}>
                     <div style={{
-                      fontSize:18, width:30, height:30, display:'grid', placeItems:'center',
-                      background:'rgba(255,255,255,.05)', borderRadius:9, flexShrink:0
-                    }}>{m.avatar || '🐱'}</div>
+                      width:30, height:30, display:'grid', placeItems:'center',
+                      background:'rgba(255,255,255,.05)', borderRadius:9, flexShrink:0, overflow: 'hidden'
+                    }}>
+                      {m.avatar?.startsWith('data:image') ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>{m.avatar || '🐱'}</span>}
+                    </div>
                     <div style={{ overflow:'hidden', flex:1 }}>
                       <div style={{ fontSize:11, color:'#e2e8f0', fontWeight:800, marginBottom:1 }}>{m.username || 'Misafir'}</div>
                       <div style={{ fontSize:12, color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.text}</div>
