@@ -11,7 +11,7 @@ function extractVideoId(src) {
 function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
-  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId, token, authUser
+  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId, token, authUser, username
 }) {
   const videoId = extractVideoId(mediaSrc);
   const screenVideoRef = useRef(null);

@@ -11,7 +11,6 @@ export default function Features() {
       <div className="cm-section-head">
         <div>
           <h3>İnsanların sevdiği tarafı</h3>
-          <p>Oda aç, arkadaşını bul, konuş, müzik ekle. Hepsi tek yerde.</p>
         </div>
       </div>
       <div className="cm-feature-grid">
