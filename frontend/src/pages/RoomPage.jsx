@@ -8,7 +8,7 @@ import Playlist from '../Room/Playlist';
 import VoiceChat from '../Room/VoiceChat';
 
 import ErrorBoundary from '../components/ErrorBoundary';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export default function RoomPage() {
   const app = useApp();
@@ -44,6 +44,18 @@ export default function RoomPage() {
     if (socket) socket.emit('room_action', { roomId: app.roomId, type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
     handleLeaveRoom();
   };
+
+  const handleFileUpload = useCallback((file) => {
+    const newMsg = {
+      id: crypto.randomUUID(), senderId: app.mySocketId, text: '',
+      sender: app.authUser?.username || app.username || 'Izleyici',
+      avatar: app.authUser?.avatar || app.myAvatar,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      file: { name: file.name, type: file.type, size: file.size, data: file.data, isImage: file.isImage, isVideo: file.isVideo }
+    };
+    app.setMessages((prev) => [...prev, newMsg]);
+    if (socket) socket.emit('room_action', { roomId: app.roomId, type: 'CHAT_MESSAGE', payload: { ...newMsg, text: `[Dosya: ${file.name}]` } });
+  }, [socket, app]);
 
   const themeColors = {
     default: { primary: '#00a884', bg: 'rgba(0,168,132,.04)' },
@@ -167,7 +179,7 @@ export default function RoomPage() {
 
           {sidebarTab === 'chat' ? (
             <ErrorBoundary fallbackMessage="Sohbet yüklenirken bir hata oluştu.">
-              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} />
+              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} onFileUpload={handleFileUpload} />
             </ErrorBoundary>
           ) : (
             <Playlist

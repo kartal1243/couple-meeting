@@ -10,10 +10,12 @@ function getAvatarColor(name) {
 function Chat({
   messages, mySocketId, username, chatInput, setChatInput,
   handleSendMessage, currentTheme, replyTo, setReplyTo,
-  messagesSearch, setMessagesSearch, filteredMessages
+  messagesSearch, setMessagesSearch, filteredMessages, onFileUpload
 }) {
   const chatBottomRef = useRef(null);
   const [hoveredMsg, setHoveredMsg] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
   const primary = currentTheme?.primary || '#00a884';
   const displayMessages = filteredMessages || messages;
 
@@ -30,6 +32,33 @@ function Chat({
       setTimeout(() => setHoveredMsg(null), 3000);
     }
   }, [hoveredMsg, setReplyTo]);
+
+  const handleFileSelect = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Dosya boyutu 5MB\'dan küçük olmalı.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result;
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        if (onFileUpload) {
+          onFileUpload({ name: file.name, type: file.type, size: file.size, data: base64, isImage, isVideo });
+        }
+        setUploading(false);
+      };
+      reader.onerror = () => setUploading(false);
+      reader.readAsDataURL(file);
+    } catch {
+      setUploading(false);
+    }
+    e.target.value = '';
+  }, [onFileUpload]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', minHeight: 0 }}>
@@ -173,7 +202,19 @@ function Chat({
                       </div>
                     </div>
                   )}
-                  {msg.text}
+                  {msg.file ? (
+                    <div>
+                      {msg.file.isImage && (
+                        <img src={msg.file.data} alt={msg.file.name} style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
+                      )}
+                      {msg.file.isVideo && (
+                        <video src={msg.file.data} controls style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
+                      )}
+                      <div style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,.7)' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        📎 {msg.file.name}
+                      </div>
+                    </div>
+                  ) : msg.text}
                 </div>
 
                 {(!isMe && !showAvatar) || isMe ? (
@@ -245,6 +286,14 @@ function Chat({
           display: 'flex', gap: 6, background: 'rgba(0,0,0,.3)'
         }}
       >
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{
+          background: uploading ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.06)',
+          color: '#94a3b8', border: '1px solid rgba(255,255,255,.08)',
+          borderRadius: 10, width: 36, height: 36, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, cursor: uploading ? 'wait' : 'pointer'
+        }}>{uploading ? '⏳' : '📎'}</button>
         <input
           type="text"
           placeholder={replyTo ? `${replyTo.sender} yanıtla...` : 'Mesaj yaz...'}

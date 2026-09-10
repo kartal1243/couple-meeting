@@ -1848,9 +1848,10 @@ io.on('connection', (socket) => {
       } else if (type === 'PAUSE') {
         room.currentMedia.isPlaying = false; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
       } else if (type === 'CHAT_MESSAGE') {
+        const isFileMsg = payload.text && payload.text.startsWith('[Dosya:');
         const msg = {
           id: payload.id || crypto.randomBytes(8).toString('hex'),
-          senderId: payload.senderId, text: sanitize(payload.text, 500), sender: sanitize(payload.sender, 24),
+          senderId: payload.senderId, text: isFileMsg ? payload.text : sanitize(payload.text, 500), sender: sanitize(payload.sender, 24),
           avatar: sanitize(payload.avatar, 10), time: payload.time,
           replyTo: payload.replyTo || null, replyToText: sanitize(payload.replyToText, 500), replyToSender: sanitize(payload.replyToSender, 24),
           createdAt: Date.now()
