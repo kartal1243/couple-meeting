@@ -1009,9 +1009,4 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
   min-height: calc(100vh - 70px);
   min-height: calc(100dvh - 70px);
 }
-  background: #0a0e14;
-  z-index: 9990;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
 .mobile-overlay .mobile-page { padding-bottom: 80px; }
