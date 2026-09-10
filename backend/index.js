@@ -1846,7 +1846,7 @@ io.on('connection', (socket) => {
     if (room) {
       if (type === 'ROOM_CLOSED') {
         // Sadece host odayı kapatabilir
-        if (room.hostUserId !== socket.socialUsername) return;
+        if (room.hostUserId !== socket.socialUsername && room.hostUserId !== socket.userId) return;
         io.to(cleanRoomId).emit('room_action', { type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
         for (const u of room.users) {
           io.sockets.sockets.get(u.socketId)?.leave(cleanRoomId);

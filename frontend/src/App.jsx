@@ -1064,7 +1064,7 @@ function App() {
         <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
       )}
       {showSettingsModal && (
-        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} />
+        <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} username={username} />
       )}
 
       {showJoinModal && joinRoomTarget && (

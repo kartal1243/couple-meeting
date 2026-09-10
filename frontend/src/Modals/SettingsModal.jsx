@@ -12,9 +12,9 @@ function SettingsModal({
   hostUserId, userId, editRoomNameInput, setEditRoomNameInput, roomName,
   roomTheme, setRoomTheme, handleSaveSettings, roomUsersList,
   handleTransferAdmin, handleKickUser, setShowSettingsModal, currentTheme, styles, authUser,
-  socket, roomId, currentRoomInfo
+  socket, roomId, currentRoomInfo, username
 }) {
-  const isHost = hostUserId === userId || hostUserId === authUser?.username || hostUserId === localStorage.getItem('cm_username');
+  const isHost = hostUserId === userId || hostUserId === authUser?.username || hostUserId === username || hostUserId === localStorage.getItem('cm_username');
   const isVip = authUser?.isVip;
   const [tab, setTab] = useState('settings');
   const [newPassword, setNewPassword] = useState('');

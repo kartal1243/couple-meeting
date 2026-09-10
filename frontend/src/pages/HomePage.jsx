@@ -5,7 +5,6 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Hero from '../Home/Hero';
 import About from '../Home/About';
-import Features from '../Home/Features';
 import PublicRooms from '../Home/PublicRooms';
 import SocialPreview from '../Home/SocialPreview';
 import FeedbackModal from '../Modals/FeedbackModal';
@@ -28,7 +27,6 @@ export default function HomePage() {
         <Hero authUser={authUser} openAuth={openAuth} handleQuickCreateRoom={() => setShowQuickCreate(true)} onOpenSocial={openSocial} />
         <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} onCreateRoom={() => setShowQuickCreate(true)} />
         <About />
-        <Features />
         <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
         <Footer />
       </main>

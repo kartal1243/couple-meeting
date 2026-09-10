@@ -71,14 +71,14 @@ export default function RoomPage() {
   }, [socket, app]);
 
   const themeColors = {
-    default: { primary: '#00a884', bg: 'rgba(0,168,132,.04)' },
-    purple: { primary: '#7c3aed', bg: 'rgba(124,58,237,.04)' },
-    blue: { primary: '#2563eb', bg: 'rgba(37,99,235,.04)' },
-    rose: { primary: '#e11d48', bg: 'rgba(225,29,72,.04)' },
-    gold: { primary: '#d4a017', bg: 'rgba(212,160,23,.04)' },
-    ocean: { primary: '#0891b2', bg: 'rgba(8,145,178,.04)' },
-    emerald: { primary: '#059669', bg: 'rgba(5,150,105,.04)' },
-    sunset: { primary: '#ea580c', bg: 'rgba(234,88,12,.04)' }
+    default: { primary: '#00a884', bg: 'rgba(0,168,132,.04)', accent: 'rgba(0,168,132,.08)', glow: '0 0 40px rgba(0,168,132,.1)' },
+    purple: { primary: '#7c3aed', bg: 'rgba(124,58,237,.04)', accent: 'rgba(124,58,237,.08)', glow: '0 0 40px rgba(124,58,237,.1)' },
+    blue: { primary: '#2563eb', bg: 'rgba(37,99,235,.04)', accent: 'rgba(37,99,235,.08)', glow: '0 0 40px rgba(37,99,235,.1)' },
+    rose: { primary: '#e11d48', bg: 'rgba(225,29,72,.04)', accent: 'rgba(225,29,72,.08)', glow: '0 0 40px rgba(225,29,72,.1)' },
+    gold: { primary: '#d4a017', bg: 'rgba(212,160,23,.04)', accent: 'rgba(212,160,23,.08)', glow: '0 0 40px rgba(212,160,23,.1)' },
+    ocean: { primary: '#0891b2', bg: 'rgba(8,145,178,.04)', accent: 'rgba(8,145,178,.08)', glow: '0 0 40px rgba(8,145,178,.1)' },
+    emerald: { primary: '#059669', bg: 'rgba(5,150,105,.04)', accent: 'rgba(5,150,105,.08)', glow: '0 0 40px rgba(5,150,105,.1)' },
+    sunset: { primary: '#ea580c', bg: 'rgba(234,88,12,.04)', accent: 'rgba(234,88,12,.08)', glow: '0 0 40px rgba(234,88,12,.1)' }
   };
   const chatTheme = themeColors[roomTheme] || themeColors.default;
 

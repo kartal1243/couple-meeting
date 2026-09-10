@@ -1,7 +1,7 @@
 export default function About() {
   return (
-    <section className="cm-section">
-      <div className="cm-section-head">
+    <section className="cm-section" style={{ textAlign: 'center' }}>
+      <div className="cm-section-head" style={{ display: 'flex', justifyContent: 'center' }}>
         <div>
           <h3>Couple Meeting Nedir?</h3>
           <p>Uzaktaki sevdiklerinle müzik ve video deneyimini birlikte yaşa.</p>
