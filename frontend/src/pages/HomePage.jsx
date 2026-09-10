@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { HOME_CSS } from '../constants';
+import { HOME_CSS } from '../styles/homeCss';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Hero from '../Home/Hero';

@@ -1,14 +1,11 @@
-import { AVATARS } from '../constants';
-import { useState, useEffect, useRef, memo } from 'react';
-
-function formatLastSeen(ts) {
-  if (!ts) return '';
-  const diff = Date.now() - ts;
-  if (diff < 60000) return 'Az önce';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} dk önce`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} saat önce`;
-  return `${Math.floor(diff / 86400000)} gün önce`;
-}
+import { useState, useEffect, memo } from 'react';
+import DmChat from '../components/social/DmChat';
+import GroupChat from '../components/social/GroupChat';
+import GlobalChatTab from '../components/social/GlobalChatTab';
+import FriendsTab from '../components/social/FriendsTab';
+import FeedTab from '../components/social/FeedTab';
+import ProfileTab from '../components/social/ProfileTab';
+import GroupsTab from '../components/social/GroupsTab';
 
 const MOBILE_CSS = `
 @media (max-width: 768px) {
@@ -57,93 +54,6 @@ const MOBILE_CSS = `
   .cm-social-group-create-box > div { width: 100% !important; max-width: none !important; }
 }
 `;
-
-const DmChat = memo(function DmChat({ activeChat, messages, input, setInput, onSend, onBack, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser }) {
-  const endRef = useRef(null);
-  const typingTimeout = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-  const isTyping = typingUsers && typingUsers[activeChat?.username];
-  const handleInputChange = (e) => {
-    setInput(e.target.value);
-    if (sendDmTyping && activeChat?.username) {
-      sendDmTyping(activeChat.username);
-      clearTimeout(typingTimeout.current);
-      typingTimeout.current = setTimeout(() => { if (sendDmStopTyping) sendDmStopTyping(activeChat.username); }, 2000);
-    }
-  };
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div className="cm-social-dm-header" style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: '4px 6px' }}>←</button>
-        <div style={{ fontSize: 18, position: 'relative', flexShrink: 0 }}>
-          {activeChat.avatar}
-          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: activeChat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="cm-social-dm-header-name" style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{activeChat.username}</div>
-          <div style={{ color: activeChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? '✏️ yazıyor...' : (activeChat.isOnline ? '🟢 Çevrimiçi' : 'Çevrimdışı')}</div>
-        </div>
-        <button type="button" onClick={() => isFollowingUser ? unfollowUser(activeChat.username) : followUser(activeChat.username)}
-          style={{ background: isFollowingUser ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>
-          {isFollowingUser ? '✕ Takipten Çık' : '👆 Takip Et'}
-        </button>
-      </div>
-      <div className="cm-social-dm-msgs" style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {messages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henüz mesaj yok. İlk mesajı sen gönder!</div>}
-        {messages.map((m, i) => {
-          const msgFrom = m.from || m.from_username;
-          const isMe = msgFrom !== activeChat.username;
-          return (
-            <div key={m.id || i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-              <div className="cm-social-dm-bubble" style={{ maxWidth: '75%', padding: '8px 12px', borderRadius: 14, background: isMe ? '#005c4b' : '#1f2c34', borderBottomRightRadius: isMe ? 4 : 14, borderBottomLeftRadius: isMe ? 14 : 4 }}>
-                <div style={{ fontSize: 12, color: '#e9edef', wordBreak: 'break-word' }}>{m.text}{m.edited && <span style={{ fontSize: 9, color: '#667781', marginLeft: 4 }}>(düzenlendi)</span>}</div>
-                <div style={{ fontSize: 9, color: '#667781', textAlign: 'right', marginTop: 3 }}>{m.time}</div>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={endRef} />
-      </div>
-      <form className="cm-social-dm-input" onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
-        <input value={input} onChange={handleInputChange} placeholder="Mesaj yaz..." style={{ flex: 1, background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '9px 12px', borderRadius: 10, fontSize: 13, outline: 'none' }} />
-        <button type="submit" style={{ background: '#00a884', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: 10, fontWeight: 900, cursor: 'pointer' }}>➤</button>
-      </form>
-    </div>
-  );
-});
-
-const GroupChat = memo(function GroupChat({ group, messages, input, setInput, onSend, onBack }) {
-  const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div className="cm-social-dm-header" style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: '4px 6px' }}>←</button>
-        <div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>👥 {group.name}</div>
-          <div style={{ color: '#7f8c98', fontSize: 10 }}>{group.members?.length || 0} üye</div>
-        </div>
-      </div>
-      <div className="cm-social-dm-msgs" style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {messages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henüz mesaj yok.</div>}
-        {messages.map((m, i) => (
-          <div key={m.id || i} style={{ display: 'flex', gap: 8 }}>
-            <div style={{ fontSize: 18, flexShrink: 0 }}>{m.fromAvatar || '🐱'}</div>
-            <div style={{ background: '#1f2c34', padding: '7px 10px', borderRadius: 12, maxWidth: '75%' }}>
-              <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 900 }}>{m.from} <span style={{ color: '#667781', fontWeight: 600 }}>• {m.time}</span></div>
-              <div style={{ fontSize: 12, color: '#e9edef', marginTop: 2, wordBreak: 'break-word' }}>{m.text}</div>
-            </div>
-          </div>
-        ))}
-        <div ref={endRef} />
-      </div>
-      <form className="cm-social-dm-input" onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Gruba mesaj yaz..." style={{ flex: 1, background: '#1f2c34', border: '1px solid #2a3942', color: '#e9edef', padding: '9px 12px', borderRadius: 10, fontSize: 13, outline: 'none' }} />
-        <button type="submit" style={{ background: '#00a884', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: 10, fontWeight: 900, cursor: 'pointer' }}>➤</button>
-      </form>
-    </div>
-  );
-});
 
 function SocialModal({
   authUser, socialTab, setSocialTab, globalMessages, globalChatInput, setGlobalChatInput,
@@ -232,23 +142,7 @@ function SocialModal({
           <div className="cm-social-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Global Chat */}
             {socialTab === 'global' && (
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {globalMessages.map((m, i) => (
-                    <div key={m.id || i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: 22, flexShrink: 0 }}>{m.avatar || '🐱'}</div>
-                      <div style={{ background: '#111b21', padding: '8px 10px', borderRadius: 12, maxWidth: '80%', minWidth: 0 }}>
-                        <div style={{ fontSize: 11, color: '#53e6bc', fontWeight: 900 }}>{m.username || 'Misafir'} <span style={{ color: '#63727d', fontWeight: 600 }}>• {m.time || ''}</span></div>
-                        <div style={{ fontSize: 13, color: '#e9edef', marginTop: 3, wordBreak: 'break-word' }}>{m.text}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <form className="cm-social-msg-row" onSubmit={sendGlobalMessage} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>
-                  <input className="cm-social-msg-input" value={globalChatInput} onChange={(e) => setGlobalChatInput(e.target.value)} placeholder="Global sohbete bir şey yaz..." style={{ ...styles.input, flex: 1 }} />
-                  <button type="submit" className="cm-social-msg-btn" style={{ ...styles.buttonPrimary, padding: '10px 14px' }}>➤</button>
-                </form>
-              </div>
+              <GlobalChatTab globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} styles={styles} />
             )}
 
             {/* DM */}
@@ -286,78 +180,7 @@ function SocialModal({
 
             {/* Groups */}
             {socialTab === 'groups' && !activeGroup && (
-              <div style={{ padding: 14, overflowY: 'auto', flex: 1 }}>
-                {!authUser ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Grup sohbeti için hesap açmalısın.</div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>👥 Grup Sohbeti</div>
-                      <button onClick={() => setShowGroupCreate(true)} style={{ background: '#00a884', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: 10, fontWeight: 900, cursor: 'pointer', fontSize: 11 }}>+ Yeni Grup</button>
-                    </div>
-                    {showGroupCreate && (
-                      <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowGroupCreate(false)}>
-                        <div className="cm-social-group-create-box" style={{ width: '100%', maxWidth: 420, background: '#111827', border: '1px solid rgba(255,255,255,.08)', borderRadius: 18, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-                          <div style={{ padding: '20px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 900, margin: 0 }}>👥 Yeni Grup Oluştur</h3>
-                              <p style={{ color: '#64748b', fontSize: 12, margin: '4px 0 0' }}>Arkadaşlarını ekle, sohbete başla</p>
-                            </div>
-                            <button onClick={() => setShowGroupCreate(false)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', fontSize: 16, width: 32, height: 32, borderRadius: 8, cursor: 'pointer' }}>✕</button>
-                          </div>
-                          <div style={{ padding: 20 }}>
-                            <div style={{ marginBottom: 16 }}>
-                              <label style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>Grup Adı</label>
-                              <input value={groupNameInput} onChange={(e) => setGroupNameInput(e.target.value)} placeholder="ör: Oyun Ekibi, Film Gecesi..." maxLength={30} style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '11px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                            </div>
-                            <div style={{ marginBottom: 16 }}>
-                              <label style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>
-                                Üye Ekle {groupMemberInput ? <span style={{ color: '#00a884' }}>({groupMemberInput.split(',').filter(m => m.trim()).length} seçildi)</span> : ''}
-                              </label>
-                              <input value={groupMemberInput} onChange={(e) => setGroupMemberInput(e.target.value)} placeholder="Kullanıcı adlarını virgülle ayır" style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '11px 14px', color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                            </div>
-                            {friends && friends.length > 0 && (
-                              <div style={{ marginBottom: 16 }}>
-                                <label style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 8 }}>Arkadaşlarından Seç</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 120, overflowY: 'auto', padding: '4px 0' }}>
-                                  {friends.map(f => {
-                                    const isSelected = groupMemberInput.split(',').map(s => s.trim().toLowerCase()).includes(f.username.toLowerCase());
-                                    return (
-                                      <button key={f.username} type="button" onClick={() => {
-                                        const current = groupMemberInput.split(',').map(s => s.trim()).filter(Boolean);
-                                        if (isSelected) setGroupMemberInput(current.filter(u => u.toLowerCase() !== f.username.toLowerCase()).join(', '));
-                                        else setGroupMemberInput([...current, f.username].join(', '));
-                                      }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: isSelected ? 'rgba(0,168,132,.15)' : 'rgba(255,255,255,.04)', border: `1px solid ${isSelected ? 'rgba(0,168,132,.4)' : 'rgba(255,255,255,.06)'}`, borderRadius: 20, cursor: 'pointer', color: isSelected ? '#00a884' : '#94a3b8', fontSize: 12, fontWeight: 700, transition: 'all .15s' }}>
-                                        <span style={{ fontSize: 16 }}>{f.avatar || '🐱'}</span>{f.username}{isSelected && <span style={{ fontSize: 10 }}>✓</span>}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                              <button onClick={() => setShowGroupCreate(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 10, color: '#94a3b8', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>İptal</button>
-                              <button onClick={() => { createGroup(); setShowGroupCreate(false); }} disabled={!groupNameInput.trim()} style={{ flex: 2, padding: '12px', background: groupNameInput.trim() ? 'linear-gradient(135deg, #00a884, #008f6f)' : 'rgba(0,168,132,.2)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 900, fontSize: 13, cursor: groupNameInput.trim() ? 'pointer' : 'not-allowed' }}>🚀 Grup Oluştur</button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {chatGroups.length === 0 ? (
-                      <div style={{ padding: 20, textAlign: 'center', color: '#7f8c98' }}>Henüz grubun yok. Yeni bir grup oluştur!</div>
-                    ) : chatGroups.map(g => (
-                      <div key={g.id} onClick={() => openGroup(g.id)} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'} onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}>
-                        <div style={{ fontSize: 24 }}>👥</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{g.name}</div>
-                          <div style={{ color: '#7f8c98', fontSize: 11 }}>{g.members?.length || 0} üye{g.lastMessage ? ` • ${g.lastMessage.text}` : ''}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
+              <GroupsTab authUser={authUser} chatGroups={chatGroups} openGroup={openGroup} setShowGroupCreate={setShowGroupCreate} showGroupCreate={showGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} friends={friends} createGroup={createGroup} />
             )}
             {socialTab === 'groups' && activeGroup && (
               <GroupChat group={chatGroups.find(g => g.id === activeGroup) || { name: 'Grup', members: [] }} messages={groupMessages} input={groupInput} setInput={setGroupInput} onSend={sendGroupMessage} onBack={() => { setActiveGroup(null); setGroupMessages([]); }} />
@@ -365,187 +188,17 @@ function SocialModal({
 
             {/* Friends */}
             {socialTab === 'friends' && (
-              <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
-                {!authUser ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Arkadaşlık sistemi için hesap açmalısın.<br/><button type="button" onClick={() => openAuth('register')} style={{ ...styles.buttonPrimary, marginTop: 12 }}>Ücretsiz Hesap Aç</button></div>
-                ) : (
-                  <div>
-                    <div className="cm-social-msg-row" style={{ display: 'flex', gap: 7 }}>
-                      <input value={friendSearch} onChange={(e) => setFriendSearch(e.target.value)} placeholder="Kullanıcı adı ara..." style={{ ...styles.input, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && searchFriends()} />
-                      <button type="button" onClick={searchFriends} style={styles.buttonPrimary}>Ara</button>
-                    </div>
-                    {friendSearchResults.length > 0 && (
-                      <div style={{ marginTop: 14 }}>
-                        <div style={{ color: '#7f8c98', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>Sonuçlar</div>
-                        {friendSearchResults.map(u => (
-                          <div key={u.username} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 10, background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                              <div style={{ position: 'relative', flexShrink: 0 }}>
-                                <span className="cm-social-card-avatar" style={{ fontSize: 24 }}>{u.avatar}</span>
-                                <span style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: u.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
-                              </div>
-                              <div style={{ minWidth: 0 }}>
-                                <div className="cm-social-card-name" style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{u.username}</div>
-                                <div className="cm-social-card-sub" style={{ color: '#7f8c98', fontSize: 11 }}>{u.isOnline ? '🟢 Çevrimiçi' : (u.lastSeen ? `Son görülme: ${formatLastSeen(u.lastSeen)}` : 'Çevrimdışı')}</div>
-                              </div>
-                            </div>
-                            <button type="button" onClick={() => sendFriendRequest(u.username)} style={{ ...styles.buttonPrimary, padding: '7px 10px', fontSize: 11, flexShrink: 0 }}>➕ Ekle</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {friendRequests.length > 0 && (
-                      <div>
-                        <div style={{ color: '#fff', fontWeight: 900, margin: '18px 0 8px' }}>📩 Gelen istekler</div>
-                        {friendRequests.map(r => (
-                          <div key={r.id} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 10, background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
-                            <span style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>{r.avatar || '🐱'} {r.fromUsername}</span>
-                            <div className="cm-social-card-btns" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                              <button type="button" onClick={() => respondFriendRequest(r.id, 'accept')} style={{ ...styles.buttonPrimary, padding: '7px 10px', fontSize: 11 }}>Kabul</button>
-                              <button type="button" onClick={() => respondFriendRequest(r.id, 'reject')} style={{ background: '#202c33', color: '#fff', border: '1px solid #2d3b44', padding: '7px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer' }}>Sil</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {friends.length > 0 && (
-                      <div>
-                        <div style={{ color: '#fff', fontWeight: 900, margin: '18px 0 8px' }}>🤝 Arkadaşların ({friends.length})</div>
-                        {friends.map(f => {
-                          const onlineStatus = friendOnlineStatuses[f.username];
-                          const isOnline = f.isOnline || onlineStatus?.isOnline;
-                          return (
-                            <div key={f.username} className="cm-social-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, border: isOnline ? '1px solid rgba(37,211,102,0.25)' : '1px solid transparent' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                                <div style={{ position: 'relative', flexShrink: 0 }}>
-                                  <span className="cm-social-card-avatar" style={{ fontSize: 24 }}>{f.avatar}</span>
-                                  <span style={{ position: 'absolute', bottom: -1, right: -1, width: 10, height: 10, borderRadius: '50%', background: isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
-                                </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <div className="cm-social-card-name" style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>{f.username}</div>
-                                  <div className="cm-social-card-sub" style={{ color: isOnline ? '#25d366' : '#7f8c98', fontSize: 11 }}>{isOnline ? '🟢 Çevrimiçi' : (onlineStatus?.lastSeen ? `Son görülme: ${formatLastSeen(onlineStatus.lastSeen)}` : 'Çevrimdışı')}</div>
-                                </div>
-                              </div>
-                              <div className="cm-social-card-btns" style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                                <button type="button" onClick={() => openDm(f)} style={{ background: '#00a884', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>💬</button>
-                                <button type="button" onClick={() => { if (confirm(`${f.username} arkadaşlığını silmek istediğine emin misin?`)) unfriendUser(f.username); }} style={{ background: '#ea0038', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>✕</button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <FriendsTab authUser={authUser} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} openDm={openDm} unfriendUser={unfriendUser} styles={styles} openAuth={openAuth} />
             )}
 
             {/* Feed */}
             {socialTab === 'feed' && (
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                {!authUser ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Akışı görmek için hesap açmalısın.</div>
-                ) : (
-                  <div className="cm-social-feed-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
-                      <div className="cm-social-content-title" style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>📰 Akış</div>
-                      {feedItems.length === 0 ? (
-                        <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Henüz akış yok. Takip ettiğin kişilerin aktiviteleri burada görünecek.</div>
-                      ) : feedItems.map((item, i) => {
-                        let content = '';
-                        try {
-                          const data = JSON.parse(item.data);
-                          if (item.type === 'follow') content = `${item.username} birini takip etti → ${data.following}`;
-                          else if (item.type === 'message') content = `${item.username} birine mesaj gönderdi`;
-                          else if (item.type === 'room') content = `${item.username} bir odaya katıldı`;
-                          else content = `${item.username}: ${item.type}`;
-                        } catch { content = `${item.username}: ${item.type}`; }
-                        return (
-                          <div key={item.id || i} style={{ padding: '10px 14px', background: '#111b21', borderRadius: 12, marginBottom: 7 }}>
-                            <div style={{ fontSize: 12, color: '#e9edef' }}>{content}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="cm-social-feed-sidebar" style={{ width: 200, borderLeft: '1px solid #25313a', background: '#0b141a', padding: 14, overflowY: 'auto' }}>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 13, marginBottom: 12 }}>💡 Önerilen</div>
-                      {suggestedFollows.map(s => (
-                        <div key={s.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #25313a' }}>
-                          <span style={{ fontSize: 20 }}>{s.avatar}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>{s.username}</div>
-                            <div style={{ color: '#667781', fontSize: 10 }}>{s.follower_count || 0} takipçi</div>
-                          </div>
-                          <button type="button" onClick={() => followUser(s.username)} style={{ background: '#00a884', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Takip Et</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <FeedTab authUser={authUser} feedItems={feedItems} suggestedFollows={suggestedFollows} followUser={followUser} />
             )}
 
             {/* Profile */}
             {socialTab === 'profile' && (
-              <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
-                {!authUser ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: '#7f8c98' }}>Profilini kaydetmek için hesap açman yeterli.</div>
-                ) : (
-                  <div style={{ maxWidth: 520 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-                      <div className="cm-social-profile-avatar" style={{ fontSize: 44, width: 66, height: 66, borderRadius: 18, display: 'grid', placeItems: 'center', background: '#111b21', border: '1px solid #2a3942' }}>{authUser.avatar}</div>
-                      <div>
-                        <div className="cm-social-profile-name" style={{ fontSize: 20, color: '#fff', fontWeight: 900 }}>{authUser.username}</div>
-                        <div style={{ fontSize: 11, color: '#53e6bc' }}>{authUser.email}</div>
-                        <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
-                          <span onClick={() => loadFollowers(authUser.username)} style={{ color: '#7f8c98', fontSize: 11, cursor: 'pointer' }}><span style={{ color: '#fff', fontWeight: 900 }}>{followCounts.followers}</span> Takipçi</span>
-                          <span onClick={() => loadFollowing(authUser.username)} style={{ color: '#7f8c98', fontSize: 11, cursor: 'pointer' }}><span style={{ color: '#fff', fontWeight: 900 }}>{followCounts.following}</span> Takip</span>
-                        </div>
-                      </div>
-                    </div>
-                    <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 900 }}>DURUM</label>
-                    <input value={profileStatusInput} onChange={(e) => setProfileStatusInput(e.target.value)} placeholder="Şu an ne yapıyorsun?" style={{ ...styles.input, width: '100%', margin: '6px 0 12px' }} />
-                    <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 900 }}>HAKKINDA</label>
-                    <textarea value={profileBioInput} onChange={(e) => setProfileBioInput(e.target.value)} placeholder="Kendinden biraz bahset..." style={{ ...styles.input, width: '100%', minHeight: 100, resize: 'vertical', margin: '6px 0 12px' }} />
-                    <label style={{ fontSize: 11, color: '#7f8c98', fontWeight: 900 }}>AVATAR</label>
-                    <div className="cm-social-profile-avatar-grid" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0 16px' }}>
-                      {AVATARS.map(a => (
-                        <button key={a} type="button" onClick={() => { setMyAvatar(a); localStorage.setItem('cm_user_avatar', a); }} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, cursor: 'pointer', background: myAvatar === a ? '#00a884' : '#111b21', border: myAvatar === a ? '2px solid #53e6bc' : '1px solid #2a3942' }}>{a}</button>
-                      ))}
-                    </div>
-                    <div style={{ marginTop: 12, padding: 12, background: authUser?.email_verified ? 'rgba(0,168,132,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 12, border: authUser?.email_verified ? '1px solid rgba(0,168,132,0.3)' : '1px solid rgba(239,68,68,0.3)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 16 }}>{authUser?.email_verified ? '✅' : '⚠️'}</span>
-                        <div>
-                          <div style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{authUser?.email_verified ? 'Email Doğrulanmış' : 'Email Doğrulanmamış'}</div>
-                          <div style={{ color: '#7f8c98', fontSize: 10 }}>{authUser?.email}</div>
-                        </div>
-                        {!authUser?.email_verified && (
-                          <button type="button" onClick={() => { sendVerificationEmail(); setShowVerifyModal(true); }} style={{ marginLeft: 'auto', background: '#00a884', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Doğrula</button>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 12, padding: 12, background: twoFAEnabled ? 'rgba(0,168,132,0.1)' : 'rgba(245,158,11,0.1)', borderRadius: 12, border: twoFAEnabled ? '1px solid rgba(0,168,132,0.3)' : '1px solid rgba(245,158,11,0.3)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 16 }}>{twoFAEnabled ? '🔐' : '⚠️'}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{twoFAEnabled ? '2FA Aktif' : '2FA Devre Dışı'}</div>
-                          <div style={{ color: '#7f8c98', fontSize: 10 }}>Google Authenticator ile hesabını koru</div>
-                        </div>
-                        <button type="button" onClick={twoFAEnabled ? () => { setShow2FAModal(true); setTwoFACode(''); } : setup2FA}
-                          style={{ background: twoFAEnabled ? '#ea0038' : '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>
-                          {twoFAEnabled ? 'Devre Dışı Bırak' : 'Aktif Et'}
-                        </button>
-                      </div>
-                    </div>
-                    <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet ✓</button>
-                    <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(234,0,56,.15)' }}>
-                      <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tehlikeli Bölge</div>
-                      <button type="button" onClick={() => setShowDeleteAccount(true)} style={{ width: '100%', padding: '10px 12px', background: 'rgba(234,0,56,.06)', border: '1px solid rgba(234,0,56,.2)', borderRadius: 10, color: '#ea0038', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>🗑️ Hesabımı Sil</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ProfileTab authUser={authUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} styles={styles} followCounts={followCounts} loadFollowers={loadFollowers} loadFollowing={loadFollowing} twoFAEnabled={twoFAEnabled} setup2FA={setup2FA} setShow2FAModal={setShow2FAModal} setTwoFACode={setTwoFACode} sendVerificationEmail={sendVerificationEmail} setShowVerifyModal={setShowVerifyModal} setShowDeleteAccount={setShowDeleteAccount} />
             )}
           </div>
         </div>
