@@ -1724,7 +1724,8 @@ io.on('connection', (socket) => {
     if (existingIndex !== -1) room.users[existingIndex] = userInfo; else room.users.push(userInfo);
     room.lastActivityAt = Date.now();
     socket.currentRoom = cleanRoomId; socket.userId = userId; socket.join(cleanRoomId);
-    db.addConnectionLog(username, socket.id, socket.handshake?.address || '', cleanRoomId, 'join', socket.handshake?.headers?.['user-agent'] || '');
+    const joinClientIp = socket.handshake?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake?.address || '';
+    db.addConnectionLog(username, socket.id, joinClientIp, cleanRoomId, 'join', socket.handshake?.headers?.['user-agent'] || '');
 
     let calcTime = room.currentMedia?.time || 0;
     if (room.currentMedia?.isPlaying) calcTime += (Date.now() - (room.currentMedia.lastUpdated || Date.now())) / 1000;
@@ -1883,8 +1884,9 @@ io.on('connection', (socket) => {
   // ──────────────────────────────────────────────────────
 
   socket.on('screen_share_start', ({ roomId, token }) => {
-    const user = requireAuth(token);
-    if (!user || !roomId || !rooms[roomId] || !rooms[roomId].users.find(u => u.userId === user.username)) return;
+    const user = token ? requireAuth(token) : null;
+    const userId = user ? user.username : socket.userId;
+    if (!userId || !roomId || !rooms[roomId] || !rooms[roomId].users.find(u => u.userId === userId)) return;
     socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
   });
 
@@ -1901,13 +1903,14 @@ io.on('connection', (socket) => {
 
   // Voice chat
   socket.on('voice_join', ({ roomId, token }) => {
-    const user = requireAuth(token);
-    if (!user) return;
+    const user = token ? requireAuth(token) : null;
+    const userId = user ? user.username : socket.userId;
+    const username = user ? user.username : userId;
     const cleanRoomId = sanitize(roomId, 50);
     if (!rooms[cleanRoomId]) return;
-    if (!rooms[cleanRoomId].users.find(u => u.userId === user.username)) return;
+    if (!rooms[cleanRoomId].users.find(u => u.userId === userId)) return;
     if (!rooms[cleanRoomId].voiceUsers) rooms[cleanRoomId].voiceUsers = {};
-    rooms[cleanRoomId].voiceUsers[socket.id] = { username: user.username, isMuted: false };
+    rooms[cleanRoomId].voiceUsers[socket.id] = { username, isMuted: false };
     socket.to(cleanRoomId).emit('voice_join', { socketId: socket.id });
     const vu = Object.entries(rooms[cleanRoomId].voiceUsers).map(([sid, u]) => ({ socketId: sid, username: u.username, isMuted: u.isMuted }));
     socket.emit('voice_users', { users: vu });
@@ -1915,8 +1918,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('voice_leave', ({ roomId, token }) => {
-    const user = requireAuth(token);
-    if (!user) return;
+    const user = token ? requireAuth(token) : null;
+    const userId = user ? user.username : socket.userId;
     const cleanRoomId = sanitize(roomId, 50);
     if (!rooms[cleanRoomId]) return;
     if (rooms[cleanRoomId].voiceUsers) delete rooms[cleanRoomId].voiceUsers[socket.id];

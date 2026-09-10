@@ -22,10 +22,7 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
       <h1 className="cm-hero-title">
         BİRLİKTE<br />İZLE & DİNLE
       </h1>
-      <p className="cm-hero-sub">
-        Sevgilinle, arkadaşınla veya yeni insanlarla<br />
-        YouTube'da aynı videoyu aynı anda izle, müzik dinle ve sohbet et.
-      </p>
+
 
       <div className="cm-hero-actions">
         <button
