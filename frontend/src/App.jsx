@@ -554,6 +554,7 @@ function App() {
     e.preventDefault();
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
+    if (!authToken) setUsername(tabUserId);
     const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: tabUserId };
 
     if (socket.connected) {
@@ -574,6 +575,7 @@ function App() {
     if (!joinRoomTarget) return;
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     setJoinModalError('');
+    if (!authToken) setUsername(tabUserId);
     const timeoutId = setTimeout(() => {
       setShowJoinModal(false);
       setJoinRoomTarget(null);
@@ -854,6 +856,7 @@ function App() {
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = decodeURIComponent(match[1]);
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
+      if (!authToken) setUsername(tabUserId);
       socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity, clientUserId: tabUserId });
     }
   }, [location.pathname]);
