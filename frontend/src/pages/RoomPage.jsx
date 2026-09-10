@@ -114,7 +114,7 @@ export default function RoomPage() {
             setShowProfileModal={setShowProfileModal}
             authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveClick}
             roomUsersList={roomUsersList} hostUserId={hostUserId}
-            onCloseRoom={handleCloseRoom}
+            onCloseRoom={handleCloseRoom} roomId={roomId}
           />
         </div>
 

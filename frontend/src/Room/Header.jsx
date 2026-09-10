@@ -4,10 +4,11 @@ import { createPortal } from 'react-dom';
 function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
-  roomUsersList, hostUserId, onCloseRoom
+  roomUsersList, hostUserId, onCloseRoom, roomId
 }) {
   const [showUsers, setShowUsers] = useState(false);
   const [showQuickLeave, setShowQuickLeave] = useState(false);
+  const [shareTooltip, setShareTooltip] = useState('');
   const liveDotStyle = {
     width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#22c55e' : '#ef4444',
     boxShadow: isConnected ? '0 0 8px rgba(34,197,94,.6)' : 'none',
@@ -138,6 +139,29 @@ function Header({
           padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
           fontWeight: 800, fontSize: 13, transition: 'all 0.2s'
         }}>⚙️</button>
+        <button onClick={() => {
+          const url = window.location.origin + '/room/' + encodeURIComponent(roomId);
+          if (navigator.share) {
+            navigator.share({ title: roomName || 'Couple Meeting', text: 'Bu odaya katıl!', url });
+          } else {
+            navigator.clipboard.writeText(url);
+            setShareTooltip('Link kopyalandı!');
+            setTimeout(() => setShareTooltip(''), 2000);
+          }
+        }} style={{
+          background: 'rgba(255,255,255,.05)', color: '#94a3b8',
+          border: '1px solid rgba(255,255,255,.08)',
+          padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
+          fontWeight: 800, fontSize: 13, transition: 'all 0.2s',
+          position: 'relative'
+        }} title="Oda linkini paylaş">📤</button>
+        {shareTooltip && (
+          <div style={{
+            position: 'absolute', top: 50, right: 100, background: '#00a884', color: '#fff',
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, zIndex: 99999,
+            boxShadow: '0 4px 12px rgba(0,0,0,.3)'
+          }}>{shareTooltip}</div>
+        )}
         <button onClick={() => setShowProfileModal(true)} style={{
           background: 'rgba(255,255,255,.05)', color: '#94a3b8',
           border: '1px solid rgba(255,255,255,.08)',
