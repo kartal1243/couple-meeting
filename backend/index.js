@@ -1148,6 +1148,21 @@ io.on('connection', (socket) => {
     emitToUser(sanitize(to, 24), 'typing_indicator', { from: user.username, typing: false });
   });
 
+  // ── ODA İÇİ YAZMA İNDİKATÖRÜ ──
+  socket.on('room_typing_start', ({ roomId } = {}) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]) return;
+    const username = socket.userId || 'Biri';
+    socket.to(cleanRoomId).emit('room_typing_indicator', { username, typing: true });
+  });
+
+  socket.on('room_typing_stop', ({ roomId } = {}) => {
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]) return;
+    const username = socket.userId || 'Biri';
+    socket.to(cleanRoomId).emit('room_typing_indicator', { username, typing: false });
+  });
+
   // ── KULLANICI ENGELLEME ──
   socket.on('block_user', ({ targetUsername, token }) => {
     const user = db.getUserByToken(token);

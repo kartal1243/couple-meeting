@@ -10,13 +10,15 @@ function getAvatarColor(name) {
 function Chat({
   messages, mySocketId, username, chatInput, setChatInput,
   handleSendMessage, currentTheme, replyTo, setReplyTo,
-  messagesSearch, setMessagesSearch, filteredMessages, onFileUpload
+  messagesSearch, setMessagesSearch, filteredMessages, onFileUpload, socket, roomId, roomTypingUsers
 }) {
   const chatBottomRef = useRef(null);
   const [hoveredMsg, setHoveredMsg] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   const primary = currentTheme?.primary || '#00a884';
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
   const displayMessages = filteredMessages || messages;
 
   useEffect(() => {
@@ -59,6 +61,24 @@ function Chat({
     }
     e.target.value = '';
   }, [onFileUpload]);
+
+  const handleTyping = useCallback(() => {
+    if (!socket || !roomId) return;
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      socket.emit('room_typing_start', { roomId });
+    }
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      socket.emit('room_typing_stop', { roomId });
+    }, 2000);
+  }, [socket, roomId]);
+
+  const handleInputChange = useCallback((e) => {
+    setChatInput(e.target.value);
+    handleTyping();
+  }, [setChatInput, handleTyping]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', minHeight: 0 }}>
@@ -255,6 +275,22 @@ function Chat({
         <div ref={chatBottomRef} />
       </div>
 
+      {/* Typing indicator */}
+      {roomTypingUsers && roomTypingUsers.length > 0 && (
+        <div style={{
+          padding: '4px 10px', fontSize: 10, color: '#94a3b8',
+          background: 'rgba(0,0,0,.1)', display: 'flex', alignItems: 'center', gap: 4
+        }}>
+          <span style={{ display: 'flex', gap: 2 }}>
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8', animation: 'typingDot 1.4s infinite' }} />
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8', animation: 'typingDot 1.4s infinite 0.2s' }} />
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8', animation: 'typingDot 1.4s infinite 0.4s' }} />
+          </span>
+          {roomTypingUsers.length === 1 ? `${roomTypingUsers[0]} yazıyor...` : `${roomTypingUsers.length} kişi yazıyor...`}
+          <style>{`@keyframes typingDot { 0%,60%,100% { opacity:0.3; transform:translateY(0); } 30% { opacity:1; transform:translateY(-3px); } }`}</style>
+        </div>
+      )}
+
       {/* Reply preview */}
       {replyTo && (
         <div style={{
@@ -298,7 +334,7 @@ function Chat({
           type="text"
           placeholder={replyTo ? `${replyTo.sender} yanıtla...` : 'Mesaj yaz...'}
           value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
+          onChange={handleInputChange}
           style={{
             flex: 1, borderRadius: 12, minWidth: 0,
             background: 'rgba(255,255,255,.06)',

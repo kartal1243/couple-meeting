@@ -8,13 +8,14 @@ import Playlist from '../Room/Playlist';
 import VoiceChat from '../Room/VoiceChat';
 
 import ErrorBoundary from '../components/ErrorBoundary';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export default function RoomPage() {
   const app = useApp();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [roomTypingUsers, setRoomTypingUsers] = useState([]);
   const {
     roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
     handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
@@ -44,6 +45,18 @@ export default function RoomPage() {
     if (socket) socket.emit('room_action', { roomId: app.roomId, type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
     handleLeaveRoom();
   };
+
+  useEffect(() => {
+    if (!socket) return;
+    const onTyping = ({ username, typing }) => {
+      setRoomTypingUsers(prev => {
+        if (typing) return [...new Set([...prev, username])];
+        return prev.filter(u => u !== username);
+      });
+    };
+    socket.on('room_typing_indicator', onTyping);
+    return () => socket.off('room_typing_indicator', onTyping);
+  }, [socket]);
 
   const handleFileUpload = useCallback((file) => {
     const newMsg = {
@@ -179,7 +192,7 @@ export default function RoomPage() {
 
           {sidebarTab === 'chat' ? (
             <ErrorBoundary fallbackMessage="Sohbet yüklenirken bir hata oluştu.">
-              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} onFileUpload={handleFileUpload} />
+              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} onFileUpload={handleFileUpload} socket={socket} roomId={roomId} roomTypingUsers={roomTypingUsers} />
             </ErrorBoundary>
           ) : (
             <Playlist
