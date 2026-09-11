@@ -113,6 +113,7 @@ function initTables() {
       id TEXT PRIMARY KEY,
       group_id TEXT NOT NULL,
       from_username TEXT NOT NULL,
+      from_avatar TEXT DEFAULT '🐱',
       text TEXT NOT NULL,
       time TEXT NOT NULL,
       created_at INTEGER NOT NULL
@@ -344,6 +345,7 @@ function initTables() {
   try { db.exec(`ALTER TABLE users ADD COLUMN reset_expiry INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN frozen INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE group_messages ADD COLUMN from_avatar TEXT DEFAULT '🐱'`); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -713,8 +715,8 @@ function getDmConversations(username) {
 function saveGroupMessage(msg) {
   if (getDb()) {
     try {
-      db.prepare('INSERT INTO group_messages (id, group_id, from_username, text, time, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(msg.id, msg.groupId, msg.from, msg.text, msg.time, msg.createdAt);
+      db.prepare('INSERT OR IGNORE INTO group_messages (id, group_id, from_username, from_avatar, text, time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(msg.id, msg.groupId, msg.from, msg.fromAvatar || '🐱', msg.text, msg.time, msg.createdAt);
     } catch {}
   }
 }

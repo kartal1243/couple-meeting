@@ -366,12 +366,19 @@ function App() {
     socket.emit('group_history', { groupId, token: authToken });
   };
 
-  const sendGroupMessage = (text) => {
-    if (!text.trim() || !activeGroup || !authToken) return;
-    socket.emit('group_send', { groupId: activeGroup, text: text.trim(), token: authToken });
+  const sendGroupMessage = (groupId, text) => {
+    if (!text.trim() || !groupId || !authToken) return;
+    socket.emit('group_send', { groupId, text: text.trim(), token: authToken });
   };
 
   const loadGroups = () => { if (authToken) socket.emit('group_list', { token: authToken }); };
+
+  useEffect(() => {
+    if (activeGroup && authToken) {
+      socket.emit('group_history', { groupId: activeGroup, token: authToken });
+      setGroupMessages([]);
+    }
+  }, [activeGroup, authToken]);
 
   const searchFriends = () => {
     const q = friendSearch.trim();

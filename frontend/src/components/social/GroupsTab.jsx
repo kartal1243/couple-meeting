@@ -1,6 +1,23 @@
 import { memo } from 'react';
+import GroupChat from './GroupChat';
 
-const GroupsTab = memo(function GroupsTab({ authUser, chatGroups, openGroup, setShowGroupCreate, showGroupCreate, groupNameInput, setGroupNameInput, groupMemberInput, setGroupMemberInput, friends, createGroup }) {
+const GroupsTab = memo(function GroupsTab({ authUser, chatGroups, activeGroup, setActiveGroup, groupMessages, groupInput, setGroupInput, sendGroupMessage, showGroupCreate, setShowGroupCreate, groupNameInput, setGroupNameInput, groupMemberInput, setGroupMemberInput, friends, createGroup, loadGroups }) {
+
+  const activeGroupObj = activeGroup ? chatGroups.find(g => g.id === activeGroup) : null;
+
+  if (activeGroupObj) {
+    return (
+      <GroupChat
+        group={activeGroupObj}
+        messages={groupMessages || []}
+        input={groupInput}
+        setInput={setGroupInput}
+        onSend={(text) => sendGroupMessage(activeGroup, text)}
+        onBack={() => setActiveGroup(null)}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: 14, overflowY: 'auto', flex: 1 }}>
       {!authUser ? (
@@ -62,7 +79,7 @@ const GroupsTab = memo(function GroupsTab({ authUser, chatGroups, openGroup, set
           {chatGroups.length === 0 ? (
             <div style={{ padding: 20, textAlign: 'center', color: '#7f8c98' }}>Henuz grubun yok. Yeni bir grup olustur!</div>
           ) : chatGroups.map(g => (
-            <div key={g.id} onClick={() => openGroup(g.id)} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer' }}
+            <div key={g.id} onClick={() => setActiveGroup(g.id)} className="cm-social-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#111b21', borderRadius: 12, marginBottom: 7, cursor: 'pointer' }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#1a2634'} onMouseLeave={(e) => e.currentTarget.style.background = '#111b21'}>
               <div style={{ fontSize: 24 }}>👥</div>
               <div style={{ flex: 1, minWidth: 0 }}>

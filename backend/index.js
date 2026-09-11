@@ -753,7 +753,7 @@ function loadGroupChatsFromDb() {
   try {
     const groups = db.getAllGroupChatDefs();
     for (const g of groups) {
-      globalChatGroups[g.id] = { id: g.id, name: g.name, createdBy: g.created_by, members: g.members, createdAt: g.created_at };
+      globalChatGroups[g.id] = { id: g.id, name: g.name, createdBy: g.created_by, members: g.members, createdAt: g.created_at, messages: [] };
     }
     if (groups.length > 0) logger.info(`[DB] ${groups.length} grup sohbeti yüklendi.`);
   } catch (e) {
@@ -1632,7 +1632,7 @@ io.on('connection', (socket) => {
     const groups = Object.values(chatGroups).filter(g => g.members.includes(from.username));
     socket.emit('group_list', { groups: groups.map(g => ({
       id: g.id, name: g.name, members: g.members, createdBy: g.createdBy,
-      lastMessage: g.messages[g.messages.length - 1] || null,
+      lastMessage: (g.messages && g.messages.length > 0) ? g.messages[g.messages.length - 1] : null,
       memberStatus: g.members.map(m => ({ username: m, isOnline: !!onlineUsers[m], lastSeen: onlineUsers[m]?.lastSeen || null }))
     })) });
   });
@@ -1662,7 +1662,9 @@ io.on('connection', (socket) => {
     if (!from) return;
     const group = chatGroups[sanitize(groupId, 20)];
     if (!group || !group.members.includes(from.username)) return;
-    const dbMessages = db.getGroupHistory(group.id, 50);
+    const dbMessages = (db.getGroupHistory(group.id, 50) || []).map(m => ({
+      id: m.id, from: m.from_username, fromAvatar: m.from_avatar || '🐱', text: m.text, time: m.time, createdAt: m.created_at
+    }));
     const memMessages = group.messages || [];
     const allMessages = [...dbMessages, ...memMessages.filter(m => !dbMessages.find(d => d.id === m.id))];
     allMessages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
@@ -1677,6 +1679,7 @@ io.on('connection', (socket) => {
     const target = sanitize(username, 24);
     if (!target || group.members.includes(target)) return;
     group.members.push(target);
+    try { db.saveGroupChatDef({ id: group.id, name: group.name, createdBy: group.createdBy, members: group.members, createdAt: group.createdAt || Date.now() }); } catch (e) {}
     emitToUser(target, 'group_created', { id: group.id, name: group.name, members: group.members, createdBy: group.createdBy });
     group.members.forEach(u => emitToUser(u, 'group_updated', { id: group.id, members: group.members }));
   });
