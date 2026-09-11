@@ -191,8 +191,8 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
         const chatKey = msg.to;
         const msgs = prev[chatKey] || [];
         const exists = msgs.find(m => m.id === msg.id || m.id === msg.localMsgId);
-        if (exists) return { ...prev, [chatKey]: msgs.map(m => (m.id === msg.localMsgId ? { ...m, id: msg.id, isLocal: false } : m)) };
-        return { ...prev, [chatKey]: [...msgs, msg] };
+        if (exists) return { ...prev, [chatKey]: msgs.map(m => (m.id === msg.localMsgId ? { ...m, id: msg.id, from: a().authUser?.username || m.sender, isLocal: false } : m)) };
+        return { ...prev, [chatKey]: [...msgs, { ...msg, from: msg.from || a().authUser?.username }] };
       });
       a().loadDmList();
     });

@@ -92,7 +92,7 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
       <div className="cm-social-dm-msgs" style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {activeMessages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henuz mesaj yok. Ilk mesaji sen gonder!</div>}
         {activeMessages.map((m, i) => {
-          const msgFrom = m.from || m.from_username;
+          const msgFrom = m.from || m.from_username || m.sender;
           const isMe = msgFrom === authUser?.username;
           return (
             <div key={m.id || i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
