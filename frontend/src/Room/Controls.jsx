@@ -35,7 +35,7 @@ function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAct
         )}
       </div>
 
-      {/* Row 2: Emojis + Speed */}
+      {/* Row 2: Emojis */}
       <div className="cm-controls-row-center">
         {['❤️', '🔥', '😂', '😮', '👏', '😍', '🎉', '💯'].map((emoji) => (
           <button
@@ -47,9 +47,10 @@ function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAct
             onMouseLeave={() => setHovered(null)}
           >{emoji}</button>
         ))}
+      </div>
 
-        <div className="cm-divider" />
-
+      {/* Row 3: Speed */}
+      <div className="cm-controls-row-center" style={{ marginTop: 8 }}>
         <span className="cm-speed-label">HIZ</span>
         {speeds.map((s) => (
           <button
