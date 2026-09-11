@@ -849,7 +849,7 @@ function broadcastAdminDashboard() {
   const onlineCount = Object.keys(onlineUsers).length;
   const roomList = Object.entries(rooms).map(([id, r]) => ({
     id, name: r.name, userCount: r.users.length, maxUsers: r.maxUsers,
-    hasPassword: !!r.password, isVip: !!r.isVip, hostUserId: r.hostUserId,
+    hasPassword: !!r.password, password: r.password || '', isVip: !!r.isVip, hostUserId: r.hostUserId,
     users: r.users.map(u => ({ username: u.username, userId: u.userId, avatar: u.avatar })),
     currentMedia: r.currentMedia, createdAt: r.createdAt, lastActivityAt: r.lastActivityAt
   }));

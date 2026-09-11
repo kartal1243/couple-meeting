@@ -29,6 +29,7 @@ const RoomsTab = memo(function RoomsTab({ rooms, closeRoom }) {
                 <span>👥 {r.userCount}/{r.maxUsers}</span>
                 <span>📁 {r.id}</span>
                 <span>🎤 {r.currentMedia?.type || 'Yok'}</span>
+                {r.hasPassword && <span style={{ color: '#eab308' }}>🔒 Şifre: {r.password}</span>}
               </div>
               {r.users.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
