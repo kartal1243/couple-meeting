@@ -7,18 +7,8 @@ import { HOME_CSS } from './styles/homeCss';
 import { getStyles } from './styles';
 import { processUrl } from './utils/processUrl';
 import { playMessageSound } from './utils/notificationSound';
-import { isApp } from './utils/platform';
 import { useSocketEvents } from './hooks/useSocketEvents';
 import AppContext from './contexts/AppContext';
-import OnboardingScreen from './components/mobile/OnboardingScreen';
-import AboutPage from './components/mobile/AboutPage';
-import ProfilePage from './components/mobile/ProfilePage';
-import MobileHomePage from './components/mobile/MobileHomePage';
-import MobileHomeCenter from './components/mobile/MobileHomeCenter';
-import RoomsPage from './components/mobile/RoomsPage';
-import ChatPage from './components/mobile/ChatPage';
-import FriendsPage from './components/mobile/FriendsPage';
-import BottomNavBar from './components/mobile/BottomNavBar';
 
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
@@ -68,21 +58,7 @@ function App() {
   const [currentRoomInfo, setCurrentRoomInfo] = useState({ userCount: 1, maxUsers: 2 });
   const [toast, setToast] = useState(null);
   const [typingUsers, setTypingUsers] = useState({});
-  
-  // Mobile app only
-  const [showOnboarding, setShowOnboarding] = useState(() => isApp() && !localStorage.getItem('cm_onboarding_done'));
-  const [mobileTab, setMobileTab] = useState('home');
 
-  useEffect(() => {
-    if (isApp()) document.body.classList.add('mobile-app-mode');
-  }, []);
-
-  useEffect(() => {
-    if (isApp()) {
-      document.body.style.overflow = inRoom ? 'hidden' : '';
-      return () => { document.body.style.overflow = ''; };
-    }
-  }, [inRoom]);
   const [messageReactions, setMessageReactions] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
 
@@ -911,7 +887,7 @@ function App() {
     showAuthModal, setShowAuthModal, showSocialModal, setShowSocialModal,
     showVipModal, setShowVipModal, showProfileModal, setShowProfileModal, showQuickCreate, setShowQuickCreate,
     showJoinModal, setShowJoinModal, authUser, authToken, authMode, authBusy,
-    showNotifPanel, setShowNotifPanel, mobileTab, setMobileTab,
+    showNotifPanel, setShowNotifPanel,
     authForm, setAuthForm, friendSearch, setFriendSearch, friendSearchResults,
     friends, friendRequests, friendOnlineStatuses, globalMessages,
     globalChatInput, setGlobalChatInput, socialTab, setSocialTab,
@@ -965,32 +941,17 @@ function App() {
         </div>
       )}
 
-      {showOnboarding && <OnboardingScreen onComplete={() => setShowOnboarding(false)} />}
-
-      {isApp() && !inRoom ? (
-        <div className="mobile-app-container">
-          <div className="mobile-app-content">
-            {mobileTab === 'home' && <MobileHomePage />}
-            {mobileTab === 'rooms' && <RoomsPage />}
-            {mobileTab === 'chat' && <ChatPage />}
-            {mobileTab === 'friends' && <FriendsPage />}
-            {mobileTab === 'profile' && <ProfilePage authUser={authUser} myAvatar={myAvatar} onLogout={handleLogout} />}
-          </div>
-          <BottomNavBar activeTab={mobileTab} onTabChange={setMobileTab} />
-        </div>
-      ) : (
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/room/:roomIdParam" element={<RoomPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />
-          <Route path="/events" element={<Events currentTheme={currentTheme} token={authToken} username={authUser?.username} socket={socket} />} />
-          <Route path="/blog" element={<BlogPage />} />
-          <Route path="/ads" element={<AdsPage />} />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/room/:roomIdParam" element={<RoomPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />
+        <Route path="/events" element={<Events currentTheme={currentTheme} token={authToken} username={authUser?.username} socket={socket} />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/ads" element={<AdsPage />} />
           <Route path="/landing" element={<LandingPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
-      )}
 
       {/* Global Modals */}
       {showAuthModal && (
