@@ -115,6 +115,21 @@ app.post('/api/upload-video', uploadLimiter, (req, res) => {
   });
 });
 
+app.post('/api/upload-room-file', uploadLimiter, (req, res) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ ok: false, message: err.message });
+    if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadi.' });
+    const token = req.body.token;
+    if (!token) return res.status(401).json({ ok: false, message: 'Token gerekli.' });
+    const user = db.getUserByToken(token);
+    if (!user) return res.status(401).json({ ok: false, message: 'Gecersiz token.' });
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const isImage = req.file.mimetype.startsWith('image/');
+    const isVideo = req.file.mimetype.startsWith('video/');
+    res.json({ ok: true, url: fileUrl, name: req.file.originalname, type: req.file.mimetype, size: req.file.size, isImage, isVideo });
+  });
+});
+
 // ═══════════════════════════════════════════════════════════
 // 2. YARDIMCI FONKSİYONLAR
 // ═══════════════════════════════════════════════════════════
@@ -1947,21 +1962,22 @@ io.on('connection', (socket) => {
       } else if (type === 'PAUSE') {
         room.currentMedia.isPlaying = false; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
       } else if (type === 'CHAT_MESSAGE') {
-        const isFileMsg = payload.text && payload.text.startsWith('[Dosya:');
         const msg = {
           id: payload.id || crypto.randomBytes(8).toString('hex'),
-          senderId: payload.senderId, text: isFileMsg ? payload.text : sanitize(payload.text, 500), sender: sanitize(payload.sender, 24),
+          senderId: payload.senderId, text: sanitize(payload.text || '', 500), sender: sanitize(payload.sender, 24),
           avatar: sanitize(payload.avatar, 10), time: payload.time,
+          fileUrl: payload.fileUrl || '', fileType: payload.fileType || '', fileName: payload.fileName || '',
           replyTo: payload.replyTo || null, replyToText: sanitize(payload.replyToText, 500), replyToSender: sanitize(payload.replyToSender, 24),
           createdAt: Date.now()
         };
         if (!room.messages) room.messages = [];
         room.messages.push(msg);
-        try { db.saveRoomMessage({ id: msg.id, roomId: cleanRoomId, username: msg.sender, avatar: msg.avatar, text: msg.text, time: msg.time, createdAt: msg.createdAt }); } catch (e) {}
+        try { db.saveRoomMessage({ id: msg.id, roomId: cleanRoomId, username: msg.sender, avatar: msg.avatar, text: msg.text, fileUrl: msg.fileUrl, fileType: msg.fileType, fileName: msg.fileName, time: msg.time, createdAt: msg.createdAt }); } catch (e) {}
         try { db.updateRoomActivity(cleanRoomId); } catch (e) {}
         room.messages = room.messages.slice(-200);
         room.lastActivityAt = Date.now();
         socket.to(cleanRoomId).emit('room_action', { type, payload: msg });
+        socket.emit('room_action', { type, payload: msg });
         return;
       } else if (type === 'UPDATE_MAX_USERS') {
         room.maxUsers = Math.min(Math.max(parseInt(payload.maxUsers) || 2, 2), 8);

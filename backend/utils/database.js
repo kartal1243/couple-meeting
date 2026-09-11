@@ -317,6 +317,9 @@ function initTables() {
       username TEXT NOT NULL,
       avatar TEXT DEFAULT '🐱',
       text TEXT NOT NULL,
+      file_url TEXT DEFAULT '',
+      file_type TEXT DEFAULT '',
+      file_name TEXT DEFAULT '',
       time TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
@@ -362,6 +365,9 @@ function initTables() {
   try { db.exec(`ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN frozen INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE group_messages ADD COLUMN from_avatar TEXT DEFAULT '🐱'`); } catch {}
+  try { db.exec(`ALTER TABLE room_messages ADD COLUMN file_url TEXT DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE room_messages ADD COLUMN file_type TEXT DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE room_messages ADD COLUMN file_name TEXT DEFAULT ''`); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1188,8 +1194,8 @@ function deleteRoom(roomId) {
 function saveRoomMessage(msg) {
   if (!getDb()) return;
   try {
-    db.prepare('INSERT INTO room_messages (id, room_id, username, avatar, text, time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      msg.id, msg.roomId, msg.username, msg.avatar || '🐱', msg.text, msg.time, msg.createdAt || Date.now()
+    db.prepare('INSERT INTO room_messages (id, room_id, username, avatar, text, file_url, file_type, file_name, time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      msg.id, msg.roomId, msg.username, msg.avatar || '🐱', msg.text, msg.fileUrl || '', msg.fileType || '', msg.fileName || '', msg.time, msg.createdAt || Date.now()
     );
   } catch (e) { logger.error?.('Room message save hatası: ' + e.message); }
 }

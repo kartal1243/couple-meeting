@@ -64,10 +64,10 @@ export default function RoomPage() {
       sender: app.authUser?.username || app.username || 'Izleyici',
       avatar: app.authUser?.avatar || app.myAvatar,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      file: { name: file.name, type: file.type, size: file.size, data: file.data, isImage: file.isImage, isVideo: file.isVideo }
+      fileUrl: file.url, fileType: file.type, fileName: file.name
     };
     app.setMessages((prev) => [...prev, newMsg]);
-    if (socket) socket.emit('room_action', { roomId: app.roomId, type: 'CHAT_MESSAGE', payload: { ...newMsg, text: `[Dosya: ${file.name}]` } });
+    if (socket) socket.emit('room_action', { roomId: app.roomId, type: 'CHAT_MESSAGE', payload: newMsg });
   }, [socket, app]);
 
   const themeColors = {

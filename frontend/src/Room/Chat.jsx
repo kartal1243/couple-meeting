@@ -38,27 +38,26 @@ function Chat({
   const handleFileSelect = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Dosya boyutu 5MB\'dan küçük olmalı.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Dosya boyutu 10MB\'dan kucuk olmali.');
       return;
     }
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result;
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        if (onFileUpload) {
-          onFileUpload({ name: file.name, type: file.type, size: file.size, data: base64, isImage, isVideo });
-        }
-        setUploading(false);
-      };
-      reader.onerror = () => setUploading(false);
-      reader.readAsDataURL(file);
-    } catch {
-      setUploading(false);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('token', localStorage.getItem('cm_token') || '');
+      const res = await fetch('/api/upload-room-file', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.ok && onFileUpload) {
+        onFileUpload({ url: data.url, name: data.name, type: data.type, isImage: data.isImage, isVideo: data.isVideo });
+      } else {
+        alert(data.message || 'Yukleme basarisiz.');
+      }
+    } catch (err) {
+      alert('Yukleme hatasi: ' + err.message);
     }
+    setUploading(false);
     e.target.value = '';
   }, [onFileUpload]);
 
@@ -222,17 +221,24 @@ function Chat({
                       </div>
                     </div>
                   )}
-                  {msg.file ? (
+                  {msg.fileUrl ? (
                     <div>
-                      {msg.file.isImage && (
-                        <img src={msg.file.data} alt={msg.file.name} style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
+                      {msg.fileType?.startsWith('image/') && (
+                        <img src={msg.fileUrl} alt={msg.fileName} style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
                       )}
-                      {msg.file.isVideo && (
-                        <video src={msg.file.data} controls style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
+                      {msg.fileType?.startsWith('video/') && (
+                        <video src={msg.fileUrl} controls style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
                       )}
-                      <div style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,.7)' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        📎 {msg.file.name}
-                      </div>
+                      {!msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('video/') && (
+                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: isMe ? '#fff' : primary, textDecoration: 'underline', fontSize: 12 }}>
+                          📎 {msg.fileName}
+                        </a>
+                      )}
+                      {msg.fileType?.startsWith('image/') || msg.fileType?.startsWith('video/') ? (
+                        <div style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,.7)' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          📎 {msg.fileName}
+                        </div>
+                      ) : null}
                     </div>
                   ) : msg.text}
                 </div>

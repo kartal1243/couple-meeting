@@ -290,7 +290,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       a().setDmMessages(prev => {
         const next = {};
         for (const [k, msgs] of Object.entries(prev)) {
-          next[k] = Array.isArray(msgs) ? msgs.map(m => m.from === data.from && !m.read ? { ...m, read: true } : m) : msgs;
+          next[k] = Array.isArray(msgs) ? msgs.map(m => m.to === data.from && !m.read ? { ...m, read: true } : m) : msgs;
         }
         return next;
       });
