@@ -14,7 +14,7 @@ const ACTION_COLORS = {
   default: { bg: 'rgba(100,116,139,.12)', color: '#94a3b8', label: '📋 DİĞER', icon: '📋' }
 };
 
-const LogsTab = memo(function LogsTab({ logs, logSearch, setLogSearch, filteredLogs, logRoomFilter, setLogRoomFilter, rooms, formatTime, authToken }) {
+const LogsTab = memo(function LogsTab({ logs, logSearch, setLogSearch, filteredLogs, logRoomFilter, setLogRoomFilter, rooms, formatTime, adminPass }) {
   const [selectedLog, setSelectedLog] = useState(null);
   const [exportFormat, setExportFormat] = useState('csv');
   const [tab, setTab] = useState('logs');
@@ -25,13 +25,13 @@ const LogsTab = memo(function LogsTab({ logs, logSearch, setLogSearch, filteredL
     setOnlineLoading(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/admin/online`, {
-        headers: { Authorization: `Bearer ${authToken}` }
+        headers: { 'x-admin-pass': adminPass }
       });
       const data = await res.json();
       if (data.ok) setOnlineUsers(data.users);
     } catch (e) {}
     setOnlineLoading(false);
-  }, [authToken]);
+  }, [adminPass]);
 
   useEffect(() => {
     if (tab === 'online') fetchOnline();

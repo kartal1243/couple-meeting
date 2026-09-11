@@ -153,14 +153,35 @@ export const HOME_CSS = `
     .cm-room-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
     .cm-feature-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
     .cm-social-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
-    .cm-devices-showcase { gap: 6px !important; margin-top: 30px !important; padding: 0 10px !important; flex-wrap: wrap !important; justify-content: center !important; }
-    .cm-device-laptop .cm-device-screen { width: 130px !important; height: 80px !important; }
-    .cm-phone-screen { width: 55px !important; height: 100px !important; }
-    .cm-device-desktop .cm-device-screen { width: 130px !important; height: 80px !important; }
-    .cm-device-base { display: none !important; }
-    .cm-device-label { font-size: 8px !important; margin-top: 4px !important; }
+    .cm-devices-showcase { gap: 10px !important; margin-top: 30px !important; padding: 0 10px !important; flex-wrap: nowrap !important; justify-content: center !important; align-items: flex-end !important; }
+    .cm-device { transform: none !important; transition: transform .3s !important; }
+    .cm-device:hover { transform: translateY(-4px) !important; }
+    .cm-device-laptop .cm-device-screen { width: 140px !important; height: 88px !important; }
+    .cm-phone-screen { width: 60px !important; height: 112px !important; }
+    .cm-device-phone { border-radius: 10px !important; }
+    .cm-device-phone .cm-device-screen { border-radius: 9px !important; border-width: 2px !important; }
+    .cm-device-notch { width: 28px !important; height: 6px !important; top: 3px !important; border-radius: 0 0 5px 5px !important; }
+    .cm-device-desktop .cm-device-screen { width: 155px !important; height: 96px !important; }
+    .cm-device-desktop .cm-device-base { width: 40px !important; height: 18px !important; }
+    .cm-device-base { height: 4px !important; }
+    .cm-device-label { font-size: 9px !important; margin-top: 6px !important; }
+    .cm-device-screen { box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 20px rgba(124,58,237,.1) !important; }
+    .cm-screen-header { padding: 4px 6px !important; }
+    .cm-screen-dot { width: 4px !important; height: 4px !important; }
+    .cm-screen-title { font-size: 7px !important; }
+    .cm-screen-body { padding: 5px !important; gap: 4px !important; }
+    .cm-screen-player { padding: 4px !important; gap: 4px !important; }
+    .cm-screen-album { width: 20px !important; height: 20px !important; border-radius: 4px !important; }
+    .cm-album-small { width: 16px !important; height: 16px !important; }
+    .cm-screen-song-name { font-size: 7px !important; }
+    .cm-screen-song-artist { font-size: 6px !important; }
+    .cm-screen-chat { gap: 2px !important; }
+    .cm-screen-msg { padding: 2px 4px !important; font-size: 6px !important; }
+    .cm-phone-left { transform: rotate(2deg) !important; }
+    .cm-phone-right { transform: rotate(-2deg) !important; }
     .cm-pulse-hearts { margin-bottom: 16px !important; }
     .cm-pulse-heart { width: 32px !important; height: 32px !important; border-radius: 9px !important; font-size: 14px !important; }
+    .cm-pulse-heart-2 { margin-left: -6px !important; }
     .cm-pulse-hearts-glow { width: 70px !important; height: 70px !important; }
     .cm-footer-text { font-size: 14px !important; }
   }

@@ -436,7 +436,7 @@ function AdminPage() {
         {tab === 'users' && <UsersTab users={users} userSearch={userSearch} setUserSearch={setUserSearch} filteredUsers={filteredUsers} setSelectedUser={setSelectedUser} setShowUserModal={setShowUserModal} showUserModal={showUserModal} selectedUser={selectedUser} userDetail={userDetail} fetchUserDetail={fetchUserDetail} resetPassword={resetPassword} changeEmail={changeEmail} freezeAccount={freezeAccount} setVip={setVip} toggleBan={toggleBan} deleteUser={deleteUser} showToast={showToast} vipPlan={vipPlan} setVipPlan={setVipPlan} vipDays={vipDays} setVipDays={setVipDays} formatTime={formatTime} />}
 
         {/* ═══════════ LOGS ═══════════ */}
-        {tab === 'logs' && <LogsTab logs={logs} logSearch={logSearch} setLogSearch={setLogSearch} filteredLogs={filteredLogs} logRoomFilter={logRoomFilter} setLogRoomFilter={setLogRoomFilter} rooms={rooms} formatTime={formatTime} authToken={authToken} />}
+        {tab === 'logs' && <LogsTab logs={logs} logSearch={logSearch} setLogSearch={setLogSearch} filteredLogs={filteredLogs} logRoomFilter={logRoomFilter} setLogRoomFilter={setLogRoomFilter} rooms={rooms} formatTime={formatTime} adminPass={pass} />}
 
         {/* ═══════════ FEEDBACK ═══════════ */}
         {tab === 'feedback' && <FeedbackTab feedbackList={feedbackList} fetchLogs={fetchLogs} api={api} />}
