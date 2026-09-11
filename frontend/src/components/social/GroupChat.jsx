@@ -1,6 +1,6 @@
 import { useEffect, useRef, memo } from 'react';
 
-const GroupChat = memo(function GroupChat({ group, messages, input, setInput, onSend, onBack }) {
+const GroupChat = memo(function GroupChat({ group, messages, input, setInput, onSend, onBack, authUser }) {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   if (!group) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#7f8c98', fontSize: 13 }}>Bir grup seçin</div>;
@@ -15,15 +15,20 @@ const GroupChat = memo(function GroupChat({ group, messages, input, setInput, on
       </div>
       <div className="cm-social-dm-msgs" style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.length === 0 && <div style={{ color: '#7f8c98', textAlign: 'center', fontSize: 12, padding: 20 }}>Henuz mesaj yok.</div>}
-        {messages.map((m, i) => (
-          <div key={m.id || i} style={{ display: 'flex', gap: 8 }}>
-            <div style={{ fontSize: 18, flexShrink: 0 }}>{m.fromAvatar || '🐱'}</div>
-            <div style={{ background: '#1f2c34', padding: '7px 10px', borderRadius: 12, maxWidth: '75%' }}>
-              <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 900 }}>{m.from} <span style={{ color: '#667781', fontWeight: 600 }}>• {m.time}</span></div>
-              <div style={{ fontSize: 12, color: '#e9edef', marginTop: 2, wordBreak: 'break-word' }}>{m.text}</div>
+        {messages.map((m, i) => {
+          const isMe = m.from === authUser?.username;
+          return (
+            <div key={m.id || i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', gap: 8 }}>
+              {!isMe && <div style={{ fontSize: 18, flexShrink: 0 }}>{m.fromAvatar || '🐱'}</div>}
+              <div style={{ background: isMe ? '#005c4b' : '#1f2c34', padding: '7px 10px', borderRadius: 12, maxWidth: '75%', borderBottomRightRadius: isMe ? 4 : 12, borderBottomLeftRadius: isMe ? 12 : 4 }}>
+                {!isMe && <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 900 }}>{m.from} <span style={{ color: '#667781', fontWeight: 600 }}>• {m.time}</span></div>}
+                <div style={{ fontSize: 12, color: '#e9edef', marginTop: isMe ? 0 : 2, wordBreak: 'break-word' }}>{m.text}</div>
+                {isMe && <div style={{ fontSize: 9, color: '#667781', textAlign: 'right', marginTop: 2 }}>{m.time}</div>}
+              </div>
+              {isMe && <div style={{ fontSize: 18, flexShrink: 0 }}>{m.fromAvatar || '🐱'}</div>}
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={endRef} />
       </div>
       <form className="cm-social-dm-input" onSubmit={(e) => { e.preventDefault(); if (input.trim()) { onSend(input.trim()); setInput(''); } }} style={{ padding: 10, borderTop: '1px solid #25313a', display: 'flex', gap: 7, background: '#111b21' }}>

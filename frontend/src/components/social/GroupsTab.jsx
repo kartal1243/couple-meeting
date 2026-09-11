@@ -14,6 +14,7 @@ const GroupsTab = memo(function GroupsTab({ authUser, chatGroups, activeGroup, s
         setInput={setGroupInput}
         onSend={(text) => sendGroupMessage(activeGroup, text)}
         onBack={() => setActiveGroup(null)}
+        authUser={authUser}
       />
     );
   }
