@@ -155,6 +155,22 @@ function initTables() {
     );
     CREATE INDEX IF NOT EXISTS idx_feed_user ON feed_items(username, created_at DESC);
 
+    CREATE TABLE IF NOT EXISTS feed_likes (
+      feed_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (feed_id, username)
+    );
+
+    CREATE TABLE IF NOT EXISTS feed_comments (
+      id TEXT PRIMARY KEY,
+      feed_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      text TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_feed_comments ON feed_comments(feed_id, created_at ASC);
+
     CREATE TABLE IF NOT EXISTS notifications (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL,
@@ -874,14 +890,64 @@ function addFeedItem(username, type, data) {
 
 function getFeedForUser(username) {
   if (getDb()) {
-    return db.prepare(`
+    const items = db.prepare(`
       SELECT f.*, u.avatar FROM feed_items f
       JOIN users u ON f.username = u.username
       WHERE f.username IN (SELECT following FROM follows WHERE follower = ?)
       ORDER BY f.created_at DESC LIMIT 50
     `).all(username);
+    return items.map(item => {
+      const likes = db.prepare('SELECT username FROM feed_likes WHERE feed_id = ?').all(item.id);
+      const commentCount = db.prepare('SELECT COUNT(*) as count FROM feed_comments WHERE feed_id = ?').get(item.id);
+      return { ...item, liked_by: likes.map(l => l.username), like_count: likes.length, comment_count: commentCount?.count || 0 };
+    });
   }
   return [];
+}
+
+function likeFeedItem(feedId, username) {
+  if (getDb()) {
+    try {
+      const existing = db.prepare('SELECT 1 FROM feed_likes WHERE feed_id = ? AND username = ?').get(feedId, username);
+      if (existing) { db.prepare('DELETE FROM feed_likes WHERE feed_id = ? AND username = ?').run(feedId, username); return false; }
+      db.prepare('INSERT INTO feed_likes (feed_id, username, created_at) VALUES (?, ?, ?)').run(feedId, username, Date.now());
+      return true;
+    } catch {}
+  }
+  return null;
+}
+
+function getFeedLikes(feedId) {
+  if (getDb()) { return db.prepare('SELECT username FROM feed_likes WHERE feed_id = ?').all(feedId).map(l => l.username); }
+  return [];
+}
+
+function addFeedComment(feedId, username, text) {
+  if (getDb()) {
+    const id = crypto.randomUUID();
+    db.prepare('INSERT INTO feed_comments (id, feed_id, username, text, created_at) VALUES (?, ?, ?, ?, ?)').run(id, feedId, username, text, Date.now());
+    return { id, feed_id: feedId, username, text, created_at: Date.now() };
+  }
+  return null;
+}
+
+function getFeedComments(feedId) {
+  if (getDb()) {
+    return db.prepare(`
+      SELECT fc.*, u.avatar FROM feed_comments fc
+      JOIN users u ON fc.username = u.username
+      WHERE fc.feed_id = ? ORDER BY fc.created_at ASC
+    `).all(feedId);
+  }
+  return [];
+}
+
+function deleteFeedItem(feedId, username) {
+  if (getDb()) {
+    db.prepare('DELETE FROM feed_items WHERE id = ? AND username = ?').run(feedId, username);
+    db.prepare('DELETE FROM feed_likes WHERE feed_id = ?').run(feedId);
+    db.prepare('DELETE FROM feed_comments WHERE feed_id = ?').run(feedId);
+  }
 }
 
 function getMutualFollowers(username1, username2) {
@@ -1216,7 +1282,7 @@ module.exports = {
   blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
   addReaction, removeReaction, getReactions,
   followUser, unfollowUser, isFollowing, getFollowers, getFollowing, getFollowCounts,
-  addFeedItem, getFeedForUser, getMutualFollowers, getSuggestedFollows,
+  addFeedItem, getFeedForUser, likeFeedItem, getFeedLikes, addFeedComment, getFeedComments, deleteFeedItem, getMutualFollowers, getSuggestedFollows,
   createNotification, getNotifications, getUnreadNotifCount, markNotifsRead,
   createReport, getReports, updateReportStatus,
   getUserRole, setUserRole, getAllRoles, hasPermission,

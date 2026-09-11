@@ -73,6 +73,7 @@ function SocialModal({
   showFollowersModal, setShowFollowersModal, showFollowingModal, setShowFollowingModal,
   feedItems, loadFeed, showFeedModal, setShowFeedModal,
   suggestedFollows, loadSuggestedFollows,
+  createFeedPost, likeFeedPost, commentFeedPost,
   notifications, unreadCount, loadNotifications, markNotifsRead, showNotifPanel, setShowNotifPanel,
   myRole, reportUser, showVerifyModal, setShowVerifyModal, verifyCode, setVerifyCode,
   verifySent, setVerifySent, sendVerificationEmail, verifyEmailCode,
@@ -143,7 +144,7 @@ function SocialModal({
             {socialTab === 'dm' && <DmChat authUser={authUser} dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} followUser={followUser} unfollowUser={unfollowUser} isFollowingUser={isFollowingUser} styles={styles} />}
             {socialTab === 'groups' && <GroupsTab authUser={authUser} chatGroups={chatGroups} activeGroup={activeGroup} setActiveGroup={setActiveGroup} groupMessages={groupMessages} groupInput={groupInput} setGroupInput={setGroupInput} showGroupCreate={showGroupCreate} setShowGroupCreate={setShowGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} friends={friends} createGroup={createGroup} openGroup={openGroup} sendGroupMessage={sendGroupMessage} loadGroups={loadGroups} styles={styles} />}
             {socialTab === 'friends' && <FriendsTab authUser={authUser} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} openDm={openDm} unfriendUser={unfriendUser} styles={styles} openAuth={openAuth} />}
-            {socialTab === 'feed' && <FeedTab authUser={authUser} feedItems={feedItems} suggestedFollows={suggestedFollows} followUser={followUser} />}
+            {socialTab === 'feed' && <FeedTab authUser={authUser} feedItems={feedItems} suggestedFollows={suggestedFollows} followUser={followUser} createFeedPost={createFeedPost} likeFeedPost={likeFeedPost} commentFeedPost={commentFeedPost} />}
             {socialTab === 'profile' && <ProfileTab authUser={authUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} styles={styles} followCounts={followCounts} loadFollowers={loadFollowers} loadFollowing={loadFollowing} twoFAEnabled={twoFAEnabled} setup2FA={setup2FA} setShow2FAModal={setShow2FAModal} setTwoFACode={setTwoFACode} sendVerificationEmail={sendVerificationEmail} setShowVerifyModal={setShowVerifyModal} setShowDeleteAccount={setShowDeleteAccount} />}
           </div>
         </div>

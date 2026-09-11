@@ -365,6 +365,22 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
     socket.on('following_list', (data) => { if (data?.following) a().setFollowingList(data.following); });
     socket.on('feed', (data) => { if (data?.items) a().setFeedItems(data.items); });
     socket.on('suggested_follows', (data) => { if (data?.suggestions) a().setSuggestedFollows(data.suggestions); });
+    socket.on('new_feed_item', (data) => { if (data?.item) a().setFeedItems(prev => [data.item, ...prev]); });
+    socket.on('feed_like_result', (data) => {
+      a().setFeedItems(prev => prev.map(item => {
+        if (item.id !== data.feedId) return item;
+        return { ...item, liked_by: data.likedBy, like_count: data.likeCount };
+      }));
+    });
+    socket.on('feed_comment_result', (data) => {
+      a().setFeedItems(prev => prev.map(item => {
+        if (item.id !== data.feedId) return item;
+        return { ...item, comments: [...(item.comments || []), data.comment], comment_count: (item.comment_count || 0) + 1 };
+      }));
+    });
+    socket.on('feed_deleted', (data) => {
+      a().setFeedItems(prev => prev.filter(item => item.id !== data.feedId));
+    });
 
     socket.on('notifications', (data) => {
       if (data?.notifications) a().setNotifications(data.notifications);
@@ -426,7 +442,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       socket.off('reactions_update'); socket.off('room_invite');
       socket.off('follow_result'); socket.off('follow_counts'); socket.off('follow_counts_update');
       socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
-      socket.off('feed'); socket.off('suggested_follows');
+      socket.off('feed'); socket.off('suggested_follows'); socket.off('new_feed_item'); socket.off('feed_like_result'); socket.off('feed_comment_result'); socket.off('feed_deleted');
       socket.off('notifications'); socket.off('reports_list'); socket.off('role_result'); socket.off('report_result'); socket.off('verify_result');
       socket.off('two_factor_setup'); socket.off('two_factor_result'); socket.off('two_factor_status');
       socket.off('dm_list'); socket.off('dm_history'); socket.off('dm_sent'); socket.off('dm_received'); socket.off('dm_status');

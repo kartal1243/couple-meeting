@@ -1336,6 +1336,56 @@ io.on('connection', (socket) => {
     socket.emit('feed', { items: feed });
   });
 
+  socket.on('feed_create', ({ token, text }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const cleanText = sanitize(text, 500);
+    if (!cleanText) return;
+    const id = db.addFeedItem(user.username, 'post', { text: cleanText });
+    const item = { id, username: user.username, avatar: user.avatar, type: 'post', data: JSON.stringify({ text: cleanText }), created_at: Date.now(), liked_by: [], like_count: 0, comment_count: 0 };
+    user.followers && user.followers.forEach(f => emitToUser(f, 'new_feed_item', { item }));
+  });
+
+  socket.on('feed_like', ({ token, feedId }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const result = db.likeFeedItem(feedId, user.username);
+    if (result !== null) {
+      const likes = db.getFeedLikes(feedId);
+      const item = db.prepare ? db.prepare('SELECT * FROM feed_items WHERE id = ?').get(feedId) : null;
+      if (item) {
+        const feedUser = item.username;
+        if (result === true && feedUser !== user.username) {
+          emitToUser(feedUser, 'notification', { type: 'feed_like', from: user.username, title: 'Gönderini beğendi', body: cleanText ? cleanText.slice(0, 50) : '' });
+        }
+      }
+      socket.emit('feed_like_result', { feedId, liked: result === true, likeCount: likes.length, likedBy: likes });
+    }
+  });
+
+  socket.on('feed_comment', ({ token, feedId, text }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    const cleanText = sanitize(text, 300);
+    if (!cleanText) return;
+    const comment = db.addFeedComment(feedId, user.username, cleanText);
+    if (comment) {
+      comment.avatar = user.avatar;
+      socket.emit('feed_comment_result', { feedId, comment });
+      const item = db.prepare ? db.prepare('SELECT username FROM feed_items WHERE id = ?').get(feedId) : null;
+      if (item && item.username !== user.username) {
+        emitToUser(item.username, 'notification', { type: 'feed_comment', from: user.username, title: 'Gönderine yorum yaptı', body: cleanText.slice(0, 50) });
+      }
+    }
+  });
+
+  socket.on('feed_delete', ({ token, feedId }) => {
+    const user = db.getUserByToken(token);
+    if (!user) return;
+    db.deleteFeedItem(feedId, user.username);
+    socket.emit('feed_deleted', { feedId });
+  });
+
   socket.on('get_suggested_follows', ({ token }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
@@ -1781,6 +1831,14 @@ io.on('connection', (socket) => {
     });
     updateRoomUsers(cleanRoomId); broadcastRooms();
     try { broadcastAdminActivity('room_join', { username, roomId: cleanRoomId, roomName: room.name, message: `${username} odaya katıldı: ${room.name}` }); } catch (e) {}
+    try {
+      const feedId = db.addFeedItem(username, 'room_join', { roomId: cleanRoomId, roomName: room.name });
+      if (feedId) {
+        const user = db.getUser(username);
+        const followers = db.prepare ? db.prepare('SELECT following FROM follows WHERE follower = ?').all(username) : [];
+        followers.forEach(f => emitToUser(f.following, 'new_feed_item', { item: { id: feedId, username, avatar: user?.avatar || '🐱', type: 'room_join', data: JSON.stringify({ roomId: cleanRoomId, roomName: room.name }), created_at: Date.now(), liked_by: [], like_count: 0, comment_count: 0 } }));
+      }
+    } catch (e) {}
   });
 
   socket.on('update_room_settings', ({ roomId, newName, newTheme, newHostUserId, newMaxUsers, newPassword } = {}) => {

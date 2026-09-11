@@ -469,6 +469,21 @@ function App() {
     socket.emit('get_suggested_follows', { token: authToken });
   };
 
+  const createFeedPost = (text) => {
+    if (!authToken || !text.trim()) return;
+    socket.emit('feed_create', { token: authToken, text: text.trim() });
+  };
+
+  const likeFeedPost = (feedId) => {
+    if (!authToken) return;
+    socket.emit('feed_like', { token: authToken, feedId });
+  };
+
+  const commentFeedPost = (feedId, text) => {
+    if (!authToken || !text.trim()) return;
+    socket.emit('feed_comment', { token: authToken, feedId, text: text.trim() });
+  };
+
   // ── BILDIRIM SISTEMI ──
   const loadNotifications = () => {
     if (!authUser) return;
@@ -978,6 +993,7 @@ function App() {
           showFollowingModal={showFollowingModal} setShowFollowingModal={setShowFollowingModal}
           feedItems={feedItems} loadFeed={loadFeed} showFeedModal={showFeedModal} setShowFeedModal={setShowFeedModal}
           suggestedFollows={suggestedFollows} loadSuggestedFollows={loadSuggestedFollows}
+          createFeedPost={createFeedPost} likeFeedPost={likeFeedPost} commentFeedPost={commentFeedPost}
           notifications={notifications} unreadCount={unreadCount} loadNotifications={loadNotifications}
           markNotifsRead={markNotifsRead} showNotifPanel={showNotifPanel} setShowNotifPanel={setShowNotifPanel}
           myRole={myRole} reportUser={reportUser}
