@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { AVATARS } from '../../constants';
 
-const ProfileTab = memo(function ProfileTab({ authUser, profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput, myAvatar, setMyAvatar, saveProfile, styles, followCounts, loadFollowers, loadFollowing, twoFAEnabled, setup2FA, setShow2FAModal, setTwoFACode, sendVerificationEmail, setShowVerifyModal, setShowDeleteAccount }) {
+const ProfileTab = memo(function ProfileTab({ authUser, profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput, myAvatar, setMyAvatar, saveProfile, styles, followCounts, loadFollowers, loadFollowing, setShowDeleteAccount }) {
   return (
     <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
       {!authUser ? (
@@ -28,31 +28,6 @@ const ProfileTab = memo(function ProfileTab({ authUser, profileBioInput, setProf
             {AVATARS.map(a => (
               <button key={a} type="button" onClick={() => { setMyAvatar(a); localStorage.setItem('cm_user_avatar', a); }} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, cursor: 'pointer', background: myAvatar === a ? '#00a884' : '#111b21', border: myAvatar === a ? '2px solid #53e6bc' : '1px solid #2a3942' }}>{a}</button>
             ))}
-          </div>
-          <div style={{ marginTop: 12, padding: 12, background: authUser?.email_verified ? 'rgba(0,168,132,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 12, border: authUser?.email_verified ? '1px solid rgba(0,168,132,0.3)' : '1px solid rgba(239,68,68,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 16 }}>{authUser?.email_verified ? '✅' : '⚠️'}</span>
-              <div>
-                <div style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{authUser?.email_verified ? 'Email Dogrulanmis' : 'Email Dogrulanmamis'}</div>
-                <div style={{ color: '#7f8c98', fontSize: 10 }}>{authUser?.email}</div>
-              </div>
-              {!authUser?.email_verified && (
-                <button type="button" onClick={() => { sendVerificationEmail(); setShowVerifyModal(true); }} style={{ marginLeft: 'auto', background: '#00a884', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10 }}>Dogrula</button>
-              )}
-            </div>
-          </div>
-          <div style={{ marginTop: 12, padding: 12, background: twoFAEnabled ? 'rgba(0,168,132,0.1)' : 'rgba(245,158,11,0.1)', borderRadius: 12, border: twoFAEnabled ? '1px solid rgba(0,168,132,0.3)' : '1px solid rgba(245,158,11,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 16 }}>{twoFAEnabled ? '🔐' : '⚠️'}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{twoFAEnabled ? '2FA Aktif' : '2FA Devre Disi'}</div>
-                <div style={{ color: '#7f8c98', fontSize: 10 }}>Google Authenticator ile hesabini koru</div>
-              </div>
-              <button type="button" onClick={twoFAEnabled ? () => { setShow2FAModal(true); setTwoFACode(''); } : setup2FA}
-                style={{ background: twoFAEnabled ? '#ea0038' : '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>
-                {twoFAEnabled ? 'Devre Disi Birak' : 'Aktif Et'}
-              </button>
-            </div>
           </div>
           <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet</button>
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(234,0,56,.15)' }}>
