@@ -12,40 +12,4 @@ export const GLOBAL_CSS = `
   input:focus, select:focus { outline: none; border-color: var(--cm-primary, #00a884) !important; box-shadow: 0 0 0 3px rgba(0,168,132,.25); }
   html, body { overflow-x: hidden !important; max-width: 100vw !important; margin: 0; padding: 0; }
   * { min-width: 0; box-sizing: border-box !important; }
-
-  @media (max-width: 768px) {
-    .cm-room-header {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      height: 60px !important;
-      padding: 0 12px !important;
-      z-index: 99999 !important;
-      background: #111b21 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      border-bottom: 1px solid #222d34 !important;
-    }
-    .cm-room-header-actions { display: flex !important; gap: 6px !important; }
-    .cm-room-header-actions button { padding: 6px 10px !important; font-size: 11px !important; }
-    .cm-room-layout {
-      margin-top: 60px !important;
-      flex-direction: column !important;
-      height: calc(100dvh - 60px) !important;
-      overflow-y: auto !important;
-    }
-    .cm-player-column { width: 100% !important; min-height: auto !important; overflow: visible !important; }
-    .cm-search-bar { flex-wrap: wrap !important; padding: 8px !important; position: relative !important; z-index: 100 !important; }
-    .cm-search-bar input { flex: 1 1 100% !important; min-width: 0 !important; }
-    .cm-search-bar .cm-action-btn { flex: 1 1 calc(50% - 5px) !important; }
-    .cm-search-results { left: 8px !important; right: 8px !important; top: 95px !important; z-index: 99999 !important; }
-    .cm-video-wrap { width: 100% !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: 200px !important; flex: none !important; }
-    .cm-controls { flex-wrap: wrap !important; padding: 8px !important; gap: 6px !important; }
-    .cm-controls > button { flex: 1 1 calc(50% - 4px) !important; }
-    .cm-reactions { width: 100% !important; display: grid !important; grid-template-columns: repeat(6, 1fr) !important; }
-    .cm-reactions button { padding: 6px 2px !important; font-size: 16px !important; }
-    .cm-sidebar { width: 100% !important; height: 450px !important; border-left: none !important; border-top: 1px solid #222d34 !important; }
-  }
 `;

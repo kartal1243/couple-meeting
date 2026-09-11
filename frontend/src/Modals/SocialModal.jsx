@@ -7,54 +7,6 @@ import FeedTab from '../components/social/FeedTab';
 import ProfileTab from '../components/social/ProfileTab';
 import GroupsTab from '../components/social/GroupsTab';
 
-const MOBILE_CSS = `
-@media (max-width: 768px) {
-  .cm-social-root { padding: 0 !important; }
-  .cm-social-box { width: 100% !important; height: 100% !important; border-radius: 0 !important; max-height: 100vh !important; max-height: 100dvh !important; }
-  .cm-social-header { padding: 10px 12px !important; flex-wrap: wrap !important; gap: 6px !important; }
-  .cm-social-header-title { font-size: 15px !important; }
-  .cm-social-header-actions { gap: 4px !important; }
-  .cm-social-header-actions button { padding: 6px 8px !important; font-size: 10px !important; }
-  .cm-social-layout { flex-direction: column !important; }
-  .cm-social-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid #25313a !important; padding: 6px 8px !important; flex-direction: row !important; overflow-x: auto !important; overflow-y: hidden !important; gap: 4px !important; -webkit-overflow-scrolling: touch; }
-  .cm-social-sidebar::-webkit-scrollbar { display: none; }
-  .cm-social-sidebar-btn { padding: 8px 12px !important; font-size: 11px !important; white-space: nowrap !important; flex-shrink: 0 !important; }
-  .cm-social-sidebar-footer { display: none !important; }
-  .cm-social-content { padding: 10px !important; }
-  .cm-social-content-title { font-size: 15px !important; margin-bottom: 10px !important; }
-  .cm-social-msg-input { padding: 10px !important; font-size: 14px !important; }
-  .cm-social-msg-btn { padding: 10px 12px !important; }
-  .cm-social-msg-row { flex-direction: column !important; gap: 6px !important; }
-  .cm-social-msg-row input { min-height: 44px !important; font-size: 14px !important; }
-  .cm-social-msg-row button { width: 100% !important; padding: 12px !important; }
-  .cm-social-card { padding: 10px !important; gap: 8px !important; margin-bottom: 6px !important; }
-  .cm-social-card-avatar { font-size: 20px !important; }
-  .cm-social-card-name { font-size: 13px !important; }
-  .cm-social-card-sub { font-size: 10px !important; }
-  .cm-social-card-btns { gap: 3px !important; }
-  .cm-social-card-btns button { padding: 5px 7px !important; font-size: 9px !important; }
-  .cm-social-feed-layout { flex-direction: column !important; }
-  .cm-social-feed-sidebar { width: 100% !important; border-left: none !important; border-top: 1px solid #25313a !important; padding: 10px !important; max-height: none !important; }
-  .cm-social-profile-avatar { width: 52px !important; height: 52px !important; font-size: 34px !important; border-radius: 14px !important; }
-  .cm-social-profile-name { font-size: 18px !important; }
-  .cm-social-profile-avatar-grid button { width: 36px !important; height: 36px !important; font-size: 18px !important; }
-  .cm-social-dm-header { padding: 8px 10px !important; gap: 6px !important; }
-  .cm-social-dm-header-name { font-size: 13px !important; }
-  .cm-social-dm-msgs { padding: 10px !important; gap: 6px !important; }
-  .cm-social-dm-bubble { max-width: 82% !important; padding: 7px 10px !important; font-size: 12px !important; }
-  .cm-social-dm-input { padding: 8px !important; gap: 6px !important; }
-  .cm-social-dm-input input { padding: 10px !important; font-size: 14px !important; }
-  .cm-social-follow-row { padding: 8px 10px !important; }
-  .cm-social-notif-panel { top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important; max-height: 60vh !important; border-radius: 18px 18px 0 0 !important; }
-  .cm-social-verify-box { width: 100% !important; padding: 18px !important; }
-  .cm-social-2fa-box { width: 100% !important; padding: 18px !important; }
-  .cm-social-delete-box { width: 100% !important; }
-  .cm-social-followers-box { width: 100% !important; max-height: 80vh !important; }
-  .cm-social-group-create-box { width: 100% !important; max-height: 85vh !important; overflow-y: auto !important; }
-  .cm-social-group-create-box > div { width: 100% !important; max-width: none !important; }
-}
-`;
-
 function SocialModal({
   authUser, socialTab, setSocialTab, globalMessages, globalChatInput, setGlobalChatInput,
   sendGlobalMessage, friendSearch, setFriendSearch, searchFriends, friendSearchResults,
@@ -95,7 +47,6 @@ function SocialModal({
 
   return (
     <div className="cm-social-root" style={{ position: 'fixed', inset: 0, zIndex: 19000, background: 'rgba(0,0,0,.78)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
-      <style>{MOBILE_CSS}</style>
       <div className="cm-social-box" style={{ width: 'min(900px, 100%)', height: 'min(760px, 94vh)', background: '#0f171d', border: '1px solid #2a3942', borderRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 35px 100px rgba(0,0,0,.5)' }}>
         {/* Header */}
         <div className="cm-social-header" style={{ padding: '14px 16px', background: '#111b21', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

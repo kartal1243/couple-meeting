@@ -9,7 +9,6 @@ function Header({
   const [showUsers, setShowUsers] = useState(false);
   const [showQuickLeave, setShowQuickLeave] = useState(false);
   const [shareTooltip, setShareTooltip] = useState('');
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const liveDotStyle = {
     width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#22c55e' : '#ef4444',
     boxShadow: isConnected ? '0 0 8px rgba(34,197,94,.6)' : 'none',
@@ -163,23 +162,7 @@ function Header({
             boxShadow: '0 4px 12px rgba(0,0,0,.3)'
           }}>{shareTooltip}</div>
         )}
-        {isMobile && (
-          <div onClick={() => setShowSettingsModal(true)} style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: 'linear-gradient(135deg, rgba(0,168,132,.15), rgba(0,168,132,.05))',
-            border: '1px solid rgba(0,168,132,.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 16, cursor: 'pointer', flexShrink: 0
-          }}>{authUser?.avatar || myAvatar}</div>
-        )}
-        <button onClick={() => setShowProfileModal(true)} style={{
-          background: 'rgba(255,255,255,.05)', color: '#94a3b8',
-          border: '1px solid rgba(255,255,255,.08)',
-          padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
-          fontWeight: 800, fontSize: 13, transition: 'all 0.2s',
-          display: isMobile ? 'none' : 'block'
-        }}>👤</button>
-        {authUser && !isMobile && (
+        {authUser && (
           <div onClick={() => setShowProfileModal(true)} style={{
             background: 'linear-gradient(135deg, rgba(0,168,132,.1), rgba(0,168,132,.05))',
             color: '#00a884', border: '1px solid rgba(0,168,132,.2)',

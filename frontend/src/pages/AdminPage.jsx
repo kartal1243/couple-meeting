@@ -330,7 +330,6 @@ function AdminPage() {
         .admin-action { transition: all .15s !important; }
         .admin-action:hover { transform: scale(1.03); }
         .admin-action:active { transform: scale(0.97); }
-        @media(max-width:768px) { .admin-grid { grid-template-columns: 1fr !important; } .admin-header { flex-wrap: wrap !important; } .admin-stat-grid { grid-template-columns: repeat(3, 1fr) !important; } }
       `}</style>
 
       {toast && (

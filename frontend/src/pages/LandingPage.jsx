@@ -50,7 +50,6 @@ function LandingPage() {
         .cta-btn:hover { transform: scale(1.03); box-shadow: 0 12px 40px rgba(124,58,237,.4) !important; }
         .faq-item { transition: all .3s; }
         .faq-item:hover { background: rgba(255,255,255,.04) !important; }
-        @media(max-width:768px) { .hero-grid { grid-template-columns: 1fr !important; } .feature-grid { grid-template-columns: 1fr !important; } .step-grid { grid-template-columns: 1fr !important; } }
       `}</style>
 
       {/* Navbar */}

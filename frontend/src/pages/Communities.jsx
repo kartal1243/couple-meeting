@@ -1,35 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
 
-const MOBILE_STYLE = `
-@media (max-width: 600px) {
-  .cm-comm-root { padding: 12px !important; }
-  .cm-comm-title { font-size: 18px !important; }
-  .cm-comm-header { flex-direction: column !important; gap: 10px !important; align-items: stretch !important; }
-  .cm-comm-header button { width: 100% !important; text-align: center !important; padding: 12px !important; }
-  .cm-comm-card { padding: 12px !important; border-radius: 12px !important; }
-  .cm-comm-card-icon { font-size: 26px !important; }
-  .cm-comm-card-name { font-size: 14px !important; }
-  .cm-comm-card-desc { font-size: 11px !important; }
-  .cm-comm-card-members { font-size: 10px !important; }
-  .cm-comm-create { padding: 14px !important; border-radius: 12px !important; }
-  .cm-comm-icons { gap: 4px !important; }
-  .cm-comm-icons button { width: 34px !important; height: 34px !important; font-size: 17px !important; padding: 0 !important; border-radius: 8px !important; }
-  .cm-comm-input { padding: 12px !important; font-size: 15px !important; border-radius: 10px !important; }
-  .cm-comm-btn-row { flex-direction: column !important; gap: 8px !important; }
-  .cm-comm-btn-row button { width: 100% !important; padding: 14px !important; }
-  .cm-comm-detail-icon { font-size: 32px !important; }
-  .cm-comm-detail-name { font-size: 18px !important; }
-  .cm-comm-detail-meta { font-size: 12px !important; }
-  .cm-comm-post-row { flex-direction: column !important; gap: 8px !important; }
-  .cm-comm-post-input { padding: 12px !important; font-size: 15px !important; min-height: 44px !important; }
-  .cm-comm-post-btn { width: 100% !important; padding: 12px !important; }
-  .cm-comm-post-card { padding: 12px !important; }
-  .cm-comm-post-text { font-size: 13px !important; }
-  .cm-comm-members-card { padding: 12px !important; }
-  .cm-comm-empty { padding: 24px 12px !important; font-size: 13px !important; }
-}
-`;
-
 function Communities({ currentTheme, token, username, avatar, socket }) {
   const [communities, setCommunities] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -99,7 +69,6 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
   if (selected) {
     return (
       <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40 }}>
-        <style>{MOBILE_STYLE}</style>
         <button onClick={() => { setSelected(null); setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: 14, fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
           ← Geri
         </button>
@@ -157,7 +126,6 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
   return (
     <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40 }}>
-      <style>{MOBILE_STYLE}</style>
 
       <div className="cm-comm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div className="cm-comm-title" style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>🏘️ Topluluklar</div>

@@ -88,11 +88,6 @@ function SearchBar({
         .cm-search-btn { padding: 7px 10px !important; font-size: 11px !important; font-weight: 800 !important; border-radius: 8px !important; white-space: nowrap !important; border: none !important; cursor: pointer !important; }
         .cm-search-btn-play { background: ${currentTheme.primary} !important; color: #fff !important; }
         .cm-search-btn-add { background: #008f6f !important; color: #fff !important; }
-        @media (max-width: 480px) {
-          .cm-search-bar { padding: 6px 8px !important; gap: 4px !important; }
-          .cm-search-bar input { padding: 7px 8px !important; font-size: 11px !important; }
-          .cm-search-btn { padding: 6px 8px !important; font-size: 10px !important; border-radius: 6px !important; }
-        }
       `}</style>
 
       <input
