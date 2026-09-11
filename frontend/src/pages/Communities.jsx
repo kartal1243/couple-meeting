@@ -110,7 +110,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
           {(Array.isArray(members) ? members : []).map(m => (
             <div key={m.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
               <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, overflow: 'hidden', display: 'inline-grid', placeItems: 'center', background: '#1a2634' }}>
-                {m.avatar?.startsWith('data:image') ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 14 }}>{m.avatar || '🐱'}</span>}
+                {m.avatar && m.avatar.startsWith('data:image') && m.avatar.length > 30 ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 14 }}>{m.avatar || '🐱'}</span>}
               </span>
               <span style={{ color: '#e2e8f0', fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.username}</span>
               {m.role === 'admin' && <span style={{ color: currentTheme.primary, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>Yönetici</span>}

@@ -153,7 +153,15 @@ export const HOME_CSS = `
     .cm-room-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
     .cm-feature-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
     .cm-social-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
-    .cm-devices-showcase { display: none !important; }
+    .cm-devices-showcase { gap: 6px !important; margin-top: 30px !important; padding: 0 10px !important; flex-wrap: wrap !important; justify-content: center !important; }
+    .cm-device-laptop .cm-device-screen { width: 130px !important; height: 80px !important; }
+    .cm-phone-screen { width: 55px !important; height: 100px !important; }
+    .cm-device-desktop .cm-device-screen { width: 130px !important; height: 80px !important; }
+    .cm-device-base { display: none !important; }
+    .cm-device-label { font-size: 8px !important; margin-top: 4px !important; }
+    .cm-pulse-hearts { margin-bottom: 16px !important; }
+    .cm-pulse-heart { width: 32px !important; height: 32px !important; border-radius: 9px !important; font-size: 14px !important; }
+    .cm-pulse-hearts-glow { width: 70px !important; height: 70px !important; }
     .cm-footer-text { font-size: 14px !important; }
   }
 `;

@@ -7,7 +7,7 @@ const GlobalChatTab = memo(function GlobalChatTab({ globalMessages, globalChatIn
         {globalMessages.map((m, i) => (
           <div key={m.id || i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
             <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, overflow: 'hidden', display: 'grid', placeItems: 'center', background: '#1a2634' }}>
-              {m.avatar?.startsWith('data:image') ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>{m.avatar || '🐱'}</span>}
+              {m.avatar && m.avatar.startsWith('data:image') && m.avatar.length > 30 ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>{m.avatar || '🐱'}</span>}
             </div>
             <div style={{ background: '#111b21', padding: '8px 10px', borderRadius: 12, maxWidth: '80%', minWidth: 0 }}>
               <div style={{ fontSize: 11, color: '#53e6bc', fontWeight: 900 }}>{m.username || 'Misafir'} <span style={{ color: '#63727d', fontWeight: 600 }}>• {m.time || ''}</span></div>

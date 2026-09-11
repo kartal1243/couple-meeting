@@ -334,6 +334,27 @@ app.get('/api/admin/logs', adminAuth, (req, res) => {
   res.json({ ok: true, logs });
 });
 
+app.get('/api/admin/online', adminAuth, (req, res) => {
+  const onlineUsers = [];
+  for (const [socketId, s] of io.sockets.sockets) {
+    if (s.currentRoom) {
+      const room = rooms[s.currentRoom];
+      const userInRoom = room?.users.find(u => u.socketId === socketId);
+      onlineUsers.push({
+        socketId,
+        userId: s.userId || '-',
+        username: s.socialUsername || s.userId || 'Misafir',
+        ip: s.handshake?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || s.handshake?.address || '-',
+        room: s.currentRoom,
+        roomName: room?.name || s.currentRoom,
+        avatar: userInRoom?.avatar || null,
+        isGuest: !s.socialUsername
+      });
+    }
+  }
+  res.json({ ok: true, users: onlineUsers, count: onlineUsers.length });
+});
+
 app.get('/api/admin/users', adminAuth, (req, res) => {
   const users = db.getAllUsers().map(u => ({
     username: u.username, email: u.email, avatar: u.avatar,
