@@ -145,6 +145,11 @@ function AdminPage() {
     return () => clearInterval(interval);
   }, [authed, fetchLogs]);
 
+  const resolveReport = useCallback((reportId, action) => {
+    socket.emit('resolve_report', { reportId, action, token: pass });
+    setReports(prev => prev.filter(r => r.id !== reportId));
+  }, [pass]);
+
   const fetchAnalytics = useCallback(async () => {
     try {
       const res = await api('/api/admin/analytics');
