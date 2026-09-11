@@ -1527,7 +1527,7 @@ io.on('connection', (socket) => {
   const dmMessages = globalDmMessages;
   const chatGroups = globalChatGroups;
 
-  socket.on('dm_send', ({ to, text, token, msgId } = {}) => {
+  socket.on('dm_send', ({ to, text, token, msgId, replyTo } = {}) => {
     if (checkRate('chat', 30)) return;
     const from = db.getUserByToken(token);
     if (!from) return;
@@ -1544,7 +1544,8 @@ io.on('connection', (socket) => {
       to: toUser.username, toAvatar: toUser.avatar,
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      replyTo: replyTo ? { sender: sanitize(replyTo.sender, 24), text: sanitize(replyTo.text, 200) } : undefined
     };
     db.saveDmMessage(msg);
     const key = [from.username, toUser.username].sort().join(':');
@@ -1637,7 +1638,7 @@ io.on('connection', (socket) => {
     })) });
   });
 
-  socket.on('group_send', ({ groupId, text, token }) => {
+  socket.on('group_send', ({ groupId, text, token, replyTo }) => {
     const from = db.getUserByToken(token);
     if (!from) return;
     const group = chatGroups[sanitize(groupId, 20)];
@@ -1649,7 +1650,8 @@ io.on('connection', (socket) => {
       from: from.username, fromAvatar: from.avatar,
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      replyTo: replyTo ? { sender: sanitize(replyTo.sender, 24), text: sanitize(replyTo.text, 200) } : undefined
     };
     db.saveGroupMessage({ ...msg, groupId: group.id });
     group.messages.push(msg);

@@ -12,7 +12,7 @@ const GroupsTab = memo(function GroupsTab({ authUser, chatGroups, activeGroup, s
         messages={groupMessages || []}
         input={groupInput}
         setInput={setGroupInput}
-        onSend={(text) => sendGroupMessage(activeGroup, text)}
+        onSend={(text, replyTo) => sendGroupMessage(activeGroup, text, replyTo)}
         onBack={() => setActiveGroup(null)}
         authUser={authUser}
       />

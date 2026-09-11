@@ -318,16 +318,17 @@ function App() {
     setGlobalChatInput('');
   };
 
-  const sendDm = (to, text) => {
+  const sendDm = (to, text, replyTo = null) => {
     if (!text.trim() || !authToken) return;
     const msgId = 'dm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
     const localMsg = {
       id: msgId, sender: authUser?.username || username, text: text.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      createdAt: Date.now(), isLocal: true
+      createdAt: Date.now(), isLocal: true,
+      replyTo: replyTo ? { sender: replyTo.sender, text: replyTo.text } : undefined
     };
     setDmMessages(prev => ({ ...prev, [to]: [...(prev[to] || []), localMsg] }));
-    socket.emit('dm_send', { to, text: text.trim(), token: authToken, msgId });
+    socket.emit('dm_send', { to, text: text.trim(), token: authToken, msgId, replyTo: replyTo ? { sender: replyTo.sender, text: replyTo.text } : undefined });
   };
 
   const sendDmTyping = (to) => { if (authToken) socket.emit('typing_start', { to, token: authToken }); };
@@ -366,9 +367,9 @@ function App() {
     socket.emit('group_history', { groupId, token: authToken });
   };
 
-  const sendGroupMessage = (groupId, text) => {
+  const sendGroupMessage = (groupId, text, replyTo = null) => {
     if (!text.trim() || !groupId || !authToken) return;
-    socket.emit('group_send', { groupId, text: text.trim(), token: authToken });
+    socket.emit('group_send', { groupId, text: text.trim(), token: authToken, replyTo: replyTo ? { sender: replyTo.sender, text: replyTo.text } : undefined });
   };
 
   const loadGroups = () => { if (authToken) socket.emit('group_list', { token: authToken }); };
