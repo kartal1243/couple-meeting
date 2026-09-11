@@ -69,8 +69,20 @@ export const GLOBAL_CSS = `
     .cm-social-sidebar-footer { display: none !important; }
     .cm-social-content { padding: 8px !important; }
     .cm-social-msg-input { font-size: 13px !important; padding: 8px !important; }
+    .cm-devices-showcase { gap: 6px !important; margin-top: 30px !important; flex-wrap: wrap !important; justify-content: center !important; }
+    .cm-device-laptop .cm-device-screen { width: 140px !important; height: 90px !important; }
+    .cm-phone-screen { width: 60px !important; height: 110px !important; }
+    .cm-device-desktop .cm-device-screen { width: 140px !important; height: 90px !important; }
+    .cm-device-base { display: none !important; }
+    .cm-device-label { font-size: 9px !important; margin-top: 6px !important; }
+    .cm-device-laptop { transform: none !important; }
+    .cm-device-desktop { display: block !important; }
+    .cm-pulse-hearts { margin-bottom: 16px !important; }
+    .cm-pulse-heart { width: 36px !important; height: 36px !important; border-radius: 10px !important; font-size: 16px !important; }
+    .cm-pulse-heart-1 { animation: cmPulseHeart 1.2s ease-in-out infinite; }
+    .cm-pulse-heart-2 { animation: cmPulseHeart 1.2s ease-in-out infinite 0.3s; margin-left: -6px !important; }
+    .cm-pulse-hearts-glow { width: 80px !important; height: 80px !important; }
 
-    .cm-devices-showcase { display: none !important; }
     .cm-footer-text { font-size: 14px !important; }
 
     .admin-grid { grid-template-columns: 1fr !important; }
