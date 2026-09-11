@@ -13,12 +13,14 @@ const DmChat = memo(function DmChat({ activeChat, messages, input, setInput, onS
       typingTimeout.current = setTimeout(() => { if (sendDmStopTyping) sendDmStopTyping(activeChat.username); }, 2000);
     }
   };
+  if (!activeChat) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#7f8c98', fontSize: 13 }}>Bir sohbet seçin</div>;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div className="cm-social-dm-header" style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: '4px 6px' }}>&larr;</button>
         <div style={{ fontSize: 18, position: 'relative', flexShrink: 0 }}>
-          {activeChat.avatar}
+          {activeChat.avatar || '🐱'}
           <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: activeChat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
