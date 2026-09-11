@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 
-const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, setDmActiveChat, dmMessages, dmInput, setDmInput, sendDm, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser, styles }) {
+const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, setDmActiveChat, dmMessages, dmInput, setDmInput, sendDm, openDm, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser, styles }) {
   const endRef = useRef(null);
   const typingTimeout = useRef(null);
 
@@ -38,7 +38,8 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
             const unread = conv.unread || 0;
             return (
               <div key={conv.username} onClick={() => {
-                setDmActiveChat({ username: conv.username, avatar: conv.avatar || '🐱', isOnline: conv.isOnline });
+                if (openDm) openDm({ username: conv.username, avatar: conv.avatar || '🐱', isOnline: conv.isOnline });
+                else setDmActiveChat({ username: conv.username, avatar: conv.avatar || '🐱', isOnline: conv.isOnline });
               }} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                 borderRadius: 10, cursor: 'pointer', marginBottom: 4,

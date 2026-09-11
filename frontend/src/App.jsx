@@ -576,7 +576,7 @@ function App() {
       setJoinRoomTarget(null);
       setJoinModalPass('');
       setInRoom(true);
-      setTimeout(() => navigate('/room/' + encodeURIComponent(data.roomId)), 50);
+      setTimeout(() => navigate('/room/' + encodeURIComponent(data.roomId), { replace: true }), 50);
     };
     socket.once('room_error', onError);
     socket.once('room_joined', onJoined);
@@ -603,7 +603,7 @@ function App() {
         localStorage.setItem('cm_recent_rooms', JSON.stringify(recent.filter(r => r !== rid)));
       } catch {}
     }
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   const handleSaveSettings = () => {

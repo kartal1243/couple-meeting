@@ -53,7 +53,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       a().saveToRecentRooms(data.roomId);
       if (a().authToken) socket.emit('social_sync', { token: a().authToken });
 
-      setTimeout(() => navigate(`/room/${encodeURIComponent(data.roomId)}`), 50);
+      setTimeout(() => navigate(`/room/${encodeURIComponent(data.roomId)}`, { replace: true }), 50);
 
       if (data.currentMedia && data.currentMedia.type !== 'none') {
         a().setYoutubeError(null);
@@ -110,7 +110,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       } else {
         a().setErrorMessage(msg);
         a().setInRoom(false);
-        navigate('/');
+        navigate('/', { replace: true });
         localStorage.removeItem('cm_saved_room');
         localStorage.removeItem('cm_saved_pass');
       }
