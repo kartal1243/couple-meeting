@@ -1,4 +1,4 @@
-import { useState, memo, useEffect } from 'react';
+import { useState, memo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 function Header({
@@ -9,6 +9,7 @@ function Header({
   const [showUsers, setShowUsers] = useState(false);
   const [showQuickLeave, setShowQuickLeave] = useState(false);
   const [shareTooltip, setShareTooltip] = useState('');
+  const usersRef = useRef(null);
   const liveDotStyle = {
     width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#22c55e' : '#ef4444',
     boxShadow: isConnected ? '0 0 8px rgba(34,197,94,.6)' : 'none',
@@ -25,6 +26,21 @@ function Header({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!showUsers) return;
+    const handleClickOutside = (e) => {
+      if (usersRef.current && !usersRef.current.contains(e.target)) {
+        setShowUsers(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showUsers]);
 
   return (
     <header style={{
@@ -72,6 +88,7 @@ function Header({
 
         {/* Users pill */}
         <div
+          ref={usersRef}
           style={{
             position: 'relative', fontSize: 10, fontWeight: 800,
             padding: '4px 12px', borderRadius: 20, cursor: 'pointer', userSelect: 'none',

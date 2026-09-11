@@ -55,6 +55,7 @@ export const GLOBAL_CSS = `
     .cm-big-btn { width: 100% !important; text-align: center !important; padding: 12px !important; font-size: 13px !important; }
 
     .cm-section { margin-top: 36px !important; }
+    .cm-section-head { flex-direction: column !important; align-items: center !important; text-align: center !important; }
     .cm-section-head h3 { font-size: 18px !important; }
     .cm-section-head p { font-size: 11px !important; }
 
