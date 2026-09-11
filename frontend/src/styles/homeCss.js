@@ -137,4 +137,23 @@ export const HOME_CSS = `
   .cm-footer-socials { display:flex; gap:12px; justify-content:center; margin-top:18px; }
   .cm-footer-socials a { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#94a3b8; font-size:16px; text-decoration:none; transition:all .2s; }
   .cm-footer-socials a:hover { background:rgba(124,58,237,.2); border-color:rgba(124,58,237,.4); color:#a78bfa; transform:translateY(-2px); }
+
+  @media (max-width: 768px) {
+    .cm-home-main { width: 100vw !important; max-width: 100vw !important; padding: 20px 12px 40px !important; overflow-x: hidden !important; }
+    .cm-home-nav { padding: 10px 12px !important; }
+    .cm-nav-actions { width: auto !important; }
+    .cm-hero { padding: 10px 0 0 !important; }
+    .cm-hero-title { font-size: clamp(30px, 8vw, 50px) !important; letter-spacing: -2px !important; }
+    .cm-hero-sub { font-size: 13px !important; line-height: 1.5 !important; max-width: 100% !important; padding: 0 4px !important; }
+    .cm-hero-actions { gap: 10px !important; }
+    .cm-big-btn { width: 100% !important; padding: 14px 16px !important; font-size: 13px !important; }
+    .cm-section { margin-top: 36px !important; }
+    .cm-section-head { flex-direction: column !important; gap: 6px !important; text-align: center !important; }
+    .cm-section-head h3 { font-size: 20px !important; }
+    .cm-room-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+    .cm-feature-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+    .cm-social-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .cm-devices-showcase { display: none !important; }
+    .cm-footer-text { font-size: 14px !important; }
+  }
 `;
