@@ -1,5 +1,40 @@
 import React, { useState, useEffect, memo } from 'react';
 
+const COMM_MOBILE_CSS = `
+@media (max-width: 768px) {
+  .cm-comm-root { padding: 10px !important; overflow-x: hidden !important; width: 100% !important; }
+  .cm-comm-header { flex-direction: row !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 12px !important; }
+  .cm-comm-title { font-size: 16px !important; }
+  .cm-comm-header button { width: auto !important; padding: 8px 14px !important; font-size: 12px !important; }
+  .cm-comm-create { padding: 12px !important; border-radius: 12px !important; }
+  .cm-comm-icons { display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; gap: 4px !important; padding-bottom: 4px !important; -webkit-overflow-scrolling: touch !important; }
+  .cm-comm-icons::-webkit-scrollbar { display: none !important; }
+  .cm-comm-icons button { flex-shrink: 0 !important; width: 34px !important; height: 34px !important; font-size: 16px !important; }
+  .cm-comm-input { padding: 10px !important; font-size: 12px !important; border-radius: 8px !important; }
+  .cm-comm-btn-row { flex-direction: row !important; gap: 8px !important; }
+  .cm-comm-btn-row button { flex: 1 !important; padding: 10px !important; font-size: 12px !important; border-radius: 8px !important; }
+  .cm-comm-list { display: flex !important; flex-direction: row !important; overflow-x: auto !important; gap: 10px !important; padding-bottom: 8px !important; scroll-snap-type: x mandatory !important; -webkit-overflow-scrolling: touch !important; }
+  .cm-comm-list::-webkit-scrollbar { display: none !important; }
+  .cm-comm-card { min-width: 220px !important; max-width: 240px !important; flex-shrink: 0 !important; scroll-snap-align: start !important; padding: 14px !important; border-radius: 14px !important; }
+  .cm-comm-card-icon { font-size: 28px !important; }
+  .cm-comm-card-name { font-size: 13px !important; }
+  .cm-comm-card-desc { font-size: 10px !important; display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+  .cm-comm-card-members { font-size: 10px !important; }
+  .cm-comm-empty { padding: 20px 10px !important; font-size: 12px !important; }
+  .cm-comm-detail-icon { font-size: 32px !important; }
+  .cm-comm-detail-name { font-size: 15px !important; }
+  .cm-comm-detail-meta { font-size: 11px !important; }
+  .cm-comm-post-row { flex-direction: column !important; gap: 6px !important; padding: 10px !important; }
+  .cm-comm-post-input { min-height: 36px !important; font-size: 12px !important; padding: 8px 10px !important; }
+  .cm-comm-post-btn { width: 100% !important; padding: 9px !important; font-size: 12px !important; }
+  .cm-comm-post-card { padding: 10px !important; }
+  .cm-comm-post-text { font-size: 12px !important; }
+  .cm-comm-members-card { padding: 10px !important; }
+  .cm-comm-members-card > div:first-child { font-size: 12px !important; }
+  .cm-comm-root > div:last-child { font-size: 11px !important; }
+}
+`;
+
 function Communities({ currentTheme, token, username, avatar, socket }) {
   const [communities, setCommunities] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -68,13 +103,14 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
   if (selected) {
     return (
-      <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40 }}>
+      <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
+        <style>{COMM_MOBILE_CSS}</style>
         <button onClick={() => { setSelected(null); setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: 14, fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
           ← Geri
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <span className="cm-comm-detail-icon" style={{ fontSize: 40 }}>{selected.icon}</span>
+          <span className="cm-comm-detail-icon" style={{ fontSize: 40, flexShrink: 0 }}>{selected.icon}</span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="cm-comm-detail-name" style={{ color: '#fff', fontWeight: 800, fontSize: 20, wordBreak: 'break-word' }}>{selected.name}</div>
             <div className="cm-comm-detail-meta" style={{ color: '#94a3b8', fontSize: 13, wordBreak: 'break-word' }}>{selected.member_count} üye · {selected.description}</div>
@@ -88,7 +124,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
           {(Array.isArray(posts) ? posts : []).map(post => (
-            <div key={post.id} className="cm-comm-post-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14 }}>
+            <div key={post.id} className="cm-comm-post-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{post.avatar || '🐱'}</span>
                 <div style={{ minWidth: 0 }}>
@@ -125,7 +161,8 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
   }
 
   return (
-    <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40 }}>
+    <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
+      <style>{COMM_MOBILE_CSS}</style>
 
       <div className="cm-comm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div className="cm-comm-title" style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>🏘️ Topluluklar</div>
@@ -151,7 +188,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="cm-comm-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {communities.map(c => (
           <div key={c.id} onClick={() => selectCommunity(c.id)} className="cm-comm-card" style={{ background: 'rgba(30,41,59,.8)', borderRadius: 14, padding: 14, cursor: 'pointer', border: `1px solid ${currentTheme.primary}22`, transition: 'border-color .2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

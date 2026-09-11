@@ -88,30 +88,6 @@ export const GLOBAL_CSS = `
     .admin-grid { grid-template-columns: 1fr !important; }
     .admin-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .admin-header { flex-wrap: wrap !important; }
-
-    .cm-comm-root { padding: 10px !important; overflow-x: hidden !important; }
-    .cm-comm-header { flex-direction: column !important; gap: 8px !important; align-items: stretch !important; }
-    .cm-comm-header button { width: 100% !important; text-align: center !important; }
-    .cm-comm-card { padding: 12px !important; }
-    .cm-comm-card-icon { font-size: 24px !important; }
-    .cm-comm-card-name { font-size: 13px !important; }
-    .cm-comm-card-desc { font-size: 11px !important; }
-    .cm-comm-detail-icon { font-size: 32px !important; }
-    .cm-comm-detail-name { font-size: 16px !important; }
-    .cm-comm-detail-meta { font-size: 11px !important; }
-    .cm-comm-post-row { flex-direction: column !important; gap: 6px !important; }
-    .cm-comm-post-input { min-height: 40px !important; font-size: 12px !important; }
-    .cm-comm-post-btn { width: 100% !important; padding: 10px !important; }
-    .cm-comm-post-card { padding: 12px !important; }
-    .cm-comm-post-text { font-size: 12px !important; }
-    .cm-comm-members-card { padding: 10px !important; }
-    .cm-comm-icons { gap: 4px !important; flex-wrap: wrap !important; justify-content: center !important; }
-    .cm-comm-icons button { width: 34px !important; height: 34px !important; font-size: 17px !important; padding: 0 !important; }
-    .cm-comm-input { padding: 10px !important; font-size: 12px !important; }
-    .cm-comm-btn-row { flex-direction: column !important; }
-    .cm-comm-btn-row button { width: 100% !important; padding: 11px !important; }
-    .cm-comm-create { padding: 14px !important; }
-    .cm-comm-empty { padding: 24px 12px !important; font-size: 12px !important; }
   }
 
   @media (max-width: 400px) {
