@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from 'react';
+import { VIP_LEVELS } from '../constants';
 import DmChat from '../components/social/DmChat';
 import GroupChat from '../components/social/GroupChat';
 import GlobalChatTab from '../components/social/GlobalChatTab';
@@ -114,7 +115,7 @@ function SocialModal({
             {authUser && !authUser.isVip && (
               <button type="button" onClick={() => { setShowSocialModal(false); setShowVipModal(true); }} style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none', padding: '8px 10px', borderRadius: 10, fontWeight: 900, cursor: 'pointer', fontSize: 11 }}>⭐ VIP Ol</button>
             )}
-            {authUser?.isVip && <span style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', padding: '6px 10px', borderRadius: 10, fontWeight: 900, fontSize: 11 }}>👑 VIP</span>}
+            {authUser?.isVip && <span style={{ background: VIP_LEVELS[authUser.vipLevel || 0]?.gradient || 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', padding: '6px 10px', borderRadius: 10, fontWeight: 900, fontSize: 11 }}>{VIP_LEVELS[authUser.vipLevel || 0]?.icon || '👑'} VIP</span>}
             {authUser ? (
               <button type="button" onClick={handleLogout} style={{ background: '#202c33', color: '#fff', border: '1px solid #2c3b44', padding: '8px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer' }}>Çıkış</button>
             ) : (

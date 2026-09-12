@@ -1,4 +1,4 @@
-export default function Footer() {
+export default function Footer({ setShowVipModal }) {
   return (
     <footer className="cm-footer" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 20px 24px' }}>
@@ -24,8 +24,8 @@ export default function Footer() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <a href="/landing" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Nasıl Çalışır?</a>
               <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Özellikler</span>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>VIP Üyelik</span>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Fiyatlandırma</span>
+              <span onClick={() => setShowVipModal && setShowVipModal(true)} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>VIP Üyelik</span>
+              <span onClick={() => setShowVipModal && setShowVipModal(true)} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Fiyatlandırma</span>
             </div>
           </div>
 

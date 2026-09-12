@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
+import { VIP_LEVELS } from '../../constants';
 
 const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
   const {
@@ -38,7 +39,7 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
     } catch (e) {}
   };
 
-  const isVip = authUser?.vip && new Date(authUser.vip) > new Date();
+  const isVip = authUser?.isVip && authUser?.vipExpiry > Date.now();
 
   if (!authUser) {
     return (
@@ -82,12 +83,12 @@ const ProfilePage = ({ authUser, myAvatar, onAvatarChange, onLogout }) => {
           ) : (
             <div className="profile-avatar-letter">{authUser.username?.[0]?.toUpperCase() || '?'}</div>
           )}
-          {isVip && <div className="profile-avatar-badge">💎</div>}
+          {isVip && <div className="profile-avatar-badge">{VIP_LEVELS[authUser.vipLevel || 0]?.icon || '💎'}</div>}
         </div>
 
         <h2 className="profile-name">{authUser.username}</h2>
         <p className="profile-bio">{profileStatusInput || 'Merhaba, ben Couple Meeting kullaniciyim!'}</p>
-        {isVip && <div className="profile-vip-badge">💎 VIP Uye</div>}
+        {isVip && <div className="profile-vip-badge" style={{ background: VIP_LEVELS[authUser.vipLevel || 0]?.gradient || 'linear-gradient(135deg, #f59e0b, #f97316)' }}>{VIP_LEVELS[authUser.vipLevel || 0]?.icon} {VIP_LEVELS[authUser.vipLevel || 0]?.label || 'VIP Üye'}</div>}
       </div>
 
       <div className="profile-stats">

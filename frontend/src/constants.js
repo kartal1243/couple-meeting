@@ -1,6 +1,18 @@
-export const BACKEND_URL = window.location.origin;
+export const BACKEND_URL = (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'https://couplemeeting.com.tr'
+  : window.location.origin;
 
 export const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
+
+export const VIP_AVATARS = ['🦄', '🐲', '🧙', '🧛', '🦸', '🧑‍🚀', '🧑‍🎤', '🧑‍💻', '💀', '👽', '🤖', '🎃'];
+
+export const VIP_LEVELS = {
+  0: { label: '', color: '#64748b', icon: '', frameColor: 'transparent', gradient: '' },
+  1: { label: 'Bronze VIP', color: '#cd7f32', icon: '🥉', frameColor: '#cd7f32', gradient: 'linear-gradient(135deg, #cd7f32, #a0522d)' },
+  2: { label: 'Silver VIP', color: '#c0c0c0', icon: '🥈', frameColor: '#c0c0c0', gradient: 'linear-gradient(135deg, #c0c0c0, #a8a8a8)' },
+  3: { label: 'Gold VIP', color: '#f59e0b', icon: '👑', frameColor: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #f97316)' },
+  4: { label: 'Diamond VIP', color: '#06b6d4', icon: '💎', frameColor: '#06b6d4', gradient: 'linear-gradient(135deg, #06b6d4, #8b5cf6)' }
+};
 
 export const THEMES = {
   default: { bg: 'linear-gradient(135deg, #090d16 0%, #05070c 100%)', cardBg: '#111b21', primary: '#00a884' },
@@ -21,8 +33,12 @@ export const VIP_PLANS = {
 export const VIP_FEATURES = [
   { icon: '🎨', title: 'Ozel Temalar', desc: 'Gold, Ocean, Emerald, Sunset temalari' },
   { icon: '🛡️', title: 'VIP Oda', desc: 'Otomatik silinmeyen kalici odalar' },
-  { icon: '👤', title: 'VIP Rozeti', desc: 'Profilinde altin rozet' },
-  { icon: '🎵', title: 'Sinirsiz Playlist', desc: 'Sinirsiz sarki kaydetme' },
-  { icon: '🚀', title: 'Oncelikli Destek', desc: 'Hizli teknik destek' },
-  { icon: '🎯', title: 'Ozel Avatarlar', desc: 'VIP\'e ozel avatar secenekleri' }
+  { icon: '🏆', title: 'VIP Rozet Seviyeleri', desc: 'Bronze, Silver, Gold, Diamond cerceve' },
+  { icon: '👥', title: '20 Kisiye Kadar Oda', desc: 'Normal 8, VIP 20 kisi' },
+  { icon: '👻', title: 'Gorunmez Mod', desc: 'Sadece arkadaslar gorun' },
+  { icon: '👀', title: 'Ziyaretcileri Gor', desc: 'Kim profiline bakti ogren' },
+  { icon: '🚫', title: 'Reklamsiz', desc: 'Reklamlari tamamen kaldir' },
+  { icon: '🎭', title: 'Ozel Avatarlar', desc: 'VIP\'e ozel 12 avatar' },
+  { icon: '♾️', title: 'Sinirsiz Playlist', desc: 'Sinirsiz sarki kaydetme' },
+  { icon: '🔍', title: 'Sohbet Arama', desc: 'Eski mesajlarinda arama yap' }
 ];

@@ -13,7 +13,7 @@ export default function HomePage() {
   const {
     authUser, openAuth, publicRooms, globalMessages,
     setShowSocialModal, setSocialTab, setShowJoinModal, setJoinRoomTarget,
-    setShowQuickCreate
+    setShowQuickCreate, showVipModal, setShowVipModal
   } = useApp();
 
   const [showFeedback, setShowFeedback] = useState(false);
@@ -28,7 +28,7 @@ export default function HomePage() {
         <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} onCreateRoom={() => setShowQuickCreate(true)} />
         <About />
         <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
-        <Footer />
+        <Footer setShowVipModal={setShowVipModal} />
       </main>
       <FeedbackModal show={showFeedback} onClose={() => setShowFeedback(false)} />
     </div>

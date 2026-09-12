@@ -1,4 +1,5 @@
-import { useState, memo } from 'react';
+import { useState, memo, useEffect } from 'react';
+import { VIP_AVATARS, VIP_LEVELS, BACKEND_URL } from '../constants';
 
 const AVATARS = ['🐱', '🐶', '🦊', '🐻', '🐼', '🐨', '🦁', '🐸', '🐵', '🦄', '🐰', '🐲', '🤖', '👻', '🎃', '💀', '🎃', '👽', '🧙', '🧛', '🦸', '🧑‍🚀', '🧑‍🎤', '🧑‍💻'];
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
@@ -9,6 +10,14 @@ function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnline
   const [avatar, setAvatar] = useState(authUser?.avatar || '🐱');
   const [status, setStatus] = useState(authUser?.status || 'online');
   const [saveMsg, setSaveMsg] = useState('');
+  const [visitors, setVisitors] = useState([]);
+
+  useEffect(() => {
+    if (authUser?.isVip) {
+      fetch(`${BACKEND_URL}/api/profile/visitors?token=${localStorage.getItem('cm_auth_token')}`)
+        .then(r => r.json()).then(d => { if (d.ok) setVisitors(d.visitors); }).catch(() => {});
+    }
+  }, [authUser?.isVip]);
 
   const handleSave = () => {
     saveProfile({ username, bio, avatar, status });
@@ -55,18 +64,22 @@ function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnline
             width: 64, height: 64, borderRadius: 20, margin: '0 auto 8px',
             background: `linear-gradient(135deg, ${AVATAR_COLORS[authUser?.username?.charCodeAt(0) % 8 || 0]}, ${AVATAR_COLORS[authUser?.username?.charCodeAt(0) % 8 || 0]}aa)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 32, border: '3px solid rgba(255,255,255,.1)',
-            boxShadow: '0 8px 24px rgba(0,0,0,.3)'
+            fontSize: 32, border: authUser?.isVip && authUser?.vipLevel > 0
+              ? `3px solid ${VIP_LEVELS[authUser.vipLevel]?.frameColor || '#f59e0b'}`
+              : '3px solid rgba(255,255,255,.1)',
+            boxShadow: authUser?.isVip && authUser?.vipLevel > 0
+              ? `0 0 20px ${VIP_LEVELS[authUser.vipLevel]?.frameColor || '#f59e0b'}40, 0 8px 24px rgba(0,0,0,.3)`
+              : '0 8px 24px rgba(0,0,0,.3)'
           }}>
             {avatar}
           </div>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 15 }}>{authUser?.username}</div>
-          {authUser?.isVip && (
+          {authUser?.isVip && authUser?.vipLevel > 0 && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3,
-              background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+              background: VIP_LEVELS[authUser.vipLevel]?.gradient || 'linear-gradient(135deg, #f59e0b, #f97316)',
               color: '#fff', padding: '2px 8px', borderRadius: 6, fontSize: 9, fontWeight: 900
-            }}>👑 VIP</div>
+            }}>{VIP_LEVELS[authUser.vipLevel]?.icon} {VIP_LEVELS[authUser.vipLevel]?.label}</div>
           )}
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>{getStatusLabel(status)}</div>
         </div>
@@ -106,7 +119,16 @@ function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnline
                   fontSize: 17, cursor: 'pointer', transition: 'all 0.2s'
                 }}>{a}</button>
               ))}
+              {authUser?.isVip && VIP_AVATARS.map(a => (
+                <button key={`vip-${a}`} onClick={() => setAvatar(a)} style={{
+                  width: 34, height: 34, borderRadius: 10,
+                  background: avatar === a ? 'rgba(245,158,11,.2)' : 'rgba(245,158,11,.04)',
+                  border: avatar === a ? '2px solid #f59e0b' : '1px solid rgba(245,158,11,.15)',
+                  fontSize: 17, cursor: 'pointer', transition: 'all 0.2s', position: 'relative'
+                }}>{a}</button>
+              ))}
             </div>
+            {authUser?.isVip && <div style={{ fontSize: 9, color: '#f59e0b', marginTop: 3 }}>👑 VIP avatarlari aktif</div>}
           </div>
 
           {/* Durum */}
@@ -189,6 +211,26 @@ function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnline
                   {offlineFriends.length > 3 && <div style={{ fontSize: 9, color: '#64748b', paddingLeft: 6 }}>+{offlineFriends.length - 3} daha</div>}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Ziyaretçiler (VIP) */}
+          {authUser?.isVip && visitors.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 10, color: '#f59e0b', fontWeight: 800, display: 'block', marginBottom: 6, letterSpacing: 0.5 }}>
+                👀 SON ZİYARETÇİLER ({visitors.length})
+              </label>
+              {visitors.slice(0, 5).map((v, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px',
+                  borderRadius: 8, background: 'rgba(245,158,11,.04)', marginBottom: 3,
+                  border: '1px solid rgba(245,158,11,.08)'
+                }}>
+                  <span style={{ fontSize: 16 }}>{v.avatar}</span>
+                  <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>{v.username}</span>
+                  {v.isVip && v.vipLevel > 0 && <span style={{ fontSize: 10 }}>{VIP_LEVELS[v.vipLevel]?.icon}</span>}
+                </div>
+              ))}
             </div>
           )}
 

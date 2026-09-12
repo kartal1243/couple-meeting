@@ -163,6 +163,15 @@ const VIP_PLANS = {
   yearly: { price: 199.90, duration: 365 * 24 * 60 * 60 * 1000, label: 'Yillik VIP' }
 };
 
+function getVipLevel(vipActivatedAt) {
+  if (!vipActivatedAt) return 0;
+  const monthsActive = (Date.now() - vipActivatedAt) / (30 * 24 * 60 * 60 * 1000);
+  if (monthsActive >= 12) return 4;
+  if (monthsActive >= 6) return 3;
+  if (monthsActive >= 3) return 2;
+  return 1;
+}
+
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) return res.status(200).send('Stripe pasif');
   const sig = req.headers['stripe-signature'];
@@ -182,7 +191,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
       const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
       db.updateUser(username, {
         is_vip: 1, vip_expiry: startFrom + VIP_PLANS[plan].duration,
-        vip_plan: plan, vip_activated_at: now,
+        vip_plan: plan, vip_activated_at: now, vip_level: 1,
         stripe_customer_id: session.customer || '', stripe_subscription_id: session.subscription || ''
       });
       logger.info(`[STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
@@ -209,8 +218,21 @@ app.post('/api/vip/create-checkout', async (req, res) => {
   const user = db.getUserByToken(token);
   if (!user) return res.json({ ok: false, message: 'Giris yapmalisin.' });
 
-  if (process.env.VIP_MAINTENANCE === '1' || !stripe) {
+  if (process.env.VIP_MAINTENANCE === '1') {
     return res.json({ ok: false, message: 'VIP sistemi su an bakimda. Lutfen daha sonra tekrar deneyin.' });
+  }
+
+  if (!stripe) {
+    const duration = VIP_PLANS[plan].duration;
+    const currentExpiry = user.vip_expiry || 0;
+    const newExpiry = Math.max(currentExpiry, Date.now()) + duration;
+    db.db.prepare('UPDATE users SET is_vip = 1, vip_expiry = ?, vip_plan = ?, vip_activated_at = ?, vip_level = ? WHERE username = ?')
+      .run(newExpiry, plan, Date.now(), getVipLevel(Date.now()), user.username);
+    const updatedUser = db.getUser(user.username);
+    const io = req.app.get('io');
+    if (io) io.to(user.username).emit('vip_activated', { isVip: true, vipExpiry: newExpiry, plan });
+    logger.info('VIP test mode aktif', { username: user.username, plan, expiry: new Date(newExpiry).toISOString() });
+    return res.json({ ok: true, testMode: true, vipExpiry: newExpiry });
   }
 
   try {
@@ -243,10 +265,66 @@ app.post('/api/vip/admin-grant', (req, res) => {
   const now = Date.now();
   const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
   const newExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
-  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now });
+  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now, vip_level: getVipLevel(now) });
   logger.info(`[ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
   emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan: plan || 'yearly' });
   res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: newExpiry });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 4b. VIP OZEL ENDPOINTLER
+// ═══════════════════════════════════════════════════════════
+
+app.post('/api/vip/toggle-invisible', (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(401).json({ ok: false });
+  const user = db.getUserByToken(token);
+  if (!user) return res.status(401).json({ ok: false });
+  if (!user.isVip) return res.status(403).json({ ok: false, message: 'VIP uyelik gerekiyor.' });
+  const newMode = !user.invisibleMode;
+  db.updateUser(user.username, { invisible_mode: newMode });
+  broadcastOnlineStatus(user.username);
+  res.json({ ok: true, invisibleMode: newMode });
+});
+
+app.post('/api/profile/visit', (req, res) => {
+  const { token, visited } = req.body;
+  if (!token || !visited) return res.status(400).json({ ok: false });
+  const visitor = db.getUserByToken(token);
+  if (!visitor) return res.status(401).json({ ok: false });
+  if (visitor.username === visited) return res.json({ ok: true });
+  try {
+    db.db.prepare('INSERT INTO profile_visitors (visitor, visited, timestamp) VALUES (?, ?, ?)').run(visitor.username, visited, Date.now());
+    db.db.prepare('DELETE FROM profile_visitors WHERE id IN (SELECT id FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT -1 OFFSET 50)').run(visited);
+  } catch (e) {}
+  res.json({ ok: true });
+});
+
+app.get('/api/profile/visitors', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(401).json({ ok: false });
+  const user = db.getUserByToken(token);
+  if (!user) return res.status(401).json({ ok: false });
+  try {
+    const visitors = db.db.prepare('SELECT DISTINCT visitor FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT 20').all(user.username);
+    const result = visitors.map(v => {
+      const u = db.getUser(v.visitor);
+      return u ? { username: u.username, avatar: u.avatar, isVip: u.isVip, vipLevel: u.vipLevel || 0 } : null;
+    }).filter(Boolean);
+    res.json({ ok: true, visitors: result });
+  } catch (e) { res.json({ ok: true, visitors: [] }); }
+});
+
+app.get('/api/search/messages', (req, res) => {
+  const { token, q, roomId } = req.query;
+  if (!token || !q) return res.status(400).json({ ok: false });
+  const user = db.getUserByToken(token);
+  if (!user) return res.status(401).json({ ok: false });
+  if (!user.isVip) return res.status(403).json({ ok: false, message: 'VIP uyelik gerekiyor.' });
+  try {
+    const results = db.db.prepare("SELECT * FROM room_messages WHERE text LIKE ? AND roomId = ? ORDER BY createdAt DESC LIMIT 50").all(`%${q}%`, roomId || '%');
+    res.json({ ok: true, results });
+  } catch (e) { res.json({ ok: true, results: [] }); }
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -399,7 +477,7 @@ app.post('/api/admin/users/vip', adminAuth, (req, res) => {
   const uname = sanitize(username, 30);
   if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
   const expiry = isVip ? Date.now() + (parseInt(vipDays) || 30) * 86400000 : null;
-  db.updateUser(uname, { is_vip: !!isVip, vip_plan: isVip ? (vipPlan || 'yearly') : null, vip_expiry: expiry });
+  db.updateUser(uname, { is_vip: !!isVip, vip_plan: isVip ? (vipPlan || 'yearly') : null, vip_expiry: expiry, vip_level: isVip ? getVipLevel(Date.now()) : 0 });
   logger.info(`[ADMIN] VIP degistirildi: ${uname} -> ${isVip}`);
   res.json({ ok: true });
 });
@@ -784,10 +862,11 @@ function publicUser(u) {
   return {
     username: u.username, avatar: u.avatar || '🐱',
     bio: u.bio || '', status: u.status || '', createdAt: u.createdAt,
-    isOnline: !!onlineUsers[u.username],
+    isOnline: u.invisibleMode ? false : !!onlineUsers[u.username],
     lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null,
     isVip: u.isVip && u.vipExpiry && u.vipExpiry > Date.now(),
-    vipExpiry: u.vipExpiry || null
+    vipExpiry: u.vipExpiry || null, vipLevel: u.vipLevel || 0,
+    invisibleMode: !!u.invisibleMode
   };
 }
 
@@ -822,7 +901,9 @@ function setOffline(username, socketId) {
 }
 
 function broadcastOnlineStatus(username) {
-  const isOnline = !!onlineUsers[username];
+  const user = db.getUser(username);
+  const isInvisible = user && user.invisibleMode;
+  const isOnline = isInvisible ? false : !!onlineUsers[username];
   const lastSeen = onlineUsers[username]?.lastSeen || Date.now();
   const payload = { username, isOnline, lastSeen };
 
@@ -1807,9 +1888,10 @@ io.on('connection', (socket) => {
     let room = rooms[cleanRoomId];
 
     if (!room) {
+      const roomMaxUsers = isVip ? Math.min(Math.max(parseInt(maxUsers) || 2, 2), 20) : Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8);
       rooms[cleanRoomId] = {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
-        maxUsers: Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8),
+        maxUsers: roomMaxUsers,
         hostUserId: userId, theme: 'default', users: [],
         kickedUsers: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
@@ -1864,7 +1946,10 @@ io.on('connection', (socket) => {
     if (newName && newName.trim()) room.name = sanitize(newName, 50);
     if (newTheme) room.theme = newTheme;
     if (newHostUserId && room.users.find(u => u.userId === newHostUserId)) room.hostUserId = newHostUserId;
-    if (newMaxUsers) room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), 8);
+    if (newMaxUsers) {
+      const maxLimit = room.isVip ? 20 : 8;
+      room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), maxLimit);
+    }
     if (typeof newPassword === 'string') room.password = newPassword;
     try { db.saveRoom({ id: sanitize(roomId, 50), name: room.name, hostUserId: room.hostUserId, password: room.password, isVip: room.isVip, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
     io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId, maxUsers: room.maxUsers, hasPassword: !!room.password });
@@ -1909,6 +1994,11 @@ io.on('connection', (socket) => {
     const addedBy = user ? user.username : (socket.userId || 'Misafir');
     const room = rooms[sanitize(roomId, 50)];
     if (room && item && typeof item === 'object') {
+      const isVip = user && user.isVip && user.vipExpiry > Date.now();
+      if (!isVip && room.playlist.length >= 20) {
+        socket.emit('room_error', 'Playlist dolu! (Maks. 20 video) VIP ile sinirsiz playlist acabilirsin.');
+        return;
+      }
       const safeItem = { id: item.id || crypto.randomBytes(8).toString('hex'), title: sanitize(item.title, 200) || 'Video', type: sanitize(item.type, 20) || 'youtube', src: sanitize(item.src, 500) || '', addedBy: sanitize(addedBy, 24) };
       room.playlist.push(safeItem);
       io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
@@ -1980,7 +2070,8 @@ io.on('connection', (socket) => {
         socket.emit('room_action', { type, payload: msg });
         return;
       } else if (type === 'UPDATE_MAX_USERS') {
-        room.maxUsers = Math.min(Math.max(parseInt(payload.maxUsers) || 2, 2), 8);
+        const maxLimit = room.isVip ? 20 : 8;
+        room.maxUsers = Math.min(Math.max(parseInt(payload.maxUsers) || 2, 2), maxLimit);
         broadcastRooms();
         io.to(cleanRoomId).emit('room_user_count_update', { userCount: room.users.length, maxUsers: room.maxUsers });
       } else if (type === 'ROOM_NAME_UPDATE') {
@@ -2256,6 +2347,18 @@ setInterval(() => {
   }
   try { broadcastAdminDashboard(); } catch (e) {}
 }, 15000);
+
+// VIP sure dolumu kontrol (her 5 dakika)
+setInterval(() => {
+  try {
+    const expired = db.db.prepare('SELECT username FROM users WHERE is_vip = 1 AND vip_expiry > 0 AND vip_expiry < ?').all(Date.now());
+    for (const u of expired) {
+      db.db.prepare('UPDATE users SET is_vip = 0, vip_level = 0 WHERE username = ?').run(u.username);
+      emitToUser(u.username, 'vip_activated', { isVip: false, vipExpiry: 0 });
+      logger.info(`[VIP] Sure doldu: ${u.username}`);
+    }
+  } catch (e) {}
+}, 300000);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {

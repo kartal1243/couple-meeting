@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { VIP_PLANS, VIP_FEATURES, BACKEND_URL } from '../constants';
+import { VIP_PLANS, VIP_FEATURES, VIP_LEVELS, BACKEND_URL } from '../constants';
 
 export default function VipModal({ authUser, setShowVipModal, setAuthUser, styles }) {
   const [selectedPlan, setSelectedPlan] = useState('yearly');
@@ -133,6 +133,7 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
             {authUser?.isVip ? (
               <div style={{ padding: 14, borderRadius: 12, background: 'rgba(0,168,132,.1)', border: '1px solid rgba(0,168,132,.2)', textAlign: 'center' }}>
                 <div style={{ color: '#00a884', fontSize: 13, fontWeight: 900 }}>✅ VIP üyeliğin aktif</div>
+                <div style={{ color: '#f59e0b', fontSize: 12, fontWeight: 900, marginTop: 4 }}>{VIP_LEVELS[authUser.vipLevel || 0]?.icon} {VIP_LEVELS[authUser.vipLevel || 0]?.label || 'VIP'}</div>
                 <div style={{ color: '#7f8c98', fontSize: 11, marginTop: 4 }}>Bitiş: {new Date(authUser.vipExpiry).toLocaleDateString('tr-TR')}</div>
               </div>
             ) : (

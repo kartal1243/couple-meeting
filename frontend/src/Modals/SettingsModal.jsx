@@ -1,4 +1,4 @@
-import { THEMES } from '../constants';
+import { THEMES, BACKEND_URL } from '../constants';
 import { useState, memo } from 'react';
 
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
@@ -368,6 +368,43 @@ function SettingsModal({
             </div>
           )}
         </div>
+
+        {/* VIP Gizlilik Modu */}
+        {isVip && (
+          <div style={{ padding: '0 20px 12px' }}>
+            <div style={{ padding: '12px', background: 'rgba(245,158,11,.06)', borderRadius: 12, border: '1px solid rgba(245,158,11,.15)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ color: '#f59e0b', fontSize: 11, fontWeight: 900 }}>👻 Görünmez Mod (VIP)</div>
+                  <div style={{ color: '#94a3b8', fontSize: 10, marginTop: 2 }}>Sadece arkadaşların seni görsün</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`${BACKEND_URL}/api/vip/toggle-invisible`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: localStorage.getItem('cm_auth_token') })
+                      });
+                      const data = await res.json();
+                      if (data.ok) {
+                        setSaveMsg('Görünmez mod ' + (data.invisibleMode ? 'açıldı' : 'kapatıldı'));
+                        setTimeout(() => setSaveMsg(''), 2000);
+                      }
+                    } catch (e) {}
+                  }}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    background: 'linear-gradient(135deg, #f59e0b, #f97316)', position: 'relative'
+                  }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    position: 'absolute', top: 3, right: 3, transition: 'all 0.2s'
+                  }} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,.06)' }}>

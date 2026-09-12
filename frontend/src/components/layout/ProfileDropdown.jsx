@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { VIP_LEVELS } from '../../constants';
 
 export default function ProfileDropdown({ authUser, myAvatar, friendRequests, friends, friendOnlineStatuses, onOpenSocial, onOpenAuth, onLogout }) {
   const [open, setOpen] = useState(false);
@@ -46,7 +47,7 @@ export default function ProfileDropdown({ authUser, myAvatar, friendRequests, fr
               <div style={{ color: '#fff', fontWeight: 900, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser.username}</div>
               <div style={{ color: '#7f8c98', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser.email}</div>
             </div>
-            {authUser.isVip && <span style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', padding: '3px 8px', borderRadius: 8, fontWeight: 900, fontSize: 10 }}>👑 VIP</span>}
+            {authUser.isVip && <span style={{ background: VIP_LEVELS[authUser.vipLevel || 0]?.gradient || 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', padding: '3px 8px', borderRadius: 8, fontWeight: 900, fontSize: 10 }}>{VIP_LEVELS[authUser.vipLevel || 0]?.icon || '👑'} VIP</span>}
           </div>
 
           {/* Stats */}
