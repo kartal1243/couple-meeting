@@ -282,7 +282,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASS;
 if (!ADMIN_PASSWORD) {
   logger.warn('ADMIN_PASS ayarlanmadi! Güvenlik riski! Varsayilan kullaniliyor.');
 }
-const EFFECTIVE_ADMIN_PASS = ADMIN_PASSWORD || (isProd ? null : 'admin123');
+const EFFECTIVE_ADMIN_PASS = ADMIN_PASSWORD || null;
 if (!EFFECTIVE_ADMIN_PASS) {
   logger.error('PRODUCTION modda ADMIN_PASS tanimli degil! Admin paneli calismaz.');
 }
@@ -1057,8 +1057,8 @@ io.on('connection', (socket) => {
     const resetToken = crypto.randomBytes(16).toString('hex');
     const expiry = Date.now() + 3600000;
     db.updateUser(user.username, { reset_token: resetToken, reset_expiry: expiry });
-    logger.info?.(`[SIFRE SIFIRLAMA] ${cleanEmail} → token: ${resetToken} | IP: ${socket.handshake?.address || 'bilinmiyor'}`);
-    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama kodu e-postana gönderildi.', resetToken });
+    logger.info?.(`[SIFRE SIFIRLAMA] ${cleanEmail} | IP: ${socket.handshake?.address || 'bilinmiyor'}`);
+    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama kodu e-postana gönderildi.' });
   });
 
   socket.on('auth_reset_password', ({ resetToken, newPassword }) => {

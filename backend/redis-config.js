@@ -27,7 +27,7 @@ async function setupRedisAdapter(io) {
     await Promise.all([pubClient.connect(), subClient.connect()]);
 
     io.adapter(createAdapter(pubClient, subClient));
-    console.log('[Redis] Redis adapter baglandi:', process.env.REDIS_URL);
+    console.log('[Redis] Redis adapter baglandi: ' + (process.env.REDIS_URL ? 'uzak' : 'local'));
     return true;
   } catch (err) {
     console.error('[Redis] Baglanti hatasi:', err.message);
