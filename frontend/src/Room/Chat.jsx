@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
+import VipBadge from '../components/social/VipBadge';
 
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
 function getAvatarColor(name) {
@@ -185,7 +186,7 @@ function Chat({
                     fontSize: 10, fontWeight: 800, color: avatarColor,
                     marginBottom: 2, paddingLeft: 2
                   }}>
-                    {senderName}
+                    {senderName}<VipBadge level={msg.senderVipLevel || (msg.senderVip ? 1 : 0)} />
                   </div>
                 )}
 
@@ -249,7 +250,7 @@ function Chat({
                     textAlign: isMe ? 'right' : 'left',
                     marginTop: 2, paddingLeft: isMe ? 0 : 2, paddingRight: isMe ? 2 : 0
                   }}>
-                    {msg.time}
+                    {msg.time}{isMe && (msg.senderVipLevel || msg.senderVip) ? <VipBadge level={msg.senderVipLevel || 1} size={8} /> : null}
                   </div>
                 ) : null}
               </div>

@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import VipBadge from './VipBadge';
 
 const GlobalChatTab = memo(function GlobalChatTab({ globalMessages, globalChatInput, setGlobalChatInput, sendGlobalMessage, styles, authUser }) {
   const listRef = useRef(null);
@@ -39,7 +40,7 @@ const GlobalChatTab = memo(function GlobalChatTab({ globalMessages, globalChatIn
                 {m.avatar && m.avatar.startsWith('data:image') && m.avatar.length > 30 ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>{m.avatar || '🐱'}</span>}
               </div>
               <div style={{ background: mine ? 'rgba(0,168,132,.15)' : '#111b21', border: mine ? '1px solid rgba(0,168,132,.25)' : '1px solid transparent', padding: '8px 10px', borderRadius: 12, maxWidth: '80%', minWidth: 0 }}>
-                <div style={{ fontSize: 11, color: mine ? '#00a884' : '#53e6bc', fontWeight: 900 }}>{m.username || 'Misafir'} <span style={{ color: '#63727d', fontWeight: 600 }}>• {m.time || ''}</span></div>
+                <div style={{ fontSize: 11, color: mine ? '#00a884' : '#53e6bc', fontWeight: 900 }}>{m.username || 'Misafir'}<VipBadge level={m.vipLevel || (m.vip ? 1 : 0)} /> <span style={{ color: '#63727d', fontWeight: 600 }}>• {m.time || ''}</span></div>
                 <div style={{ fontSize: 13, color: '#e9edef', marginTop: 3, wordBreak: 'break-word' }}>{m.text}</div>
               </div>
             </div>

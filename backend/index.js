@@ -941,6 +941,14 @@ function publicUser(u) {
   };
 }
 
+function senderVip(username) {
+  try {
+    const u = username ? db.getUser(username) : null;
+    const vip = u && u.isVip && u.vipExpiry && u.vipExpiry > Date.now() ? 1 : 0;
+    return { vip, level: vip ? (u.vipLevel || 1) : 0 };
+  } catch { return { vip: 0, level: 0 }; }
+}
+
 function emitToUser(username, event, data) {
   for (const [, s] of io.sockets.sockets) {
     if (s.socialUsername === username) s.emit(event, data);
@@ -1732,10 +1740,12 @@ io.on('connection', (socket) => {
     const cleanText = sanitize(text, 500);
     if (!cleanText) return;
     if (checkRate('chat', 30)) return;
+    const gv = senderVip(user.username);
     const msg = {
       id: crypto.randomBytes(8).toString('hex'),
       username: user.username,
       avatar: user.avatar || '🐱',
+      vip: gv.vip, vipLevel: gv.level,
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now()
@@ -1761,9 +1771,11 @@ io.on('connection', (socket) => {
     if (!db.areFriends(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Sadece arkadaşlarınızla mesajlaşabilirsiniz.' });
     if (db.isBlocked(toUser.username, from.username)) return socket.emit('dm_status', { message: 'Bu kullanıcı sizi engelledi.' });
     if (db.isBlocked(from.username, toUser.username)) return socket.emit('dm_status', { message: 'Bu kullanıcıyı engellediniz. Engellemek için kaldırın.' });
+    const dv = senderVip(from.username);
     const msg = {
       id: msgId || crypto.randomBytes(8).toString('hex'),
       from: from.username, fromAvatar: from.avatar,
+      fromVip: dv.vip, fromVipLevel: dv.level,
       to: toUser.username, toAvatar: toUser.avatar,
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
@@ -1870,9 +1882,11 @@ io.on('connection', (socket) => {
     if (!group || !group.members.includes(from.username)) return;
     const cleanText = sanitize(text, 500);
     if (!cleanText) return;
+    const gmv = senderVip(from.username);
     const msg = {
       id: crypto.randomBytes(8).toString('hex'),
       from: from.username, fromAvatar: from.avatar,
+      fromVip: gmv.vip, fromVipLevel: gmv.level,
       text: cleanText,
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       createdAt: Date.now(),
@@ -2131,10 +2145,12 @@ io.on('connection', (socket) => {
       } else if (type === 'PAUSE') {
         room.currentMedia.isPlaying = false; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
       } else if (type === 'CHAT_MESSAGE') {
+        const sv = senderVip(socket.socialUsername);
         const msg = {
           id: payload.id || crypto.randomBytes(8).toString('hex'),
           senderId: payload.senderId, text: sanitize(payload.text || '', 500), sender: sanitize(payload.sender, 24),
           avatar: sanitize(payload.avatar, 10), time: payload.time,
+          senderVip: sv.vip, senderVipLevel: sv.level,
           fileUrl: payload.fileUrl || '', fileType: payload.fileType || '', fileName: payload.fileName || '',
           replyTo: payload.replyTo || null, replyToText: sanitize(payload.replyToText, 500), replyToSender: sanitize(payload.replyToSender, 24),
           createdAt: Date.now()

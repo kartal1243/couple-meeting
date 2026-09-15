@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
+import VipBadge from './VipBadge';
 
 const GroupChat = memo(function GroupChat({ group, messages, input, setInput, onSend, onBack, authUser }) {
   const endRef = useRef(null);
@@ -28,7 +29,7 @@ const GroupChat = memo(function GroupChat({ group, messages, input, setInput, on
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 200 }}>{m.replyTo.text}</span>
                   </div>
                 )}
-                {!isMe && <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 900 }}>{m.from}</div>}
+                {!isMe && <div style={{ fontSize: 10, color: '#53e6bc', fontWeight: 900 }}>{m.from}<VipBadge level={m.fromVipLevel || (m.fromVip ? 1 : 0)} /></div>}
                 <div style={{ fontSize: 12, color: '#e9edef', marginTop: isMe ? 0 : 2, wordBreak: 'break-word' }}>{m.text}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
                   <div style={{ fontSize: 9, color: '#667781' }}>{m.time}</div>

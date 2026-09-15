@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
+import VipBadge from './VipBadge';
 
 const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, setDmActiveChat, dmMessages, dmInput, setDmInput, sendDm, openDm, typingUsers, sendDmTyping, sendDmStopTyping, followUser, unfollowUser, isFollowingUser, styles }) {
   const endRef = useRef(null);
@@ -80,7 +81,7 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
           <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: chat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="cm-social-dm-header-name" style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{chat.username}</div>
+          <div className="cm-social-dm-header-name" style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{chat.username}<VipBadge level={chat.vipLevel || (chat.isVip ? 1 : 0)} /></div>
           <div style={{ color: chat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? 'yaziyor...' : (chat.isOnline ? 'Cevrimici' : 'Cevrimdisi')}</div>
         </div>
         {followUser && unfollowUser && (
@@ -108,7 +109,7 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
                 )}
                 <div style={{ fontSize: 12, color: '#e9edef', wordBreak: 'break-word' }}>{m.text}{m.edited && <span style={{ fontSize: 9, color: '#667781', marginLeft: 4 }}>(duzenlendi)</span>}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 3 }}>
-                  <div style={{ fontSize: 9, color: '#667781' }}>{m.time}</div>
+                  <div style={{ fontSize: 9, color: '#667781' }}>{m.time}{!isMe && (m.fromVipLevel || m.fromVip) ? <VipBadge level={m.fromVipLevel || 1} size={8} /> : null}</div>
                   <button onClick={() => setReplyTo({ id: m.id, sender: msgFrom, text: m.text })} style={{ background: 'none', border: 'none', color: '#667781', cursor: 'pointer', fontSize: 10, padding: '0 4px' }} title="Yanıtla">↩</button>
                 </div>
               </div>
