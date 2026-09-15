@@ -26,7 +26,6 @@ package-lock.json
 frontend/public/og-image-preview.html
 frontend/public/og-image.html
 frontend/public/og-image.svg
-frontend/public/icon.svg
 frontend/public/icons.svg
 backend/Dockerfile
 backend/DOCKERFILE.docker
