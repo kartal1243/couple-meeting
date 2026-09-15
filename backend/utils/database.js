@@ -441,7 +441,10 @@ function updateUser(username, fields) {
   if (Object.keys(safeFields).length === 0) return;
   if (getDb()) {
     const sets = []; const vals = [];
-    for (const [key, val] of Object.entries(safeFields)) { sets.push(`${key} = ?`); vals.push(val); }
+    for (const [key, val] of Object.entries(safeFields)) {
+      sets.push(`${key} = ?`);
+      vals.push(typeof val === 'boolean' ? (val ? 1 : 0) : (val === undefined ? null : val));
+    }
     vals.push(username);
     db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE username = ?`).run(...vals);
   } else {

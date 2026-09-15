@@ -282,7 +282,7 @@ app.post('/api/vip/toggle-invisible', (req, res) => {
   if (!user) return res.status(401).json({ ok: false });
   if (!user.isVip) return res.status(403).json({ ok: false, message: 'VIP uyelik gerekiyor.' });
   const newMode = !user.invisibleMode;
-  db.updateUser(user.username, { invisible_mode: newMode });
+  db.updateUser(user.username, { invisible_mode: newMode ? 1 : 0 });
   broadcastOnlineStatus(user.username);
   res.json({ ok: true, invisibleMode: newMode });
 });
@@ -494,7 +494,7 @@ app.post('/api/admin/users/vip', adminAuth, (req, res) => {
   const uname = sanitize(username, 30);
   if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
   const expiry = isVip ? Date.now() + (parseInt(vipDays) || 30) * 86400000 : null;
-  db.updateUser(uname, { is_vip: !!isVip, vip_plan: isVip ? (vipPlan || 'yearly') : null, vip_expiry: expiry, vip_level: isVip ? getVipLevel(Date.now()) : 0 });
+  db.updateUser(uname, { is_vip: isVip ? 1 : 0, vip_plan: isVip ? (vipPlan || 'yearly') : null, vip_expiry: expiry, vip_level: isVip ? getVipLevel(Date.now()) : 0 });
   logger.info(`[ADMIN] VIP degistirildi: ${uname} -> ${isVip}`);
   res.json({ ok: true });
 });
@@ -504,7 +504,7 @@ app.post('/api/admin/users/ban', adminAuth, (req, res) => {
   const { username, isBanned } = req.body;
   const uname = sanitize(username, 30);
   if (!uname) return res.status(400).json({ ok: false, message: 'Gecersiz kullanici' });
-  db.updateUser(uname, { is_banned: !!isBanned });
+  db.updateUser(uname, { is_banned: isBanned ? 1 : 0 });
   logger.info(`[ADMIN] Ban degistirildi: ${uname} -> ${isBanned}`);
   res.json({ ok: true });
 });
