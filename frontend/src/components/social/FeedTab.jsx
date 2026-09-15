@@ -11,7 +11,7 @@ function timeAgo(ts) {
   return `${days}g once`;
 }
 
-const FeedTab = memo(function FeedTab({ authUser, feedItems, suggestedFollows, followUser, createFeedPost, likeFeedPost, commentFeedPost }) {
+const FeedTab = memo(function FeedTab({ authUser, feedItems, suggestedFollows, followUser, createFeedPost, likeFeedPost, commentFeedPost, deleteFeedPost, loadFeed }) {
   const [postText, setPostText] = useState('');
   const [expandedComments, setExpandedComments] = useState({});
   const [commentTexts, setCommentTexts] = useState({});
@@ -29,7 +29,10 @@ const FeedTab = memo(function FeedTab({ authUser, feedItems, suggestedFollows, f
       ) : (
         <div className="cm-feed-layout cm-social-feed-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div className="cm-feed-content" style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
-            <div className="cm-feed-title" style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>Akis</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div className="cm-feed-title" style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>Akis</div>
+              <button title="Yenile" onClick={() => loadFeed?.()} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#94a3b8', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 800 }}>⟳ Yenile</button>
+            </div>
 
             {/* Post Creation */}
             <div style={{ background: '#111b21', borderRadius: 14, padding: 14, marginBottom: 16, border: '1px solid rgba(255,255,255,.06)' }}>
@@ -111,7 +114,7 @@ const FeedTab = memo(function FeedTab({ authUser, feedItems, suggestedFollows, f
                       <div style={{ fontSize: 10, color: '#64748b' }}>{timeAgo(item.created_at)}</div>
                     </div>
                     {item.username === authUser.username && (
-                      <button onClick={() => likeFeedPost && commentFeedPost && window.__feedDelete?.(item.id)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 14 }}>🗑</button>
+                      <button title="Sil" onClick={() => deleteFeedPost?.(item.id)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 14 }}>🗑</button>
                     )}
                   </div>
                   {/* Post Content */}

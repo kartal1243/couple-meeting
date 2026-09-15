@@ -111,6 +111,7 @@ module.exports = function registerCommunityHandlers(io, socket, db, sanitize, em
 
     const members = getDb().prepare('SELECT cm.*, u.avatar FROM community_members cm LEFT JOIN users u ON cm.username = u.username WHERE cm.community_id = ? ORDER BY cm.role = ? DESC, cm.joined_at ASC').all(cleanId, 'admin');
     const membership = getDb().prepare('SELECT role FROM community_members WHERE community_id = ? AND username = ?').get(cleanId, user.username);
+    try { socket.join(`community_${cleanId}`); } catch {}
 
     socket.emit('community_info_result', {
       ok: true,

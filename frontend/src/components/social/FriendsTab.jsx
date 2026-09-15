@@ -65,6 +65,12 @@ const FriendsTab = memo(function FriendsTab({ authUser, friendSearch, setFriendS
               ))}
             </div>
           )}
+          {(friendSearchResults.length === 0 && friendRequests.length === 0 && friends.length === 0) && (
+            <div style={{ textAlign: 'center', padding: 40, color: '#7f8c98', fontSize: 13 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
+              Henüz arkadaşın yok.<br />Yukarıdan kullanıcı adı arayıp ekle!
+            </div>
+          )}
           {friends.length > 0 && (
             <div>
               <div className="cm-friends-section-title" style={{ color: '#fff', fontWeight: 900, margin: '18px 0 8px' }}>Arkadaslarin ({friends.length})</div>

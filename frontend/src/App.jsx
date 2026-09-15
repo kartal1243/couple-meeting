@@ -484,6 +484,12 @@ function App() {
     socket.emit('feed_comment', { token: authToken, feedId, text: text.trim() });
   };
 
+  const deleteFeedPost = (feedId) => {
+    if (!authToken || !feedId) return;
+    if (!window.confirm('Gönderi silinsin mi?')) return;
+    socket.emit('feed_delete', { token: authToken, feedId });
+  };
+
   // ── BILDIRIM SISTEMI ──
   const loadNotifications = () => {
     if (!authUser) return;
@@ -996,7 +1002,7 @@ function App() {
           showFollowingModal={showFollowingModal} setShowFollowingModal={setShowFollowingModal}
           feedItems={feedItems} loadFeed={loadFeed} showFeedModal={showFeedModal} setShowFeedModal={setShowFeedModal}
           suggestedFollows={suggestedFollows} loadSuggestedFollows={loadSuggestedFollows}
-          createFeedPost={createFeedPost} likeFeedPost={likeFeedPost} commentFeedPost={commentFeedPost}
+          createFeedPost={createFeedPost} likeFeedPost={likeFeedPost} commentFeedPost={commentFeedPost} deleteFeedPost={deleteFeedPost}
           notifications={notifications} unreadCount={unreadCount} loadNotifications={loadNotifications}
           markNotifsRead={markNotifsRead} showNotifPanel={showNotifPanel} setShowNotifPanel={setShowNotifPanel}
           myRole={myRole} reportUser={reportUser}

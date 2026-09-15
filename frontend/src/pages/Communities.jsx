@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 
 const COMM_MOBILE_CSS = `
 @media (max-width: 768px) {
@@ -45,6 +45,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [members, setMembers] = useState([]);
+  const selectedRef = useRef(null);
 
   useEffect(() => {
     socket.emit('community_list', { token });
@@ -52,15 +53,23 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     socket.on('community_info_result', (data) => {
       setMembers(Array.isArray(data?.members) ? data.members : []);
       setSelected(data.community);
+      selectedRef.current = data.community?.id || null;
     });
     socket.on('community_posts_result', (data) => setPosts(Array.isArray(data?.posts) ? data.posts : []));
     socket.on('community_new_post', (data) => {
-      if (data?.post && selected) {
+      if (data?.post && (!selectedRef.current || data.post.community_id === selectedRef.current)) {
         setPosts(prev => [data.post, ...(Array.isArray(prev) ? prev : [])]);
       }
     });
+    socket.on('community_like_update', (data) => {
+      if (!data?.postId) return;
+      setPosts(prev => (Array.isArray(prev) ? prev : []).map(p =>
+        p.id === data.postId ? { ...p, likes: data.likes, liked: data.liked } : p
+      ));
+    });
     socket.on('community_created', () => {
       setShowCreate(false);
+      setNewName(''); setNewDesc(''); setNewIcon('👥');
       socket.emit('community_list', { token });
     });
     return () => {
@@ -68,6 +77,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
       socket.off('community_info_result');
       socket.off('community_posts_result');
       socket.off('community_new_post');
+      socket.off('community_like_update');
       socket.off('community_created');
     };
   }, [token]);
@@ -92,7 +102,6 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     if (!newPost.trim() || !selected) return;
     socket.emit('community_post', { communityId: selected.id, text: newPost, token });
     setNewPost('');
-    setTimeout(() => socket.emit('community_posts', { communityId: selected.id, token }), 100);
   };
 
   const likePost = (postId) => {
@@ -105,7 +114,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     return (
       <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
         <style>{COMM_MOBILE_CSS}</style>
-        <button onClick={() => { setSelected(null); setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: 14, fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
+        <button onClick={() => { setSelected(null); selectedRef.current = null; setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: 14, fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
           ← Geri
         </button>
 

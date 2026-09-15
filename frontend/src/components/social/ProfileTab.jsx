@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { AVATARS } from '../../constants';
+import { AVATARS, VIP_AVATARS } from '../../constants';
 
 const ProfileTab = memo(function ProfileTab({ authUser, profileBioInput, setProfileBioInput, profileStatusInput, setProfileStatusInput, myAvatar, setMyAvatar, saveProfile, styles, followCounts, loadFollowers, loadFollowing, setShowDeleteAccount }) {
   return (
@@ -29,6 +29,16 @@ const ProfileTab = memo(function ProfileTab({ authUser, profileBioInput, setProf
               <button key={a} type="button" onClick={() => { setMyAvatar(a); localStorage.setItem('cm_user_avatar', a); }} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, cursor: 'pointer', background: myAvatar === a ? '#00a884' : '#111b21', border: myAvatar === a ? '2px solid #53e6bc' : '1px solid #2a3942' }}>{a}</button>
             ))}
           </div>
+          {authUser.isVip && VIP_AVATARS && (
+            <>
+              <label style={{ fontSize: 11, color: '#f59e0b', fontWeight: 900 }}>👑 VIP AVATARLAR</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0 16px' }}>
+                {VIP_AVATARS.map(a => (
+                  <button key={a} type="button" onClick={() => { setMyAvatar(a); localStorage.setItem('cm_user_avatar', a); }} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, cursor: 'pointer', background: myAvatar === a ? '#f59e0b' : '#111b21', border: myAvatar === a ? '2px solid #fbbf24' : '1px solid rgba(245,158,11,.35)' }}>{a}</button>
+                ))}
+              </div>
+            </>
+          )}
           <button type="button" onClick={saveProfile} style={{ ...styles.buttonPrimary, width: '100%', marginTop: 12 }}>Profili Kaydet</button>
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(234,0,56,.15)' }}>
             <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tehlikeli Bolge</div>
