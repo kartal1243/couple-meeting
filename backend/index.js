@@ -1519,11 +1519,13 @@ io.on('connection', (socket) => {
     const result = db.likeFeedItem(feedId, user.username);
     if (result !== null) {
       const likes = db.getFeedLikes(feedId);
-      const item = db.prepare ? db.prepare('SELECT * FROM feed_items WHERE id = ?').get(feedId) : null;
+      const item = db.getDb() ? db.getDb().prepare('SELECT * FROM feed_items WHERE id = ?').get(feedId) : null;
       if (item) {
         const feedUser = item.username;
         if (result === true && feedUser !== user.username) {
-          emitToUser(feedUser, 'notification', { type: 'feed_like', from: user.username, title: 'Gönderini beğendi', body: cleanText ? cleanText.slice(0, 50) : '' });
+          const title = 'Gönderini beğendi';
+          try { db.createNotification(feedUser, 'feed_like', user.username, title, `${user.username}: ${title}`, { feedId }); } catch {}
+          emitToUser(feedUser, 'notification', { type: 'feed_like', from: user.username, title, body: `${user.username}: ${title}` });
         }
       }
       socket.emit('feed_like_result', { feedId, liked: result === true, likeCount: likes.length, likedBy: likes });
@@ -1539,9 +1541,11 @@ io.on('connection', (socket) => {
     if (comment) {
       comment.avatar = user.avatar;
       socket.emit('feed_comment_result', { feedId, comment });
-      const item = db.prepare ? db.prepare('SELECT username FROM feed_items WHERE id = ?').get(feedId) : null;
+      const item = db.getDb() ? db.getDb().prepare('SELECT username FROM feed_items WHERE id = ?').get(feedId) : null;
       if (item && item.username !== user.username) {
-        emitToUser(item.username, 'notification', { type: 'feed_comment', from: user.username, title: 'Gönderine yorum yaptı', body: cleanText.slice(0, 50) });
+        const title = 'Gönderine yorum yaptı';
+        try { db.createNotification(item.username, 'feed_comment', user.username, title, `${user.username}: ${cleanText.slice(0, 80)}`, { feedId }); } catch {}
+        emitToUser(item.username, 'notification', { type: 'feed_comment', from: user.username, title, body: `${user.username}: ${cleanText.slice(0, 80)}` });
       }
     }
   });
@@ -1693,6 +1697,8 @@ io.on('connection', (socket) => {
     const id = db.sendFriendRequest(from.username, from.avatar, target.username);
     socket.emit('friend_request_status', { message: 'Arkadaslik istegi gonderildi' });
     sendFriendsUpdate(target.username);
+    try { db.createNotification(target.username, 'friend_request', from.username, 'Arkadaşlık isteği', `${from.username} sana arkadaşlık isteği gönderdi.`, { from: from.username }); } catch {}
+    emitToUser(target.username, 'notification', { type: 'friend_request', from: from.username, title: 'Arkadaşlık isteği', body: `${from.username} sana arkadaşlık isteği gönderdi.` });
     emitToUser(target.username, 'friend_request_received', { id, fromUsername: from.username, avatar: from.avatar });
   });
 
@@ -1770,6 +1776,8 @@ io.on('connection', (socket) => {
     dmMessages[key].push(msg);
     if (dmMessages[key].length > 200) dmMessages[key] = dmMessages[key].slice(-200);
     emitToUser(toUser.username, 'dm_received', msg);
+    try { db.createNotification(toUser.username, 'dm', from.username, 'Yeni mesaj', `${from.username}: ${cleanText.slice(0, 80)}`, { from: from.username }); } catch {}
+    emitToUser(toUser.username, 'notification', { type: 'dm', from: from.username, title: 'Yeni mesaj', body: `${from.username}: ${cleanText.slice(0, 80)}` });
     socket.emit('dm_sent', { ...msg, localMsgId: msgId });
   });
 

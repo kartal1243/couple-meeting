@@ -106,7 +106,7 @@ function SocialModal({
           </div>
           <div className="cm-social-header-actions" style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
             {authUser && (
-              <button type="button" onClick={() => { if (showNotifPanel) { setShowNotifPanel(false); } else { loadNotifications(); markNotifsRead(); } }}
+              <button type="button" onClick={() => { if (showNotifPanel) { setShowNotifPanel(false); markNotifsRead(); } else { loadNotifications(); } }}
                 style={{ position: 'relative', background: showNotifPanel ? '#00a884' : '#202c33', color: '#fff', border: '1px solid #2c3b44', padding: '8px 10px', borderRadius: 10, fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
                 🔔
                 {unreadCount > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: '#fff', borderRadius: 10, padding: '1px 5px', fontSize: 9, fontWeight: 900 }}>{unreadCount}</span>}
@@ -155,15 +155,16 @@ function SocialModal({
         <div className="cm-social-notif-panel" style={{ position: 'fixed', top: 100, right: 20, width: 320, maxHeight: '70vh', background: '#111b21', border: '1px solid #25313a', borderRadius: 16, overflow: 'hidden', zIndex: 9999, boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #25313a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#fff', fontWeight: 900, fontSize: 13 }}>Bildirimler</span>
-            <button onClick={() => setShowNotifPanel(false)} style={{ background: 'none', border: 'none', color: '#7f8c98', cursor: 'pointer', fontSize: 14 }}>✕</button>
+            <button onClick={() => { setShowNotifPanel(false); markNotifsRead(); }} style={{ background: 'none', border: 'none', color: '#7f8c98', cursor: 'pointer', fontSize: 14 }}>✕</button>
           </div>
           <div style={{ overflowY: 'auto', maxHeight: 'calc(70vh - 50px)' }}>
             {notifications.length === 0 ? (
               <div style={{ padding: 20, textAlign: 'center', color: '#7f8c98', fontSize: 12 }}>Bildirim yok</div>
             ) : notifications.map(n => (
               <div key={n.id} style={{ padding: '10px 16px', borderBottom: '1px solid #1a2634', background: n.read ? 'transparent' : 'rgba(0,168,132,.05)' }}>
-                <div style={{ color: '#e9edef', fontSize: 12 }}>{n.message}</div>
-                <div style={{ color: '#63727d', fontSize: 10, marginTop: 4 }}>{new Date(n.created_at).toLocaleString()}</div>
+                <div style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>{n.title || 'Bildirim'}</div>
+                {(n.body || n.message) && <div style={{ color: '#e9edef', fontSize: 12, marginTop: 2 }}>{n.body || n.message}</div>}
+                <div style={{ color: '#63727d', fontSize: 10, marginTop: 4 }}>{n.created_at ? new Date(n.created_at).toLocaleString('tr-TR') : ''}</div>
               </div>
             ))}
           </div>

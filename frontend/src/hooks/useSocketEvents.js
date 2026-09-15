@@ -235,6 +235,25 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       localStorage.setItem('cm_auth_user', JSON.stringify(user));
       a().setProfileBioInput(user?.bio || '');
       a().setProfileStatusInput(user?.status || '');
+      const token = authTokenRef.current;
+      if (token) socket.emit('get_notifications', { token });
+    });
+
+    socket.on('notification', (n) => {
+      if (!n) return;
+      const item = {
+        id: n.id || `live-${Date.now()}`,
+        type: n.type || '', from: n.from || '',
+        title: n.title || 'Bildirim', body: n.body || '',
+        created_at: Date.now(), read: 0
+      };
+      a().setNotifications((prev) => [item, ...(Array.isArray(prev) ? prev : [])]);
+      a().setUnreadCount((prev) => (prev || 0) + 1);
+      playMessageSound();
+      if (a().setToast) {
+        a().setToast({ msg: `${item.title}${item.body ? ` — ${item.body}` : ''}`, sender: item.from || 'Bildirim', id: Date.now() });
+        setTimeout(() => a().setToast(null), 4000);
+      }
     });
 
     socket.on('auth_result', (data) => {
@@ -445,7 +464,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       socket.off('typing_indicator'); socket.off('dm_read_receipt'); socket.off('dm_deleted'); socket.off('dm_edited');
       socket.off('reactions_update'); socket.off('room_invite');
       socket.off('follow_result'); socket.off('follow_counts'); socket.off('follow_counts_update');
-      socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
+      socket.off('notification'); socket.off('followed_you'); socket.off('followers_list'); socket.off('following_list');
       socket.off('feed'); socket.off('suggested_follows'); socket.off('new_feed_item'); socket.off('feed_like_result'); socket.off('feed_comment_result'); socket.off('feed_deleted');
       socket.off('notifications'); socket.off('reports_list'); socket.off('role_result'); socket.off('report_result'); socket.off('verify_result');
       socket.off('two_factor_setup'); socket.off('two_factor_result'); socket.off('two_factor_status');
