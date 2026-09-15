@@ -224,9 +224,9 @@ app.post('/api/vip/create-checkout', async (req, res) => {
 
   if (!stripe) {
     const duration = VIP_PLANS[plan].duration;
-    const currentExpiry = user.vip_expiry || 0;
+    const currentExpiry = user.vipExpiry || 0;
     const newExpiry = Math.max(currentExpiry, Date.now()) + duration;
-    db.db.prepare('UPDATE users SET is_vip = 1, vip_expiry = ?, vip_plan = ?, vip_activated_at = ?, vip_level = ? WHERE username = ?')
+    db.getDb().prepare('UPDATE users SET is_vip = 1, vip_expiry = ?, vip_plan = ?, vip_activated_at = ?, vip_level = ? WHERE username = ?')
       .run(newExpiry, plan, Date.now(), getVipLevel(Date.now()), user.username);
     const updatedUser = db.getUser(user.username);
     const io = req.app.get('io');
@@ -294,8 +294,8 @@ app.post('/api/profile/visit', (req, res) => {
   if (!visitor) return res.status(401).json({ ok: false });
   if (visitor.username === visited) return res.json({ ok: true });
   try {
-    db.db.prepare('INSERT INTO profile_visitors (visitor, visited, timestamp) VALUES (?, ?, ?)').run(visitor.username, visited, Date.now());
-    db.db.prepare('DELETE FROM profile_visitors WHERE id IN (SELECT id FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT -1 OFFSET 50)').run(visited);
+    db.getDb().prepare('INSERT INTO profile_visitors (visitor, visited, timestamp) VALUES (?, ?, ?)').run(visitor.username, visited, Date.now());
+    db.getDb().prepare('DELETE FROM profile_visitors WHERE id IN (SELECT id FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT -1 OFFSET 50)').run(visited);
   } catch (e) {}
   res.json({ ok: true });
 });
@@ -306,7 +306,7 @@ app.get('/api/profile/visitors', (req, res) => {
   const user = db.getUserByToken(token);
   if (!user) return res.status(401).json({ ok: false });
   try {
-    const visitors = db.db.prepare('SELECT DISTINCT visitor FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT 20').all(user.username);
+    const visitors = db.getDb().prepare('SELECT DISTINCT visitor FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT 20').all(user.username);
     const result = visitors.map(v => {
       const u = db.getUser(v.visitor);
       return u ? { username: u.username, avatar: u.avatar, isVip: u.isVip, vipLevel: u.vipLevel || 0 } : null;
@@ -322,7 +322,7 @@ app.get('/api/search/messages', (req, res) => {
   if (!user) return res.status(401).json({ ok: false });
   if (!user.isVip) return res.status(403).json({ ok: false, message: 'VIP uyelik gerekiyor.' });
   try {
-    const results = db.db.prepare("SELECT * FROM room_messages WHERE text LIKE ? AND roomId = ? ORDER BY createdAt DESC LIMIT 50").all(`%${q}%`, roomId || '%');
+    const results = db.getDb().prepare("SELECT * FROM room_messages WHERE text LIKE ? AND roomId = ? ORDER BY createdAt DESC LIMIT 50").all(`%${q}%`, roomId || '%');
     res.json({ ok: true, results });
   } catch (e) { res.json({ ok: true, results: [] }); }
 });
@@ -627,7 +627,7 @@ app.get('/api/admin/users/:username/detail', adminAuth, (req, res) => {
 
     res.json({
       ok: true,
-      user: { ...db.formatUser(user), created_at: user.created_at, last_seen: user.last_seen },
+      user: { ...safeUser(user), createdAt: user.createdAt, lastSeen: user.lastSeen },
       stats: { friendCount, messageCount, roomCount, logCount, reportCount, followCount, followerCount },
       recentLogs: lastLogs.map(l => ({ ip: l.ip, room_id: l.room_id, action: l.action, created_at: l.created_at }))
     });
@@ -645,9 +645,9 @@ app.post('/api/admin/users/reset-password', adminAuth, async (req, res) => {
     if (!user) return res.status(404).json({ ok: false, message: 'Kullanıcı bulunamadı' });
     const crypto = require('crypto');
     const newPass = crypto.randomBytes(8).toString('hex');
-    const bcrypt = require('bcryptjs');
-    const hash = await bcrypt.hash(newPass, 10);
-    db.updateUser(uname, { password_hash: hash });
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(newPass, salt, 64).toString('hex');
+    db.updateUser(uname, { password_hash: `${salt}:${hash}` });
     res.json({ ok: true, newPassword: newPass });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
@@ -811,7 +811,7 @@ app.post('/api/feedback', (req, res) => {
 // ═══════════════════════════════════════════════════════════
 function safeUser(u) {
   if (!u) return null;
-  const { passwordHash, password_hash, ...rest } = u;
+  const { passwordHash, password_hash, resetToken, reset_token, resetExpiry, reset_expiry, stripeCustomerId, stripe_customer_id, stripeSubscriptionId, stripe_subscription_id, ...rest } = u;
   return rest;
 }
 function verifyPassword(user, password) {
@@ -2422,9 +2422,9 @@ setInterval(() => {
 // VIP sure dolumu kontrol (her 5 dakika)
 setInterval(() => {
   try {
-    const expired = db.db.prepare('SELECT username FROM users WHERE is_vip = 1 AND vip_expiry > 0 AND vip_expiry < ?').all(Date.now());
+    const expired = db.getDb().prepare('SELECT username FROM users WHERE is_vip = 1 AND vip_expiry > 0 AND vip_expiry < ?').all(Date.now());
     for (const u of expired) {
-      db.db.prepare('UPDATE users SET is_vip = 0, vip_level = 0 WHERE username = ?').run(u.username);
+      db.getDb().prepare('UPDATE users SET is_vip = 0, vip_level = 0 WHERE username = ?').run(u.username);
       emitToUser(u.username, 'vip_activated', { isVip: false, vipExpiry: 0 });
       logger.info(`[VIP] Sure doldu: ${u.username}`);
     }

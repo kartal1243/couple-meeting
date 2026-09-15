@@ -30,8 +30,12 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
     socket.on('search_results', (results) => { a().setSearchResults(Array.isArray(results) ? results : []); a().setIsSearching(false); });
 
     socket.on('room_joined', (data) => {
+      if (!data?.roomId) return;
       a().setInRoom(true);
       a().setErrorMessage('');
+      if (data.isVip !== undefined && a().setAuthUser) {
+        a().setAuthUser((prev) => (prev ? { ...prev, isVip: data.isVip } : prev));
+      }
       a().setRoomId(data.roomId);
       a().setRoomName(data.roomName || data.roomId);
       a().setHostUserId(data.hostUserId);
@@ -432,7 +436,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('connect'); socket.off('disconnect'); socket.off('reconnect'); socket.off('public_rooms_update');
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
-      socket.off('room_settings_updated'); socket.off('kicked_from_room'); socket.off('categories_updated');
+      socket.off('room_settings_updated'); socket.off('room_host_changed'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
       socket.off('room_sync_data');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('global_chat_cleared'); socket.off('social_profile'); socket.off('auth_result');

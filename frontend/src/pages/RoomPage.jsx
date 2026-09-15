@@ -31,7 +31,7 @@ export default function RoomPage() {
     messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
 
-  const isHost = hostUserId === (authUser?.username || username);
+  const isHost = hostUserId === authUser?.username || (userId && hostUserId === userId) || (username && hostUserId === username);
 
   const handleLeaveClick = () => {
     if (isHost) {
@@ -139,7 +139,7 @@ export default function RoomPage() {
             setShowProfileModal={setShowProfileModal}
             authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveClick}
             roomUsersList={roomUsersList} hostUserId={hostUserId}
-            onCloseRoom={handleCloseRoom} roomId={roomId}
+            onCloseRoom={handleCloseRoom} roomId={roomId} userId={userId}
           />
         </div>
 

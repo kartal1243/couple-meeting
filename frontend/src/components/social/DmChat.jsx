@@ -4,22 +4,23 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
   const endRef = useRef(null);
   const typingTimeout = useRef(null);
   const [replyTo, setReplyTo] = useState(null);
+  const chat = typeof dmActiveChat === 'string' ? { username: dmActiveChat } : dmActiveChat;
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [dmMessages, dmActiveChat]);
 
   const handleInputChange = (e) => {
     setDmInput(e.target.value);
-    if (sendDmTyping && dmActiveChat?.username) {
-      sendDmTyping(dmActiveChat.username);
+    if (sendDmTyping && chat?.username) {
+      sendDmTyping(chat.username);
       clearTimeout(typingTimeout.current);
-      typingTimeout.current = setTimeout(() => { if (sendDmStopTyping) sendDmStopTyping(dmActiveChat.username); }, 2000);
+      typingTimeout.current = setTimeout(() => { if (sendDmStopTyping) sendDmStopTyping(chat.username); }, 2000);
     }
   };
 
   const handleSend = (e) => {
     e.preventDefault();
     if (!dmInput.trim() || !dmActiveChat) return;
-    sendDm(dmActiveChat.username, dmInput.trim(), replyTo);
+    sendDm(chat.username, dmInput.trim(), replyTo);
     setDmInput('');
     setReplyTo(null);
   };
@@ -66,8 +67,8 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
     );
   }
 
-  const activeMessages = dmMessages?.[dmActiveChat.username] || [];
-  const isTyping = typingUsers && typingUsers[dmActiveChat.username];
+  const activeMessages = dmMessages?.[chat?.username] || [];
+  const isTyping = typingUsers && typingUsers[chat?.username];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -75,15 +76,15 @@ const DmChat = memo(function DmChat({ authUser, dmConversations, dmActiveChat, s
       <div className="cm-social-dm-header" style={{ padding: '10px 14px', borderBottom: '1px solid #25313a', display: 'flex', alignItems: 'center', gap: 10, background: '#111b21' }}>
         <button onClick={() => { setDmActiveChat(null); setReplyTo(null); }} style={{ background: 'none', border: 'none', color: '#53e6bc', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: '4px 6px' }}>&larr;</button>
         <div style={{ fontSize: 18, position: 'relative', flexShrink: 0 }}>
-          {dmActiveChat.avatar || '🐱'}
-          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: dmActiveChat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
+          {chat.avatar || '🐱'}
+          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: chat.isOnline ? '#25d366' : '#63727d', border: '2px solid #111b21' }} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="cm-social-dm-header-name" style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{dmActiveChat.username}</div>
-          <div style={{ color: dmActiveChat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? 'yaziyor...' : (dmActiveChat.isOnline ? 'Cevrimici' : 'Cevrimdisi')}</div>
+          <div className="cm-social-dm-header-name" style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{chat.username}</div>
+          <div style={{ color: chat.isOnline ? '#25d366' : '#7f8c98', fontSize: 10 }}>{isTyping ? 'yaziyor...' : (chat.isOnline ? 'Cevrimici' : 'Cevrimdisi')}</div>
         </div>
         {followUser && unfollowUser && (
-          <button type="button" onClick={() => isFollowingUser ? unfollowUser(dmActiveChat.username) : followUser(dmActiveChat.username)}
+          <button type="button" onClick={() => isFollowingUser ? unfollowUser(chat.username) : followUser(chat.username)}
             style={{ background: isFollowingUser ? '#ea0038' : '#00a884', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 10, flexShrink: 0 }}>
             {isFollowingUser ? 'Takipten Cik' : 'Takip Et'}
           </button>

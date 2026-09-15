@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
-  roomUsersList, hostUserId, onCloseRoom, roomId
+  roomUsersList, hostUserId, onCloseRoom, roomId, userId
 }) {
   const [showUsers, setShowUsers] = useState(false);
   const [showQuickLeave, setShowQuickLeave] = useState(false);
@@ -221,7 +221,7 @@ function Header({
             <h3 style={{ color: '#fff', margin: '0 0 6px', fontSize: 16, fontWeight: 900 }}>Odadan Çık</h3>
             <p style={{ color: '#64748b', fontSize: 11, margin: '0 0 16px' }}>Emin misin?</p>
             
-            {hostUserId === (authUser?.username || myAvatar) && (
+            {(hostUserId === authUser?.username || (userId && hostUserId === userId)) && (
               <button onClick={() => { setShowQuickLeave(false); onCloseRoom?.(); }} style={{
                 width: '100%', padding: '11px', marginBottom: 6, borderRadius: 12, border: 'none',
                 background: 'rgba(239,68,68,.15)', color: '#ef4444',
