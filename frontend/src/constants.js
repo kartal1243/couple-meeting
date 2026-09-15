@@ -1,6 +1,7 @@
-export const BACKEND_URL = (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'https://couplemeeting.com.tr'
-  : window.location.origin;
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+  || ((window.location.protocol === 'capacitor:' || window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'https://couplemeeting.com.tr'
+    : window.location.origin);
 
 export const AVATARS = ['🐱', '🐶', '🦊', '🐼', '👑', '👸', '🦁', '🐻'];
 

@@ -240,8 +240,8 @@ app.post('/api/vip/create-checkout', async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', payment_method_types: ['card'], customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${req.headers.origin || 'https://couple-meeting-flax.vercel.app'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin || 'https://couple-meeting-flax.vercel.app'}/payment-cancel`,
+      success_url: `${req.headers.origin || 'https://couplemeeting.com.tr'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || 'https://couplemeeting.com.tr'}/payment-cancel`,
       metadata: { username: user.username, plan }
     });
     res.json({ ok: true, sessionId: session.id, url: session.url });
@@ -370,6 +370,23 @@ function adminAuth(req, res, next) {
   if (!pass || pass !== EFFECTIVE_ADMIN_PASS) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
   next();
 }
+
+app.post('/api/admin/backup', adminAuth, async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const dir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, `data-${new Date().toISOString().slice(0, 10)}.db`);
+    const ok = await db.backupDb(dest);
+    if (!ok) return res.json({ ok: false, message: 'Backup alinamadi (JSON fallback modu).' });
+    logger.info(`[ADMIN] DB backup: ${dest}`);
+    res.json({ ok: true, message: 'Backup alindi.', file: dest });
+  } catch (e) {
+    logger.error('Backup hatasi', { error: e.message });
+    res.status(500).json({ ok: false, message: 'Backup hatasi.' });
+  }
+});
 
 app.get('/api/admin/stats', adminAuth, (req, res) => {
   const roomList = Object.entries(rooms).map(([id, r]) => ({
@@ -786,6 +803,60 @@ app.post('/api/feedback', (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, message: 'Bir hata oluştu.' });
   }
+});
+
+
+// ═══════════════════════════════════════════════════════════
+// HTTP AUTH (socket ile ayni kurallar, mobil/HTTP istemciler icin)
+// ═══════════════════════════════════════════════════════════
+function safeUser(u) {
+  if (!u) return null;
+  const { passwordHash, password_hash, ...rest } = u;
+  return rest;
+}
+function verifyPassword(user, password) {
+  try {
+    const [salt, storedHash] = (user.passwordHash || '').split(':');
+    if (!salt || !storedHash) return false;
+    const check = crypto.scryptSync(password || '', salt, 64).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(check, 'hex'));
+  } catch { return false; }
+}
+app.post('/api/auth/register', authLimiter, (req, res) => {
+  const { username, email, password, bio, avatar } = req.body || {};
+  const cleanUsername = sanitize(username, 20).toLowerCase();
+  const cleanEmail = sanitize(email, 100).toLowerCase();
+  if (!cleanUsername || !cleanEmail || !password) return res.json({ ok: false, message: 'Kullanici adi, e-posta ve sifre gerekli.' });
+  if (!isValidUsername(cleanUsername)) return res.json({ ok: false, message: 'Kullanici adi 3-20 karakter olmali.' });
+  if (!isValidEmail(cleanEmail)) return res.json({ ok: false, message: 'Gecerli bir e-posta gir.' });
+  if (typeof password !== 'string' || password.length < 6) return res.json({ ok: false, message: 'Sifre en az 6 karakter olmali.' });
+  if (password.length > 128) return res.json({ ok: false, message: 'Sifre cok uzun.' });
+  if (db.getUser(cleanUsername)) return res.json({ ok: false, message: 'Bu kullanici adi zaten alinmis.' });
+  if (db.getUserByEmail(cleanEmail)) return res.json({ ok: false, message: 'Bu e-posta zaten kayitli.' });
+  try {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    db.createUser(cleanUsername, cleanEmail, `${salt}:${hash}`, sanitize(avatar, 10) || '🐱', sanitize(bio, 120));
+  } catch (e) {
+    return res.json({ ok: false, message: 'Bu kullanici adi veya e-posta zaten kayitli.' });
+  }
+  const token = db.createToken(cleanUsername);
+  logger.info(`[KAYIT-HTTP] ${cleanUsername}`);
+  res.json({ ok: true, user: safeUser(db.getUser(cleanUsername)), token });
+});
+app.post('/api/auth/login', authLimiter, (req, res) => {
+  const { email, password } = req.body || {};
+  const user = db.getUserByEmail(sanitize(email, 100).toLowerCase());
+  if (!user || !verifyPassword(user, password)) return res.json({ ok: false, message: 'E-posta veya sifre hatali.' });
+  const token = db.createToken(user.username);
+  logger.info(`[GIRIS-HTTP] ${user.username}`);
+  res.json({ ok: true, user: safeUser(user), token });
+});
+app.get('/api/auth/me', (req, res) => {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.query.token;
+  const user = db.getUserByToken(token);
+  if (!user) return res.status(401).json({ ok: false, message: 'Oturum gecersiz.' });
+  res.json({ ok: true, user: safeUser(user) });
 });
 
 

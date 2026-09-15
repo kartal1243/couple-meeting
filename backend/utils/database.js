@@ -636,6 +636,13 @@ function clearGlobalMessages() {
   return true;
 }
 
+async function backupDb(destPath) {
+  const d = getDb();
+  if (!d) return false;
+  await d.backup(destPath);
+  return true;
+}
+
 function closeDb() {
   if (db) { try { db.close(); } catch {} db = null; }
 }
@@ -1295,7 +1302,7 @@ module.exports = {
   getDb, getUser, getUserByEmail, getUserByToken, getUserByResetToken, createUser, updateUser, updateLastSeen,
   createToken, cleanOldTokens, sendFriendRequest, getPendingFriendRequests, getFriendRequest,
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
-  searchUsers, addGlobalMessage, getGlobalMessages, clearGlobalMessages, getAllUsers, closeDb,
+  searchUsers, addGlobalMessage, getGlobalMessages, clearGlobalMessages, getAllUsers, closeDb, backupDb,
   addConnectionLog, getConnectionLogs, getLogStats,
   saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
   saveGroupMessage, getGroupHistory,

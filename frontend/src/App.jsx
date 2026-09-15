@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 
@@ -20,12 +20,12 @@ import Events from './pages/Events';
 import BlogPage from './pages/BlogPage';
 import AdsPage from './pages/AdsPage';
 
-import AuthModal from './Modals/AuthModal';
-import SocialModal from './Modals/SocialModal';
-import FolderModal from './Modals/FolderModal';
-import SettingsModal from './Modals/SettingsModal';
-import ProfileModal from './Modals/ProfileModal';
-import VipModal from './Modals/VipModal';
+const AuthModal = lazy(() => import('./Modals/AuthModal'));
+const SocialModal = lazy(() => import('./Modals/SocialModal'));
+const FolderModal = lazy(() => import('./Modals/FolderModal'));
+const SettingsModal = lazy(() => import('./Modals/SettingsModal'));
+const ProfileModal = lazy(() => import('./Modals/ProfileModal'));
+const VipModal = lazy(() => import('./Modals/VipModal'));
 
 function App() {
   const navigate = useNavigate();
@@ -978,9 +978,12 @@ function App() {
 
       {/* Global Modals */}
       {showAuthModal && (
+        <Suspense fallback={null}>
         <AuthModal authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} authBusy={authBusy} submitAuth={submitAuth} setShowAuthModal={setShowAuthModal} errorMessage={errorMessage} setErrorMessage={setErrorMessage} styles={styles} socket={socket} />
+        </Suspense>
       )}
       {showSocialModal && (
+        <Suspense fallback={null}>
         <SocialModal authUser={authUser} socialTab={socialTab} setSocialTab={setSocialTab} globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} unfriendUser={unfriendUser} profileBioInput={profileBioInput} setProfileBioInput={setProfileBioInput} profileStatusInput={profileStatusInput} setProfileStatusInput={setProfileStatusInput} myAvatar={myAvatar} setMyAvatar={setMyAvatar} saveProfile={saveProfile} openAuth={openAuth} handleLogout={handleLogout} setShowSocialModal={setShowSocialModal} showVipModal={showVipModal} setShowVipModal={setShowVipModal} styles={styles}
           dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} loadDmList={loadDmList}
           chatGroups={chatGroups} activeGroup={activeGroup} setActiveGroup={setActiveGroup} groupMessages={groupMessages} groupInput={groupInput} setGroupInput={setGroupInput} showGroupCreate={showGroupCreate} setShowGroupCreate={setShowGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} createGroup={createGroup} openGroup={openGroup} sendGroupMessage={sendGroupMessage} loadGroups={loadGroups}
@@ -1006,8 +1009,9 @@ function App() {
           twoFACode={twoFACode} setTwoFACode={setTwoFACode} verify2FASetup={verify2FASetup}
           showDeleteAccount={showDeleteAccount} setShowDeleteAccount={setShowDeleteAccount} deleteAccount={deleteAccount} deletePass={deletePass} setDeletePass={setDeletePass}
         />
+        </Suspense>
       )}
-      {showVipModal && <VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} />}
+      {showVipModal && <Suspense fallback={null}><VipModal authUser={authUser} setShowVipModal={setShowVipModal} setAuthUser={setAuthUser} styles={styles} /></Suspense>}
 
       {showQuickCreate && (
         <div style={{ position:'fixed', inset:0, zIndex:25000, background:'rgba(0,0,0,.85)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
@@ -1043,13 +1047,19 @@ function App() {
       )}
 
       {showProfileModal && (
+        <Suspense fallback={null}>
         <ProfileModal authUser={authUser} setShowProfileModal={setShowProfileModal} saveProfile={saveProfile} friendOnlineStatuses={friendOnlineStatuses} friends={friends} />
+        </Suspense>
       )}
       {showFolderModal && (
+        <Suspense fallback={null}>
         <FolderModal pendingMediaItem={pendingMediaItem} modalTargetCategory={modalTargetCategory} setModalTargetCategory={setModalTargetCategory} categories={categories} confirmAddToPlaylist={confirmAddToPlaylist} setShowFolderModal={setShowFolderModal} currentTheme={currentTheme} styles={styles} />
+        </Suspense>
       )}
       {showSettingsModal && (
+        <Suspense fallback={null}>
         <SettingsModal hostUserId={hostUserId} userId={userId} editRoomNameInput={editRoomNameInput} setEditRoomNameInput={setEditRoomNameInput} roomName={roomName} roomTheme={roomTheme} setRoomTheme={setRoomTheme} handleSaveSettings={handleSaveSettings} roomUsersList={roomUsersList} handleTransferAdmin={handleTransferAdmin} handleKickUser={handleKickUser} setShowSettingsModal={setShowSettingsModal} currentTheme={currentTheme} authUser={authUser} styles={styles} socket={socket} roomId={roomId} currentRoomInfo={currentRoomInfo} username={username} />
+        </Suspense>
       )}
 
       {showJoinModal && joinRoomTarget && (
