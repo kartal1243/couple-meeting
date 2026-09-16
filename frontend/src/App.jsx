@@ -312,6 +312,13 @@ function App() {
     e.preventDefault();
     const text = globalChatInput.trim();
     if (!text) return;
+    const uname = authUser?.username || username || 'Misafir';
+    setGlobalMessages((prev) => [...prev.slice(-79), {
+      id: `local-${Date.now()}`, username: uname, avatar: authUser?.avatar || myAvatar,
+      vip: authUser?.isVip ? 1 : 0, vipLevel: authUser?.vipLevel || 0,
+      text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now()
+    }]);
     socket.emit('global_chat_message', {
       text, token: authToken || ''
     });
@@ -476,6 +483,18 @@ function App() {
 
   const likeFeedPost = (feedId) => {
     if (!authToken) return;
+    const me = authUser?.username;
+    if (me) {
+      setFeedItems((prev) => prev.map((item) => {
+        if (item.id !== feedId) return item;
+        const liked = Array.isArray(item.liked_by) && item.liked_by.includes(me);
+        return {
+          ...item,
+          liked_by: liked ? item.liked_by.filter((u) => u !== me) : [...(item.liked_by || []), me],
+          like_count: (item.like_count || 0) + (liked ? -1 : 1)
+        };
+      }));
+    }
     socket.emit('feed_like', { token: authToken, feedId });
   };
 
@@ -876,7 +895,7 @@ function App() {
       setSearchResults([]); setIsSearching(false); return;
     }
     setIsSearching(true);
-    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim(), token: authToken }); }, 300);
+    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim(), token: authToken }); }, 150);
     return () => clearTimeout(timer);
   }, [searchInput]);
 

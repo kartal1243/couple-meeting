@@ -1749,7 +1749,8 @@ io.on('connection', (socket) => {
       createdAt: Date.now()
     };
     db.addGlobalMessage(msg);
-    io.emit('global_chat_message', msg);
+    // Gonderene echo yok: gonderen optimistic ekler, digerleri broadcast alir
+    socket.broadcast.emit('global_chat_message', msg);
   });
 
   // ──────────────────────────────────────────────────────
@@ -1927,41 +1928,51 @@ io.on('connection', (socket) => {
   // 7.5 MÜZIK ARAMA
   // ──────────────────────────────────────────────────────
 
+  const searchCache = new Map();
+  const SEARCH_TTL = 10 * 60 * 1000;
+  function searchCacheGet(key) {
+    const e = searchCache.get(key);
+    if (!e) return null;
+    if (Date.now() - e.t > SEARCH_TTL) { searchCache.delete(key); return null; }
+    return e.v;
+  }
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      promise,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+    ]);
+  }
+
   socket.on('search_music', async ({ query, token }) => {
     if (checkRate('search', 10)) return socket.emit('search_results', []);
     try {
       const q = sanitize(query, 200);
       if (!q || q.length < 2) { socket.emit('search_results', []); return; }
+      const cacheKey = q.toLowerCase();
+      const cached = searchCacheGet(cacheKey);
+      if (cached) { socket.emit('search_results', cached); return; }
 
       const yt = await getInnertube().catch(() => null);
       if (!yt) { socket.emit('search_results', []); return; }
 
-      // YouTube video ara (müzik + video hepsi)
-      try {
-        const sr = await yt.search(q, { type: 'video' });
-        const results = (sr.videos || []).slice(0, 10).map(v => ({
-          id: v.id, title: v.title?.text || v.title?.toString() || '',
-          artist: v.author?.name || '', duration: v.duration?.text || '',
-          thumbnail: v.thumbnails?.[v.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
-          src: v.id
-        })).filter(s => s.id && s.title);
-        if (results.length > 0) { socket.emit('search_results', results); return; }
-      } catch {}
-
-      // Fallback: müzik araması
-      try {
-        const sr = await yt.music.search(q, { type: 'song' });
-        const results = (sr.songs?.contents || []).map(s => ({
-          id: s.id, title: s.title?.text || s.title?.toString() || '',
-          artist: s.artists?.[0]?.name || '', duration: s.duration?.text || '',
-          thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
-          src: s.id
-        })).filter(s => s.id && s.title).slice(0, 10);
-        socket.emit('search_results', results);
-        return;
-      } catch {}
-
-      socket.emit('search_results', []);
+      // Video + muzik aramasi paralel (hizli sonuc)
+      const norm = (list) => (list || []).map(s => ({
+        id: s.id, title: s.title?.text || s.title?.toString() || '',
+        artist: s.artists?.[0]?.name || s.author?.name || '', duration: s.duration?.text || '',
+        thumbnail: s.thumbnails?.[s.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`,
+        src: s.id
+      })).filter(s => s.id && s.title);
+      const [videos, songs] = await Promise.all([
+        withTimeout(yt.search(q, { type: 'video' }).then(sr => norm(sr.videos).slice(0, 7)).catch(() => []), 6000),
+        withTimeout(yt.music.search(q, { type: 'song' }).then(sr => norm(sr.songs?.contents).slice(0, 7)).catch(() => []), 6000)
+      ]);
+      const seen = new Set();
+      const results = [...videos, ...songs].filter(s => !seen.has(s.id) && seen.add(s.id)).slice(0, 10);
+      if (results.length > 0) {
+        searchCache.set(cacheKey, { v: results, t: Date.now() });
+        if (searchCache.size > 300) searchCache.delete(searchCache.keys().next().value);
+      }
+      socket.emit('search_results', results);
     } catch (err) { logger.error('Arama hatasi', { error: err.message }); socket.emit('search_results', []); }
   });
 
