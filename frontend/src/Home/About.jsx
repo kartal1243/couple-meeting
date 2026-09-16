@@ -10,7 +10,7 @@ export default function About() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, maxWidth: 960, margin: '0 auto', padding: '0 20px' }}>
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🎵</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎵</div>
           <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Senkron Müzik Dinleme</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
             YouTube Music kataloğundan milyonlarca şarkıya eriş. Seçtiğin şarkıyı sevdiklerinle aynı anda,
@@ -19,7 +19,7 @@ export default function About() {
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🎬</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎬</div>
           <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Birlikte Video İzleme</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
             YouTube videolarını birlikte izle. Klip, belgesel, podcast — ne istersen.
@@ -28,7 +28,7 @@ export default function About() {
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
           <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Anlık Sohbet</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
             Müzik dinlerken sohbet et. Mesaj gönder, emoji ile tepki ver, yanıtla.
@@ -37,7 +37,7 @@ export default function About() {
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🤝</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🤝</div>
           <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Arkadaşlık Sistemi</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
             Profilini oluştur, arkadaşlarını bul ve ekle. Arkadaşlarının online durumunu gör,
@@ -46,7 +46,7 @@ export default function About() {
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
           <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Gizli Odalar</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
             Şifreli oda oluştur ve sadece davet ettiğin kişiler katılsın.
@@ -55,7 +55,7 @@ export default function About() {
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📱</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>📱</div>
           <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Her Cihazda Çalışır</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
             Telefon, tablet, bilgisayar — hangi cihazı kullanırsan kullan.
