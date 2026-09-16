@@ -118,12 +118,10 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: '#f59e0b', fontSize: 20, fontWeight: 950 }}>₺{plan.price}</div>
-                    {plan.savings && (
-                      <div style={{ background: '#00a884', color: '#fff', fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6, display: 'inline-block' }}>
-                        %{plan.savings} Tasarruf
-                      </div>
-                    )}
+                    <div style={{ background: '#00a884', color: '#fff', fontSize: 11, fontWeight: 900, padding: '4px 10px', borderRadius: 8, display: 'inline-block' }}>
+                      ÜCRETSİZ
+                    </div>
+                    <div style={{ color: '#63727d', fontSize: 10, marginTop: 3, textDecoration: 'line-through' }}>₺{plan.price}</div>
                   </div>
                 </div>
                 {selectedPlan === key && <div style={{ marginTop: 8, width: 6, height: 6, borderRadius: 3, background: '#f59e0b', marginLeft: 'auto' }} />}
@@ -145,7 +143,7 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
                   boxShadow: processing ? 'none' : '0 8px 25px rgba(245,158,11,.3)',
                   opacity: processing ? 0.6 : 1
                 }}>
-                {processing ? '⏳ İşleniyor...' : `🚀 VIP Ol - ₺${VIP_PLANS[selectedPlan].price}`}
+                {processing ? '⏳ İşleniyor...' : "⭐ VIP'i Ücretsiz Aktifleştir"}
               </button>
             )}
 
@@ -178,7 +176,7 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
             </div>
 
             <div style={{ textAlign: 'center', color: '#63727d', fontSize: 10, marginTop: 8 }}>
-              Güvenli ödeme • İstediğin zaman iptal et
+              🎉 Lansman dönemi: VIP ücretsiz • Ödeme çok yakında
             </div>
           </div>
         </div>

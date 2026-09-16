@@ -750,6 +750,11 @@ function App() {
     socket.emit('remove_from_playlist', { roomId: currentRoomIdRef.current, itemId, token: authToken });
   };
 
+  const handleMovePlaylistItem = (itemId, dir, e) => {
+    e.stopPropagation();
+    socket.emit('move_playlist_item', { roomId: currentRoomIdRef.current, itemId, dir });
+  };
+
   const handleModeChange = (mode) => {
     setPlayMode(mode);
     socket.emit('change_play_mode', { roomId: currentRoomIdRef.current, mode });
@@ -928,7 +933,7 @@ function App() {
     handleSaveSettings, handleKickUser, handleTransferAdmin,
     handlePlay, handlePause, handleMediaEnd, handleDirectPlay, handleVideoUpload,
     handleSelectSearchResult, handleOpenAddModal, confirmAddToPlaylist,
-    handleSelectPlaylistItem, handleRemovePlaylistItem, handleModeChange,
+    handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, handleModeChange,
     handleCreateCategory, handleSendMessage, sendReaction, sendAction,
     handleYouTubeError, openYouTubeExternally, handleInstallApp,
     setJoinRoomTarget, setJoinModalPass, setQuickRoomName, setQuickRoomPass,

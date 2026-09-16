@@ -4,7 +4,7 @@ function Playlist({
   categories, selectedCategory, setSelectedCategory,
   newCategoryInput, setNewCategoryInput, handleCreateCategory,
   playMode, handleModeChange, filteredPlaylist, mediaSrc,
-  handleSelectPlaylistItem, handleRemovePlaylistItem, currentTheme
+  handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, currentTheme
 }) {
   return (
     <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b141a' }}>
@@ -92,12 +92,28 @@ function Playlist({
             }}>
               {item.title}
             </div>
-            <button
-              onClick={(e) => handleRemovePlaylistItem(item.id, e)}
-              style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}
-            >
-              🗑️
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+              <button
+                onClick={(e) => handleMovePlaylistItem && handleMovePlaylistItem(item.id, 'up', e)}
+                title="Yukarı taşı"
+                style={{ background: 'transparent', border: 'none', color: '#8696a0', cursor: 'pointer', fontSize: 12, padding: '2px 4px' }}
+              >
+                ▲
+              </button>
+              <button
+                onClick={(e) => handleMovePlaylistItem && handleMovePlaylistItem(item.id, 'down', e)}
+                title="Aşağı taşı"
+                style={{ background: 'transparent', border: 'none', color: '#8696a0', cursor: 'pointer', fontSize: 12, padding: '2px 4px' }}
+              >
+                ▼
+              </button>
+              <button
+                onClick={(e) => handleRemovePlaylistItem(item.id, e)}
+                style={{ background: 'transparent', border: 'none', color: '#ff4757', cursor: 'pointer' }}
+              >
+                🗑️
+              </button>
+            </div>
           </div>
         ))
       )}

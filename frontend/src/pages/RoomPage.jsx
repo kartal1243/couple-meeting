@@ -26,7 +26,7 @@ export default function RoomPage() {
     setChatInput, handleSendMessage, replyTo, setReplyTo, sidebarTab, setSidebarTab,
     playlist, categories, selectedCategory, setSelectedCategory, newCategoryInput,
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
-    handleSelectPlaylistItem, handleRemovePlaylistItem, cssVars, handleVideoUpload,
+    handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, cssVars, handleVideoUpload,
     toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
     messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
@@ -201,7 +201,7 @@ export default function RoomPage() {
               handleCreateCategory={handleCreateCategory} playMode={playMode}
               handleModeChange={handleModeChange} filteredPlaylist={filteredPlaylist}
               mediaSrc={mediaSrc} handleSelectPlaylistItem={handleSelectPlaylistItem}
-              handleRemovePlaylistItem={handleRemovePlaylistItem} currentTheme={currentTheme}
+              handleRemovePlaylistItem={handleRemovePlaylistItem} handleMovePlaylistItem={handleMovePlaylistItem} currentTheme={currentTheme}
             />
           )}
         </div>

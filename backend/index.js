@@ -2097,18 +2097,32 @@ io.on('connection', (socket) => {
   });
 
   socket.on('remove_from_playlist', ({ roomId, itemId, token }) => {
-    const user = requireAuth(token);
-    if (!user) return;
+    const user = token ? requireAuth(token) : null;
     const room = rooms[sanitize(roomId, 50)];
-    if (room) {
-      room.playlist = room.playlist.filter(i => i.id !== itemId);
-      io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
-    }
+    if (!room) return;
+    const inRoom = room.users.some(u => u.socketId === socket.id);
+    if (!user && !inRoom) return;
+    room.playlist = room.playlist.filter(i => i.id !== itemId);
+    io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
   });
 
+  socket.on('move_playlist_item', ({ roomId, itemId, dir }) => {
+    const room = rooms[sanitize(roomId, 50)];
+    if (!room || !Array.isArray(room.playlist)) return;
+    if (!room.users.some(u => u.socketId === socket.id)) return;
+    const idx = room.playlist.findIndex(i => i.id === itemId);
+    if (idx < 0) return;
+    const to = idx + (dir === 'down' ? 1 : -1);
+    if (to < 0 || to >= room.playlist.length) return;
+    const [item] = room.playlist.splice(idx, 1);
+    room.playlist.splice(to, 0, item);
+    io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
+  });
+
+  const VALID_PLAY_MODES = ['sequence', 'shuffle', 'alphabetical'];
   socket.on('change_play_mode', ({ roomId, mode }) => {
     const room = rooms[sanitize(roomId, 50)];
-    if (room) {
+    if (room && VALID_PLAY_MODES.includes(mode)) {
       room.playMode = mode;
       io.to(sanitize(roomId, 50)).emit('play_mode_changed', mode);
     }
@@ -2379,6 +2393,27 @@ setInterval(() => {
     }
   } catch (e) {}
 }, 300000);
+
+// Gunluk otomatik DB backup (son 7 gun tutulur)
+setInterval(async () => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const dir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, `auto-${new Date().toISOString().slice(0, 10)}.db`);
+    if (fs.existsSync(dest)) return;
+    const ok = await db.backupDb(dest);
+    if (ok) {
+      logger.info(`[BACKUP] Otomatik yedek alindi: ${dest}`);
+      const files = fs.readdirSync(dir).filter(f => f.startsWith('auto-') && f.endsWith('.db')).sort();
+      while (files.length > 7) {
+        const old = files.shift();
+        try { fs.unlinkSync(path.join(dir, old)); } catch {}
+      }
+    }
+  } catch (e) { logger.error('Otomatik backup hatasi', { error: e.message }); }
+}, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
