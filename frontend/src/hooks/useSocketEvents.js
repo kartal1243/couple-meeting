@@ -133,7 +133,10 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
         a().setMediaSrc(payload.src);
       } else if (type === 'CHAT_MESSAGE') {
         a().setMessages((prev) => {
-          const updated = [...prev, payload];
+          const idx = prev.findIndex((m) => m.id && payload.id && m.id === payload.id);
+          const updated = idx !== -1
+            ? prev.map((m, i) => (i === idx ? { ...m, ...payload } : m))
+            : [...prev, payload];
           saveRoomMessages(a().currentRoomIdRef?.current, updated);
           return updated;
         });
