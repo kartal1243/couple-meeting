@@ -106,6 +106,7 @@ function App() {
   const [quickRoomName, setQuickRoomName] = useState('');
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
+  const [quickVipRoom, setQuickVipRoom] = useState(false);
 
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
@@ -579,7 +580,7 @@ function App() {
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
     if (!authToken) setUsername(tabUserId);
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: tabUserId };
+    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: tabUserId, vipRoom: quickVipRoom && !!authUser?.isVip };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -592,6 +593,7 @@ function App() {
     setQuickRoomName('');
     setQuickRoomPass('');
     setQuickMaxUsers('2');
+    setQuickVipRoom(false);
   };
 
   const handleJoinRoomFromModal = (e) => {
@@ -1068,8 +1070,22 @@ function App() {
                   <option value="2">2 Kisi 💑</option>
                   <option value="4">4 Kisi 👥</option>
                   <option value="8">8 Kisi 🎉</option>
+                  {authUser?.isVip && <option value="20">20 Kisi 👑 (VIP)</option>}
                 </select>
               </div>
+              {authUser?.isVip ? (
+                <label style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(245,158,11,.08)', border:'1px solid rgba(245,158,11,.3)', borderRadius:12, cursor:'pointer' }}>
+                  <input type="checkbox" checked={quickVipRoom} onChange={(e) => setQuickVipRoom(e.target.checked)} style={{ width:18, height:18, accentColor:'#f59e0b' }} />
+                  <span>
+                    <span style={{ color:'#f59e0b', fontSize:13, fontWeight:900 }}>👑 VIP Odası</span>
+                    <span style={{ color:'#94a3b8', fontSize:11, display:'block' }}>Kapanmaz, mesajlar ve playlist saklanır</span>
+                  </span>
+                </label>
+              ) : (
+                <div style={{ padding:'10px 14px', background:'rgba(255,255,255,.03)', border:'1px solid rgba(255,255,255,.06)', borderRadius:12, color:'#64748b', fontSize:11 }}>
+                  👑 Kalıcı VIP odası için <span style={{ color:'#f59e0b', fontWeight:800 }}>VIP</span> gerekli
+                </div>
+              )}
               <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>🚀 Odayi Baslat</button>
             </form>
           </div>

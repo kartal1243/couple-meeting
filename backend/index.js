@@ -322,7 +322,7 @@ app.get('/api/search/messages', (req, res) => {
   if (!user) return res.status(401).json({ ok: false });
   if (!user.isVip) return res.status(403).json({ ok: false, message: 'VIP uyelik gerekiyor.' });
   try {
-    const results = db.getDb().prepare("SELECT * FROM room_messages WHERE text LIKE ? AND roomId = ? ORDER BY createdAt DESC LIMIT 50").all(`%${q}%`, roomId || '%');
+    const results = db.getDb().prepare("SELECT * FROM room_messages WHERE text LIKE ? AND room_id = ? ORDER BY created_at DESC LIMIT 50").all(`%${q}%`, roomId || '%');
     res.json({ ok: true, results });
   } catch (e) { res.json({ ok: true, results: [] }); }
 });
@@ -904,6 +904,16 @@ function loadRoomsFromDb() {
       };
     }
     if (savedRooms.length > 0) logger.info(`[DB] ${savedRooms.length} oda yüklendi.`);
+    // Sifirlama: normal odalar DB'de tutulmaz, sadece VIP odalar kalir
+    try {
+      const d = db.getDb();
+      if (d) {
+        d.prepare(`DELETE FROM room_messages WHERE room_id IN (SELECT id FROM rooms WHERE is_vip = 0)`).run();
+        d.prepare(`DELETE FROM room_playlists WHERE room_id IN (SELECT id FROM rooms WHERE is_vip = 0)`).run();
+        const gone = d.prepare(`DELETE FROM rooms WHERE is_vip = 0`).run();
+        if (gone.changes > 0) logger.info(`[DB] ${gone.changes} normal oda kaydi temizlendi (sadece VIP saklanir).`);
+      }
+    } catch (e) {}
   } catch (e) {
     logger.error?.('Oda yükleme hatası: ' + e.message);
   }
@@ -1980,17 +1990,18 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId } = {}) => {
-    const user = token ? requireAuth(token) : null;
+  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId, vipRoom } = {}) => {
+    const user = token ? db.getUserByToken(token) : null;
     const cleanRoomId = sanitize(roomId, 50);
     const userId = user ? user.username : (clientUserId && typeof clientUserId === 'string' ? sanitize(clientUserId, 50) : 'misafir-' + Math.floor(1000 + Math.random() * 9000));
     const username = user ? user.username : userId;
     const avatar = user ? (user.avatar || '🐱') : '🐱';
-    const isVip = user ? !!user.isVip : false;
+    const creatorVip = user ? !!(user.isVip && user.vipExpiry && user.vipExpiry > Date.now()) : false;
     let room = rooms[cleanRoomId];
 
     if (!room) {
-      const roomMaxUsers = isVip ? Math.min(Math.max(parseInt(maxUsers) || 2, 2), 20) : Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8);
+      const roomIsVip = creatorVip && !!vipRoom;
+      const roomMaxUsers = roomIsVip ? Math.min(Math.max(parseInt(maxUsers) || 2, 2), 20) : Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8);
       rooms[cleanRoomId] = {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
         maxUsers: roomMaxUsers,
@@ -1998,15 +2009,26 @@ io.on('connection', (socket) => {
         kickedUsers: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
         currentMedia: { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() },
-        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: !!isVip
+        messages: [], createdAt: Date.now(), lastActivityAt: Date.now(), isVip: roomIsVip
       };
       room = rooms[cleanRoomId];
-      try { db.saveRoom({ id: cleanRoomId, name: cleanRoomId, hostUserId: userId, password: room.password, isVip: room.isVip, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
+      if (roomIsVip) {
+        try { db.saveRoom({ id: cleanRoomId, name: cleanRoomId, hostUserId: userId, password: room.password, isVip: true, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
+      }
     } else {
       if (room.password && room.password !== (password || '')) { socket.emit('room_error', 'Şifre hatalı!'); return; }
       if (room.kickedUsers && room.kickedUsers.includes(userId)) { socket.emit('room_error', 'Bu odadan atıldınız, tekrar giremezsiniz!'); return; }
       if (!room.users.find(u => u.userId === userId) && room.users.length >= room.maxUsers) { socket.emit('room_error', `Oda Dolu! (${room.users.length}/${room.maxUsers})`); return; }
       if (!room.messages) room.messages = [];
+      // Bos normal oda 60sn'den uzun suredir bossa sifirdan baslat (kapanmis sayilir)
+      if (!room.isVip && room.users.length === 0 && room.emptySince && (Date.now() - room.emptySince) > 60000) {
+        room.playlist = []; room.categories = ['Genel']; room.playMode = 'sequence';
+        room.messages = []; room.kickedUsers = [];
+        room.currentMedia = { type: 'none', src: '', time: 0, isPlaying: false, lastUpdated: Date.now() };
+        room.hostUserId = userId; room.createdAt = Date.now();
+        delete room.emptySince;
+        logger.info(`Oda sifirlandi (bos kalmisti): ${cleanRoomId}`);
+      }
     }
 
     const existingIndex = room.users.findIndex(u => u.userId === userId);
@@ -2034,7 +2056,7 @@ io.on('connection', (socket) => {
       const feedId = db.addFeedItem(username, 'room_join', { roomId: cleanRoomId, roomName: room.name });
       if (feedId) {
         const user = db.getUser(username);
-        const followers = db.prepare ? db.prepare('SELECT following FROM follows WHERE follower = ?').all(username) : [];
+        const followers = db.getDb() ? db.getDb().prepare('SELECT following FROM follows WHERE follower = ?').all(username) : [];
         followers.forEach(f => emitToUser(f.following, 'new_feed_item', { item: { id: feedId, username, avatar: user?.avatar || '🐱', type: 'room_join', data: JSON.stringify({ roomId: cleanRoomId, roomName: room.name }), created_at: Date.now(), liked_by: [], like_count: 0, comment_count: 0 } }));
       }
     } catch (e) {}
@@ -2053,7 +2075,9 @@ io.on('connection', (socket) => {
       room.maxUsers = Math.min(Math.max(parseInt(newMaxUsers) || 2, 2), maxLimit);
     }
     if (typeof newPassword === 'string') room.password = newPassword;
-    try { db.saveRoom({ id: sanitize(roomId, 50), name: room.name, hostUserId: room.hostUserId, password: room.password, isVip: room.isVip, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
+    if (room.isVip) {
+      try { db.saveRoom({ id: sanitize(roomId, 50), name: room.name, hostUserId: room.hostUserId, password: room.password, isVip: true, maxUsers: room.maxUsers, theme: room.theme, createdAt: room.createdAt, lastActivityAt: room.lastActivityAt }); } catch (e) {}
+    }
     io.to(sanitize(roomId, 50)).emit('room_settings_updated', { roomName: room.name, theme: room.theme, hostUserId: room.hostUserId, maxUsers: room.maxUsers, hasPassword: !!room.password });
     broadcastRooms();
   });
