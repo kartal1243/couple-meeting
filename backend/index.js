@@ -781,6 +781,23 @@ app.post('/api/admin/send-email', adminAuth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// ANDROID KAPALI BETA KAYIT
+// ═══════════════════════════════════════════════════════════
+app.post('/api/beta/signup', authLimiter, (req, res) => {
+  const email = sanitize(req.body?.email, 100).toLowerCase();
+  if (!email || !isValidEmail(email)) return res.json({ ok: false, message: 'Geçerli bir Gmail yaz.' });
+  if (!email.endsWith('@gmail.com')) return res.json({ ok: false, message: 'Play kapalı beta için Gmail gerekli.' });
+  const ok = db.addBetaTester(email);
+  if (!ok) return res.json({ ok: false, message: 'Kayıt alınamadı, sonra tekrar dene.' });
+  logger.info(`[BETA] Yeni kayit: ${email}`);
+  res.json({ ok: true, message: 'Kaydın alındı! Davet maili göndereceğiz.' });
+});
+
+app.get('/api/admin/beta', adminAuth, (req, res) => {
+  res.json({ ok: true, testers: db.getBetaTesters() });
+});
+
+// ═══════════════════════════════════════════════════════════
 // FEEDBACK / HATA BILDIRIMI
 // ═══════════════════════════════════════════════════════════
 app.post('/api/feedback', (req, res) => {

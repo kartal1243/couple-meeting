@@ -184,6 +184,12 @@ function initTables() {
     );
     CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(username, read, created_at DESC);
 
+    CREATE TABLE IF NOT EXISTS beta_testers (
+      email TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending'
+    );
+
     CREATE TABLE IF NOT EXISTS user_reports (
       id TEXT PRIMARY KEY,
       reporter TEXT NOT NULL,
@@ -1299,6 +1305,21 @@ function getAllGroupChatDefs() {
   } catch (e) { return []; }
 }
 
+function addBetaTester(email) {
+  if (!getDb()) return false;
+  try {
+    db.prepare('INSERT OR IGNORE INTO beta_testers (email, created_at, status) VALUES (?, ?, ?)').run(email, Date.now(), 'pending');
+    return true;
+  } catch { return false; }
+}
+
+function getBetaTesters() {
+  if (!getDb()) return [];
+  try {
+    return db.prepare('SELECT email, created_at, status FROM beta_testers ORDER BY created_at DESC LIMIT 2000').all();
+  } catch { return []; }
+}
+
 loadJson();
 
 module.exports = {
@@ -1321,5 +1342,6 @@ module.exports = {
   setupTwoFactor, enableTwoFactor, disableTwoFactor, getTwoFactor, isTwoFactorEnabled,
   saveRoom, deleteRoom, saveRoomMessage, getRoomMessages,
   saveRoomPlaylistItem, deleteRoomPlaylistItem, clearRoomPlaylist, getRoomPlaylist,
-  getAllRooms, updateRoomActivity, saveGroupChatDef, deleteGroupChatDef, getAllGroupChatDefs
+  getAllRooms, updateRoomActivity, saveGroupChatDef, deleteGroupChatDef, getAllGroupChatDefs,
+  addBetaTester, getBetaTesters
 };

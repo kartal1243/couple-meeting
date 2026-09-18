@@ -7,6 +7,7 @@ import Hero from '../Home/Hero';
 import About from '../Home/About';
 import PublicRooms from '../Home/PublicRooms';
 import SocialPreview from '../Home/SocialPreview';
+import BetaSignup from '../Home/BetaSignup';
 import FeedbackModal from '../Modals/FeedbackModal';
 
 export default function HomePage() {
@@ -28,6 +29,7 @@ export default function HomePage() {
         <PublicRooms publicRooms={publicRooms} onJoinRoom={(room) => { setJoinRoomTarget(room); setShowJoinModal(true); }} onCreateRoom={() => setShowQuickCreate(true)} />
         <About />
         <SocialPreview globalMessages={globalMessages} setShowSocialModal={setShowSocialModal} />
+        <BetaSignup />
         <Footer setShowVipModal={setShowVipModal} />
       </main>
       <FeedbackModal show={showFeedback} onClose={() => setShowFeedback(false)} />

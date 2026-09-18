@@ -35,6 +35,7 @@ function AdminPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [feedbackList, setFeedbackList] = useState([]);
+  const [betaTesters, setBetaTesters] = useState([]);
   const [quickVipUser, setQuickVipUser] = useState('');
   const [vipDays, setVipDays] = useState(365);
   const [vipPlan, setVipPlan] = useState('yearly');
@@ -120,18 +121,20 @@ function AdminPage() {
   // ── INITIAL DATA FETCH ──
   const fetchLogs = useCallback(async () => {
     try {
-      const [l, u, sys, rep, fb] = await Promise.all([
+      const [l, u, sys, rep, fb, beta] = await Promise.all([
         api(`/api/admin/logs?limit=500${logRoomFilter ? `&room=${logRoomFilter}` : ''}`),
         api('/api/admin/users'),
         api('/api/admin/system'),
         api('/api/admin/reports'),
-        api('/api/admin/feedback')
+        api('/api/admin/feedback'),
+        api('/api/admin/beta')
       ]);
       if (l.ok) setLogs(l.logs);
       if (u.ok) setUsers(u.users);
       if (sys.ok) setSystem(sys);
       if (rep.ok) setReports(rep.reports || []);
       if (fb.ok) setFeedbackList(fb.feedback || []);
+      if (beta.ok) setBetaTesters(beta.testers || []);
     } catch {}
   }, [pass, logRoomFilter, api]);
 
@@ -316,6 +319,7 @@ function AdminPage() {
     { key: 'users', icon: '👥', label: `Kullanıcılar (${users.length})` },
     { key: 'analytics', icon: '📈', label: 'Analitik' },
     { key: 'broadcast', icon: '📢', label: 'Toplu İletişim' },
+    { key: 'beta', icon: '🤖', label: `Beta (${betaTesters.length})` },
     { key: 'feedback', icon: '🐛', label: `Geri Bildirim (${feedbackList.length})` },
     { key: 'logs', icon: '📋', label: 'Loglar' },
     { key: 'reports', icon: '🚨', label: `Raporlar (${reports.length})` },
@@ -457,6 +461,28 @@ function AdminPage() {
 
         {/* ═══════════ BULK COMMUNICATION ═══════════ */}
         {tab === 'broadcast' && <BroadcastTab bulkMessage={bulkMessage} setBulkMessage={setBulkMessage} bulkTarget={bulkTarget} setBulkTarget={setBulkTarget} sendBulkMessage={sendBulkMessage} emailSubject={emailSubject} setEmailSubject={setEmailSubject} emailBody={emailBody} setEmailBody={setEmailBody} emailTarget={emailTarget} setEmailTarget={setEmailTarget} sendBulkEmail={sendBulkEmail} showToast={showToast} />}
+
+        {tab === 'beta' && (
+          <div style={{ animation: 'fadeIn .4s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ color: '#fff', fontWeight: 900, fontSize: 15 }}>🤖 Kapalı Beta Kayıtları ({betaTesters.length})</div>
+              <button onClick={() => {
+                const list = betaTesters.map(t => t.email).join(', ');
+                if (navigator.clipboard && list) navigator.clipboard.writeText(list).then(() => showToast('Mailler kopyalandı!'));
+              }} className="admin-action" style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #00a884, #008f6f)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>📋 Tümünü Kopyala</button>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,.02)', borderRadius: 18, padding: 18, border: '1px solid rgba(255,255,255,.05)' }}>
+              {betaTesters.length === 0 ? (
+                <div style={{ color: '#64748b', textAlign: 'center', padding: 24, fontSize: 13 }}>Henüz kayıt yok.</div>
+              ) : betaTesters.map(t => (
+                <div key={t.email} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px', borderBottom: '1px solid rgba(255,255,255,.04)', fontSize: 13 }}>
+                  <span style={{ color: '#e2e8f0' }}>{t.email}</span>
+                  <span style={{ color: '#64748b', fontSize: 11 }}>{new Date(t.created_at).toLocaleString('tr-TR')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ═══════════ USER DETAIL MODAL ═══════════ */}
         {showUserDetail && userDetail && (

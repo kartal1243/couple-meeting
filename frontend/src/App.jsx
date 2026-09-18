@@ -107,6 +107,10 @@ function App() {
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
   const [quickVipRoom, setQuickVipRoom] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [nameError, setNameError] = useState('');
+  const pendingJoinRef = useRef(null);
 
   const [editRoomNameInput, setEditRoomNameInput] = useState('');
 
@@ -575,8 +579,30 @@ function App() {
   };
 
   // ── 6. ODA YONETIMI ──
+  const needName = () => !authToken && !localStorage.getItem('cm_username');
+
+  const saveDisplayName = (e) => {
+    if (e) e.preventDefault();
+    const clean = nameInput.trim();
+    if (clean.length < 2) { setNameError('İsim en az 2 karakter olmalı.'); return; }
+    if (clean.length > 20) { setNameError('İsim en fazla 20 karakter olabilir.'); return; }
+    setUsername(clean);
+    localStorage.setItem('cm_username', clean);
+    setShowNameModal(false);
+    setNameInput('');
+    setNameError('');
+    const run = pendingJoinRef.current;
+    pendingJoinRef.current = null;
+    if (run) run();
+  };
+
   const handleQuickCreateSubmit = (e) => {
     e.preventDefault();
+    if (needName()) {
+      pendingJoinRef.current = () => handleQuickCreateSubmit(e);
+      setNameInput(''); setNameError(''); setShowNameModal(true);
+      return;
+    }
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
     if (!authToken) setUsername(tabUserId);
@@ -599,6 +625,11 @@ function App() {
   const handleJoinRoomFromModal = (e) => {
     e.preventDefault();
     if (!joinRoomTarget) return;
+    if (needName()) {
+      pendingJoinRef.current = () => handleJoinRoomFromModal(e);
+      setNameInput(''); setNameError(''); setShowNameModal(true);
+      return;
+    }
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     setJoinModalError('');
     if (!authToken) setUsername(tabUserId);
@@ -1087,6 +1118,32 @@ function App() {
                 </div>
               )}
               <button type="submit" style={{ padding:'14px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 25px rgba(124,58,237,.3)', marginTop:4 }}>🚀 Odayi Baslat</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showNameModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:26000, background:'rgba(0,0,0,.88)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:14 }}>
+          <div style={{ width:'min(360px,100%)', background:'linear-gradient(180deg,#111b21,#0a0f14)', border:'1px solid #2a3942', borderRadius:24, overflow:'hidden', boxShadow:'0 40px 120px rgba(0,0,0,.6)' }}>
+            <div style={{ padding:'24px 24px 0', textAlign:'center' }}>
+              <div style={{ fontSize:40 }}>👋</div>
+              <div style={{ color:'#fff', fontSize:18, fontWeight:950, marginTop:8 }}>İsmin ne?</div>
+              <div style={{ color:'#94a3b8', fontSize:12, marginTop:4 }}>Odada böyle görüneceksin. Hesap açmadan katılabilirsin.</div>
+            </div>
+            <form onSubmit={saveDisplayName} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:10 }}>
+              <input
+                value={nameInput} onChange={(e) => setNameInput(e.target.value)}
+                placeholder="örn: GeceKusu" autoFocus maxLength={20}
+                style={{ width:'100%', padding:'13px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:14, outline:'none', boxSizing:'border-box', textAlign:'center', fontWeight:800 }}
+              />
+              {nameError && <div style={{ color:'#ef4444', fontSize:11, textAlign:'center' }}>{nameError}</div>}
+              <button type="submit" style={{ padding:'13px', borderRadius:14, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:15, fontWeight:900, cursor:'pointer' }}>
+                Devam Et →
+              </button>
+              <button type="button" onClick={() => openAuth('register')} style={{ background:'none', border:'none', color:'#53e6bc', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                Hesabım var / Hesap aç
+              </button>
             </form>
           </div>
         </div>
