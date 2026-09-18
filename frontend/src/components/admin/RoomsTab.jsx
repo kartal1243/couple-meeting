@@ -27,10 +27,18 @@ const RoomsTab = memo(function RoomsTab({ rooms, closeRoom }) {
               </div>
               <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <span>👥 {r.userCount}/{r.maxUsers}</span>
-                <span>📁 {r.id}</span>
-                <span>🎤 {r.currentMedia?.type || 'Yok'}</span>
+                <span>🆔 {r.id}</span>
+                <span>🎵 {r.currentMedia?.type || 'Yok'}</span>
                 {r.hasPassword && <span style={{ color: '#eab308' }}>🔒 Şifre: {r.password}</span>}
               </div>
+              {(() => {
+                const host = (r.users || []).find(u => u.userId === r.hostUserId || u.username === r.hostUserId);
+                return (
+                  <div style={{ fontSize: 11, marginTop: 6, color: '#a855f7', fontWeight: 800 }}>
+                    👑 Kurucu: {host ? `${host.avatar || ''} ${host.username}` : `${r.hostUserId || '?'} (odada değil)`}
+                  </div>
+                );
+              })()}
               {r.users.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                   {r.users.map(u => (
