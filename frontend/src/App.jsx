@@ -918,9 +918,16 @@ function App() {
     const match = location.pathname.match(/^\/room\/(.+)$/);
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = decodeURIComponent(match[1]);
-      const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(tabUserId);
-      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity, clientUserId: tabUserId, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '' });
+      const doJoin = () => {
+        const savedPass = localStorage.getItem('cm_saved_pass') || '';
+        socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity, clientUserId: tabUserId, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '' });
+      };
+      if (needName()) {
+        pendingJoinRef.current = doJoin;
+        setNameInput(''); setNameError(''); setShowNameModal(true);
+        return;
+      }
+      doJoin();
     }
   }, [location.pathname]);
 
