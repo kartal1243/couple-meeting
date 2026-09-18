@@ -579,7 +579,7 @@ function App() {
   };
 
   // ── 6. ODA YONETIMI ──
-  const needName = () => !authToken && !localStorage.getItem('cm_username');
+  const needName = () => !authToken && !authUser && !localStorage.getItem('cm_username');
 
   const saveDisplayName = (e) => {
     if (e) e.preventDefault();
@@ -605,8 +605,8 @@ function App() {
     }
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    if (!authToken) setUsername(tabUserId);
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: tabUserId, vipRoom: quickVipRoom && !!authUser?.isVip };
+    if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(tabUserId);
+    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: tabUserId, vipRoom: quickVipRoom && !!authUser?.isVip, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '' };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -632,7 +632,7 @@ function App() {
     }
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     setJoinModalError('');
-    if (!authToken) setUsername(tabUserId);
+    if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(tabUserId);
     const timeoutId = setTimeout(() => {
       setShowJoinModal(false);
       setJoinRoomTarget(null);
@@ -656,7 +656,8 @@ function App() {
     socket.once('room_joined', onJoined);
     socket.emit('join_room', {
       roomId: joinRoomTarget.id, password: joinModalPass.trim(),
-      token: authToken, userCity, clientUserId: tabUserId
+      token: authToken, userCity, clientUserId: tabUserId,
+      guestName: !authToken ? (localStorage.getItem('cm_username') || username) : ''
     });
   };
 
@@ -918,8 +919,8 @@ function App() {
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = decodeURIComponent(match[1]);
       const savedPass = localStorage.getItem('cm_saved_pass') || '';
-      if (!authToken) setUsername(tabUserId);
-      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity, clientUserId: tabUserId });
+      if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(tabUserId);
+      socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity, clientUserId: tabUserId, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '' });
     }
   }, [location.pathname]);
 

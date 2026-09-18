@@ -2007,11 +2007,13 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId, vipRoom } = {}) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId, vipRoom, guestName } = {}) => {
     const user = token ? db.getUserByToken(token) : null;
+    if (token && !user) { socket.emit('room_error', 'Oturumun süresi dolmuş. Tekrar giriş yap.'); return; }
     const cleanRoomId = sanitize(roomId, 50);
     const userId = user ? user.username : (clientUserId && typeof clientUserId === 'string' ? sanitize(clientUserId, 50) : 'misafir-' + Math.floor(1000 + Math.random() * 9000));
-    const username = user ? user.username : userId;
+    const cleanGuest = !user && typeof guestName === 'string' ? sanitize(guestName, 20).trim() : '';
+    const username = user ? user.username : (cleanGuest.length >= 2 ? cleanGuest : userId);
     const avatar = user ? (user.avatar || '🐱') : '🐱';
     const creatorVip = user ? !!(user.isVip && user.vipExpiry && user.vipExpiry > Date.now()) : false;
     let room = rooms[cleanRoomId];
