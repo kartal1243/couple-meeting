@@ -1311,5 +1311,7 @@ module.exports = {
   setupTwoFactor, enableTwoFactor, disableTwoFactor, getTwoFactor, isTwoFactorEnabled,
   saveRoom, deleteRoom, saveRoomMessage, getRoomMessages,
   saveRoomPlaylistItem, deleteRoomPlaylistItem, clearRoomPlaylist, getRoomPlaylist,
-  getAllRooms, updateRoomActivity, saveGroupChatDef, deleteGroupChatDef, getAllGroupChatDefs
+  getAllRooms, updateRoomActivity, saveGroupChatDef, deleteGroupChatDef, getAllGroupChatDefs,
+  get db() { return getDb(); }
 };
+

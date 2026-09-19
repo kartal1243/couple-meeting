@@ -20,12 +20,7 @@ import Events from './pages/Events';
 import BlogPage from './pages/BlogPage';
 import AdsPage from './pages/AdsPage';
 
-import AuthModal from './Modals/AuthModal';
-import SocialModal from './Modals/SocialModal';
-import FolderModal from './Modals/FolderModal';
-import SettingsModal from './Modals/SettingsModal';
-import ProfileModal from './Modals/ProfileModal';
-import VipModal from './Modals/VipModal';
+import ModalManager from './Modals/ModalManager';
 
 function App() {
   const navigate = useNavigate();
