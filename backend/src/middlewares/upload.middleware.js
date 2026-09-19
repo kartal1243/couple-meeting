@@ -7,12 +7,16 @@ const rateLimit = require('express-rate-limit');
 const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
+// Dosya adını güvenli hale getir (path traversal / özel karakter engeli)
+function safeFilename(prefix, originalname, fallbackExt) {
+  const rawExt = path.extname(originalname || '').toLowerCase();
+  const ext = /^\.[a-z0-9]{1,5}$/.test(rawExt) ? rawExt : fallbackExt;
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `avatar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
-  }
+  filename: (req, file, cb) => cb(null, safeFilename('avatar', file.originalname, '.jpg'))
 });
 
 const uploadAvatar = multer({
@@ -37,10 +41,7 @@ const uploadLimiter = rateLimit({
 
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.mp4';
-    cb(null, `video_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
-  }
+  filename: (req, file, cb) => cb(null, safeFilename('video', file.originalname, '.mp4'))
 });
 
 const uploadVideo = multer({
@@ -59,9 +60,23 @@ const uploadVideo = multer({
   }
 });
 
+// GÜVENLİK: Oda dosyaları için tür filtresi (tehlikeli dosya - örn. .exe/.html/.js - yüklemeyi engeller)
+const ROOM_FILE_ALLOWED = /\.(jpg|jpeg|png|gif|webp|bmp|mp4|webm|ogg|mov|mp3|wav|m4a|pdf|txt|zip)$/i;
 const uploadRoomFile = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const mime = file.mimetype || '';
+    const mimeOk = mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/') ||
+      mime === 'application/pdf' || mime === 'text/plain' || mime === 'application/zip' ||
+      mime === 'application/x-zip-compressed' || mime === 'application/octet-stream';
+    if (ROOM_FILE_ALLOWED.test(ext) && mimeOk) {
+      cb(null, true);
+    } else {
+      cb(new Error('Bu dosya türüne izin verilmiyor.'));
+    }
+  }
 });
 
 module.exports = {

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const logger = require('../../utils/logger');
 const db = require('../../utils/database');
 const { EFFECTIVE_ADMIN_PASS } = require('../config');
+const { safeCompare } = require('../middlewares/auth.middleware');
 const { sanitize, isValidEmail, isValidUsername } = require('../utils/helpers');
 const {
   adminSocketIds,
@@ -17,7 +18,7 @@ const {
 module.exports = function registerAuthSocket(io, socket, { checkRate }) {
   // ── ADMIN REAL-TIME DASHBOARD ──
   socket.on('admin_connect', ({ pass } = {}) => {
-    if (pass !== EFFECTIVE_ADMIN_PASS) return;
+    if (!EFFECTIVE_ADMIN_PASS || !safeCompare(String(pass || ''), String(EFFECTIVE_ADMIN_PASS))) return;
     adminSocketIds.add(socket.id);
     startAdminUpdates();
     try { broadcastAdminDashboard(); } catch (e) {}

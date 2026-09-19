@@ -175,6 +175,11 @@ module.exports = function registerRoomSocket(io, socket, { checkRate, requireAut
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
 
+    // Gec katilan kullanici: aktif bir ekran paylasimi varsa haber ver (WebRTC akisi baslatilir)
+    if (room.screenSharer && room.screenSharer.socketId !== socket.id) {
+      socket.emit('screen_share_started', { socketId: room.screenSharer.socketId, username: room.screenSharer.username });
+    }
+
     updateRoomUsers(cleanRoomId);
     broadcastRooms();
     try {
@@ -333,8 +338,12 @@ module.exports = function registerRoomSocket(io, socket, { checkRate, requireAut
     const cleanRoomId = sanitize(roomId, 50);
     const room = rooms[cleanRoomId];
     if (room) {
+      // GUVENLIK: Medya kontrolu ve oda yonetimi sadece host tarafindan yapilabilir
+      const isHost = room.hostUserId === socket.socialUsername || room.hostUserId === socket.userId;
+      const MEDIA_ACTIONS = ['CHANGE_MEDIA', 'PLAY', 'PAUSE', 'SPEED', 'ROOM_CLOSED', 'UPDATE_MAX_USERS', 'ROOM_NAME_UPDATE', 'ROOM_THEME_UPDATE'];
+      if (MEDIA_ACTIONS.includes(type) && !isHost) return;
       if (type === 'ROOM_CLOSED') {
-        if (room.hostUserId !== socket.socialUsername && room.hostUserId !== socket.userId) return;
+        if (!isHost) return;
         io.to(cleanRoomId).emit('room_action', { type: 'ROOM_CLOSED', payload: { message: 'Oda yönetici tarafından kapatıldı.' } });
         for (const u of room.users) {
           io.sockets.sockets.get(u.socketId)?.leave(cleanRoomId);
@@ -419,24 +428,7 @@ module.exports = function registerRoomSocket(io, socket, { checkRate, requireAut
     socket.to(cleanRoomId).emit('room_action', { type, payload });
   });
 
-  // ── EKRAN PAYLAŞIMI ──
-  socket.on('screen_share_start', ({ roomId, token }) => {
-    const user = token ? requireAuth(token) : null;
-    const userId = user ? user.username : socket.userId;
-    if (!userId || !roomId || !rooms[roomId] || !rooms[roomId].users.find(u => u.userId === userId)) return;
-    socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
-  });
-
-  socket.on('screen_share_frame', ({ roomId, frame }) => {
-    if (!roomId || !rooms[roomId]) return;
-    if (typeof frame !== 'string' || frame.length > 500000) return;
-    socket.to(roomId).emit('screen_share_frame', { frame, socketId: socket.id });
-  });
-
-  socket.on('screen_share_stop', ({ roomId }) => {
-    if (!roomId || !rooms[roomId]) return;
-    socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
-  });
+  // NOT: Ekran paylasimi artik voice.socket.js icinde WebRTC ile yonetiliyor.
 
   // ── SENKRONİZASYON İSTEĞİ ──
   socket.on('request_room_sync', ({ roomId } = {}) => {
@@ -463,6 +455,11 @@ module.exports = function registerRoomSocket(io, socket, { checkRate, requireAut
       const leftUser = rooms[rId].users.find(u => u.socketId === socket.id);
       const leftUsername = leftUser?.username;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
+      // Ekran paylasimi yapan kullanici ayrildiysa temizle
+      if (rooms[rId].screenSharer?.socketId === socket.id) {
+        delete rooms[rId].screenSharer;
+        io.to(rId).emit('screen_share_stopped', { socketId: socket.id });
+      }
       rooms[rId].lastActivityAt = Date.now();
       socket.leave(rId);
       socket.currentRoom = null;
@@ -516,6 +513,11 @@ module.exports = function registerRoomSocket(io, socket, { checkRate, requireAut
         const leftUsername = leftUser?.username;
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
         if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
+        // Ekran paylasimi yapan kullanici ciktysa temizle ve odadakilere bildir
+        if (rooms[rId].screenSharer?.socketId === sid) {
+          delete rooms[rId].screenSharer;
+          io.to(rId).emit('screen_share_stopped', { socketId: sid });
+        }
         rooms[rId].lastActivityAt = Date.now();
 
         if (rooms[rId].users.length === 0) {
