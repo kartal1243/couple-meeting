@@ -259,7 +259,7 @@ function Player({
   }, []);
 
   const showPlayer = mediaType !== 'none' && mediaSrc && !youtubeError;
-  const isHost = hostUserId === (authUser?.username || username);
+  const isHost = hostUserId === authUser?.username || (userId && hostUserId === userId) || (username && hostUserId === username);
 
   return (
     <div className="cm-video-wrap" style={{
