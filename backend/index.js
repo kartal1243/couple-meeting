@@ -905,7 +905,7 @@ const io = new Server(server, {
   pingTimeout: 15000,
   pingInterval: 8000,
   transports: ['websocket', 'polling'],
-  maxHttpBufferSize: 1e6
+  maxHttpBufferSize: 1e7
 });
 
 const rooms = {};

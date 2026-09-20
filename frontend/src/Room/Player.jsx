@@ -71,31 +71,37 @@ function Player({
 
       // Create hidden video + canvas for frame capture
       const video = document.createElement('video');
-      video.srcObject = stream;
-      video.autoplay = true;
       video.muted = true;
+      video.setAttribute('muted', '');
+      video.setAttribute('playsinline', '');
+      video.srcObject = stream;
       video.style.display = 'none';
       document.body.appendChild(video);
       screenDomVideoRef.current = video;
+      try { await video.play(); } catch {}
 
       const canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 360;
+      canvas.width = 560;
+      canvas.height = 315;
       const ctx = canvas.getContext('2d');
 
       video.onloadedmetadata = () => {
-        canvas.width = Math.min(video.videoWidth, 640);
-        canvas.height = Math.min(video.videoHeight, 360);
+        canvas.width = Math.min(video.videoWidth, 560);
+        canvas.height = Math.min(video.videoHeight, 315);
       };
 
-      // Send frames every 100ms
+      // Send frames every 120ms
+      let sending = false;
       frameIntervalRef.current = setInterval(() => {
-        if (video.readyState >= 2) {
+        if (sending || video.readyState < 2) return;
+        sending = true;
+        try {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const data = canvas.toDataURL('image/jpeg', 0.5);
-          if (socket) socket.emit('screen_share_frame', { roomId: mediaMeta?.roomId, frame: data });
-        }
-      }, 100);
+          const data = canvas.toDataURL('image/jpeg', 0.55);
+          if (socket && socket.connected) socket.emit('screen_share_frame', { roomId: mediaMeta?.roomId, frame: data });
+        } catch {}
+        sending = false;
+      }, 120);
 
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) {
