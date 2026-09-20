@@ -24,7 +24,7 @@ function isAsset(url) {
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
-    if (url.pathname.includes('/api/') || url.pathname.includes('/socket.io/')) return;
+    if (url.pathname.includes('/api/') || url.pathname.includes('/socket.io/') || url.pathname.startsWith('/uploads/')) return;
     if (event.request.method !== 'GET') return;
 
     // Hash'li dosyalar degismez: cache-first

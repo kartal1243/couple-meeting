@@ -23,7 +23,7 @@ export default function VipModal({ authUser, setShowVipModal, setAuthUser, style
           setAuthUser({ ...authUser, isVip: true, vipExpiry: data.vipExpiry });
           localStorage.setItem('cm_auth_user', JSON.stringify({ ...authUser, isVip: true, vipExpiry: data.vipExpiry }));
           setTimeout(() => setSuccess(false), 3000);
-        } else if (data.url) {
+        } else if (data.url && /^https:\/\//i.test(data.url)) {
           window.location.href = data.url;
         }
       }

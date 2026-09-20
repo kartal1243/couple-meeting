@@ -187,12 +187,14 @@ function Player({
               onEnded={handleMediaEnd}
             />
           )}
-          {mediaType === 'iframe' && (
+          {mediaType === 'iframe' && /^https:\/\//i.test(mediaSrc || '') && (
             <iframe
               src={mediaSrc}
               style={{ width: '100%', height: '100%', border: 'none' }}
               allow="autoplay; fullscreen"
               allowFullScreen
+              sandbox="allow-scripts allow-presentation"
+              referrerPolicy="no-referrer"
               title="Embedded Content"
             />
           )}

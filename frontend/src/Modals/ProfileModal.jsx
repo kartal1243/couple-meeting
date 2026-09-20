@@ -14,7 +14,7 @@ function ProfileModal({ authUser, setShowProfileModal, saveProfile, friendOnline
 
   useEffect(() => {
     if (authUser?.isVip) {
-      fetch(`${BACKEND_URL}/api/profile/visitors?token=${localStorage.getItem('cm_auth_token')}`)
+      fetch(`${BACKEND_URL}/api/profile/visitors`, { headers: { Authorization: `Bearer ${localStorage.getItem('cm_auth_token') || ''}` } })
         .then(r => r.json()).then(d => { if (d.ok) setVisitors(d.visitors); }).catch(() => {});
     }
   }, [authUser?.isVip]);

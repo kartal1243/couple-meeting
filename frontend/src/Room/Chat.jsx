@@ -47,7 +47,7 @@ function Chat({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('token', localStorage.getItem('cm_token') || '');
+      formData.append('token', localStorage.getItem('cm_auth_token') || '');
       const res = await fetch('/api/upload-room-file', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.ok && onFileUpload) {

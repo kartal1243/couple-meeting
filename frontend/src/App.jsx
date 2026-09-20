@@ -861,8 +861,7 @@ function App() {
     if (!mediaSrc) return;
     if (mediaType === 'youtube') window.open(`https://www.youtube.com/watch?v=${mediaSrc}`, '_blank', 'noopener,noreferrer');
     else if (mediaType === 'vimeo') window.open(`https://vimeo.com/${mediaSrc}`, '_blank', 'noopener,noreferrer');
-    else if (mediaType === 'custom_video') window.open(mediaSrc, '_blank', 'noopener,noreferrer');
-    else window.open(mediaSrc, '_blank', 'noopener,noreferrer');
+    else if (/^https:\/\//i.test(mediaSrc)) window.open(mediaSrc, '_blank', 'noopener,noreferrer');
   };
 
   const handleInstallApp = async () => {

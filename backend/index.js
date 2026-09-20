@@ -25,7 +25,7 @@ app.set('trust proxy', 1);
 // 1. GÜVENLİK & MIDDLEWARE
 // ═══════════════════════════════════════════════════════════
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, frameguard: { action: 'sameorigin' } }));
 app.use(compression());
 
 const ALLOWED_ORIGINS = [
@@ -49,7 +49,11 @@ app.use(express.json({ limit: '1mb' }));
 
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' }, validate: { xForwardedForHeader: false } });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' }, validate: { xForwardedForHeader: false } });
-app.use('/api/', apiLimiter);
+const adminLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, message: { ok: false, message: 'Çok fazla istek.' }, validate: { xForwardedForHeader: false } });
+app.use('/api/', (req, res, next) => {
+  if (req.originalUrl.startsWith('/api/admin/')) return adminLimiter(req, res, next);
+  return apiLimiter(req, res, next);
+});
 app.use('/api/vip/create-checkout', authLimiter);
 app.use('/api/vip/admin-grant', authLimiter);
 
@@ -301,9 +305,7 @@ app.post('/api/profile/visit', (req, res) => {
 });
 
 app.get('/api/profile/visitors', (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(401).json({ ok: false });
-  const user = db.getUserByToken(token);
+  const user = db.getUserByToken(getBearerToken(req));
   if (!user) return res.status(401).json({ ok: false });
   try {
     const visitors = db.getDb().prepare('SELECT DISTINCT visitor FROM profile_visitors WHERE visited = ? ORDER BY timestamp DESC LIMIT 20').all(user.username);
@@ -316,13 +318,24 @@ app.get('/api/profile/visitors', (req, res) => {
 });
 
 app.get('/api/search/messages', (req, res) => {
-  const { token, q, roomId } = req.query;
-  if (!token || !q) return res.status(400).json({ ok: false });
-  const user = db.getUserByToken(token);
+  const { q, roomId } = req.query;
+  if (!q) return res.status(400).json({ ok: false });
+  const user = db.getUserByToken(getBearerToken(req));
   if (!user) return res.status(401).json({ ok: false });
   if (!user.isVip) return res.status(403).json({ ok: false, message: 'VIP uyelik gerekiyor.' });
+  const cleanRoom = sanitize(roomId || '', 50);
+  if (!cleanRoom || cleanRoom === '%') return res.status(400).json({ ok: false, message: 'Oda gerekli.' });
   try {
-    const results = db.getDb().prepare("SELECT * FROM room_messages WHERE text LIKE ? AND room_id = ? ORDER BY created_at DESC LIMIT 50").all(`%${q}%`, roomId || '%');
+    const esc = (s) => String(s).replace(/[%_\\]/g, (c) => '\\' + c);
+    const inMemory = rooms[cleanRoom];
+    if (inMemory && !inMemory.users.some(u => u.userId === user.username)) {
+      return res.status(403).json({ ok: false, message: 'Bu odada degilsin.' });
+    }
+    if (!inMemory) {
+      const saved = db.getDb() ? db.getDb().prepare('SELECT id FROM rooms WHERE id = ?').get(cleanRoom) : null;
+      if (!saved) return res.status(404).json({ ok: false, message: 'Oda bulunamadi.' });
+    }
+    const results = db.getDb().prepare("SELECT * FROM room_messages WHERE text LIKE ? ESCAPE '\\' AND room_id = ? ORDER BY created_at DESC LIMIT 50").all(`%${esc(q)}%`, cleanRoom);
     res.json({ ok: true, results });
   } catch (e) { res.json({ ok: true, results: [] }); }
 });
@@ -366,7 +379,7 @@ if (!EFFECTIVE_ADMIN_PASS) {
 }
 
 function adminAuth(req, res, next) {
-  const pass = req.headers['x-admin-pass'] || req.query.pass;
+  const pass = req.headers['x-admin-pass'];
   if (!pass || pass !== EFFECTIVE_ADMIN_PASS) return res.status(403).json({ ok: false, message: 'Yetkisiz' });
   next();
 }
@@ -825,6 +838,13 @@ app.post('/api/feedback', (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // HTTP AUTH (socket ile ayni kurallar, mobil/HTTP istemciler icin)
 // ═══════════════════════════════════════════════════════════
+function getBearerToken(req) {
+  const h = req.headers.authorization || '';
+  if (/^Bearer\s+/i.test(h)) return h.replace(/^Bearer\s+/i, '').trim();
+  if (req.body && typeof req.body.token === 'string' && req.body.token) return req.body.token;
+  return '';
+}
+
 function safeUser(u) {
   if (!u) return null;
   const { passwordHash, password_hash, resetToken, reset_token, resetExpiry, reset_expiry, stripeCustomerId, stripe_customer_id, stripeSubscriptionId, stripe_subscription_id, ...rest } = u;
@@ -869,8 +889,7 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
   res.json({ ok: true, user: safeUser(user), token });
 });
 app.get('/api/auth/me', (req, res) => {
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.query.token;
-  const user = db.getUserByToken(token);
+  const user = db.getUserByToken(getBearerToken(req));
   if (!user) return res.status(401).json({ ok: false, message: 'Oturum gecersiz.' });
   res.json({ ok: true, user: safeUser(user) });
 });
@@ -964,6 +983,22 @@ function publicUser(u) {
     vipExpiry: u.vipExpiry || null, vipLevel: u.vipLevel || 0,
     invisibleMode: !!u.invisibleMode
   };
+}
+
+function safeUrl(u) {
+  if (typeof u !== 'string' || !u) return '';
+  const t = u.trim();
+  if (t.startsWith('/uploads/')) return t.slice(0, 500);
+  if (/^https:\/\//i.test(t)) return t.slice(0, 500);
+  return '';
+}
+
+function isRoomHost(room, socket, user) {
+  if (!room) return false;
+  if (room.hostUserId && room.hostUserId === socket.userId) return true;
+  if (user && room.hostUserId === user.username) return true;
+  if (socket.socialUsername && room.hostUserId === socket.socialUsername) return true;
+  return false;
 }
 
 function senderVip(username) {
@@ -1154,7 +1189,8 @@ io.on('connection', (socket) => {
   // 7.0 ADMIN REAL-TIME DASHBOARD
   // ──────────────────────────────────────────────────────
   socket.on('admin_connect', ({ pass } = {}) => {
-    if (pass !== EFFECTIVE_ADMIN_PASS) return;
+    if (checkRate('auth', 5)) return;
+    if (!EFFECTIVE_ADMIN_PASS || pass !== EFFECTIVE_ADMIN_PASS) return;
     adminSocketIds.add(socket.id);
     startAdminUpdates();
     try { broadcastAdminDashboard(); } catch (e) {}
@@ -1346,9 +1382,14 @@ io.on('connection', (socket) => {
   socket.on('change_password', ({ token, currentPassword, newPassword }) => {
     const user = db.getUserByToken(token);
     if (!user) return socket.emit('change_password_result', { success: false, message: 'Kullanıcı bulunamadı.' });
-    const [salt, hash] = user.passwordHash.split(':');
-    const newHash = crypto.scryptSync(currentPassword, salt, 64).toString('hex');
-    const match = crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(newHash, 'hex'));
+    if (typeof currentPassword !== 'string' || !currentPassword) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre gerekli.' });
+    let match = false;
+    try {
+      const parts = (user.passwordHash || '').split(':');
+      if (parts.length !== 2) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' });
+      const check = crypto.scryptSync(currentPassword, parts[0], 64).toString('hex');
+      match = crypto.timingSafeEqual(Buffer.from(parts[1], 'hex'), Buffer.from(check, 'hex'));
+    } catch { return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' }); }
     if (!match) return socket.emit('change_password_result', { success: false, message: 'Mevcut şifre hatalı.' });
     if (!newPassword || newPassword.length < 6) return socket.emit('change_password_result', { success: false, message: 'Yeni şifre en az 6 karakter olmalı.' });
     const newSalt = crypto.randomBytes(16).toString('hex');
@@ -2037,6 +2078,13 @@ io.on('connection', (socket) => {
     } else {
       if (room.password && room.password !== (password || '')) { socket.emit('room_error', 'Şifre hatalı!'); return; }
       if (room.kickedUsers && room.kickedUsers.includes(userId)) { socket.emit('room_error', 'Bu odadan atıldınız, tekrar giremezsiniz!'); return; }
+      if (room.kickedIps) {
+        const joinIp = socket.handshake?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake?.address || '';
+        if (joinIp && room.kickedIps[joinIp] && room.kickedIps[joinIp] > Date.now()) { socket.emit('room_error', 'Bu odadan atıldınız, tekrar giremezsiniz!'); return; }
+        if (joinIp && room.kickedIps[joinIp]) delete room.kickedIps[joinIp];
+      }
+      const clash = room.users.find(u => u.userId === userId && u.socketId !== socket.id);
+      if (clash && io.sockets.sockets.has(clash.socketId)) { socket.emit('room_error', 'Bu kimlik şu an odada aktif.'); return; }
       if (!room.users.find(u => u.userId === userId) && room.users.length >= room.maxUsers) { socket.emit('room_error', `Oda Dolu! (${room.users.length}/${room.maxUsers})`); return; }
       if (!room.messages) room.messages = [];
       // Bos normal oda 60sn'den uzun suredir bossa sifirdan baslat (kapanmis sayilir)
@@ -2102,10 +2150,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('kick_user', ({ roomId, targetUserId, token } = {}) => {
-    const user = requireAuth(token);
-    if (!user) return;
+    const user = token ? requireAuth(token) : null;
     const room = rooms[sanitize(roomId, 50)];
-    if (room && room.hostUserId === user.username && targetUserId !== user.username) {
+    if (room && isRoomHost(room, socket, user) && targetUserId !== socket.userId && (!user || targetUserId !== user.username)) {
       const target = room.users.find(u => u.userId === targetUserId);
       if (target) {
         io.to(target.socketId).emit('kicked_from_room', 'Odadan atıldınız, tekrar giremezsiniz!');
@@ -2114,6 +2161,11 @@ io.on('connection', (socket) => {
         room.users = room.users.filter(u => u.userId !== targetUserId);
         if (!room.kickedUsers) room.kickedUsers = [];
         room.kickedUsers.push(targetUserId);
+        try {
+          const banIp = targetSocket?.handshake?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || targetSocket?.handshake?.address || '';
+          if (!room.kickedIps) room.kickedIps = {};
+          if (banIp) room.kickedIps[banIp] = Date.now() + 24 * 60 * 60 * 1000;
+        } catch {}
         updateRoomUsers(sanitize(roomId, 50)); broadcastRooms();
       }
     }
@@ -2204,19 +2256,23 @@ io.on('connection', (socket) => {
         logger.info(`Oda kapatildi (yönetici): ${cleanRoomId}`);
         return;
       } else if (type === 'CHANGE_MEDIA') {
-        room.currentMedia = { type: payload.type, src: payload.src, title: sanitize(payload.title, 200) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
+        const rawSrc = typeof payload.src === 'string' ? payload.src.trim() : '';
+        const okSrc = /^[\w-]{5,64}$/.test(rawSrc) ? rawSrc : safeUrl(rawSrc);
+        room.currentMedia = { type: payload.type, src: okSrc, title: sanitize(payload.title, 200) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
       } else if (type === 'PLAY') {
         room.currentMedia.isPlaying = true; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
       } else if (type === 'PAUSE') {
         room.currentMedia.isPlaying = false; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
       } else if (type === 'CHAT_MESSAGE') {
+        const member = room.users.find(u => u.socketId === socket.id);
+        if (!member) return;
         const sv = senderVip(socket.socialUsername);
         const msg = {
           id: payload.id || crypto.randomBytes(8).toString('hex'),
-          senderId: payload.senderId, text: sanitize(payload.text || '', 500), sender: sanitize(payload.sender, 24),
-          avatar: sanitize(payload.avatar, 10), time: payload.time,
+          senderId: member.userId, text: sanitize(payload.text || '', 500), sender: member.username,
+          avatar: member.avatar, time: payload.time,
           senderVip: sv.vip, senderVipLevel: sv.level,
-          fileUrl: payload.fileUrl || '', fileType: payload.fileType || '', fileName: payload.fileName || '',
+          fileUrl: safeUrl(payload.fileUrl), fileType: sanitize(payload.fileType, 50) || '', fileName: sanitize(payload.fileName, 100) || '',
           replyTo: payload.replyTo || null, replyToText: sanitize(payload.replyToText, 500), replyToSender: sanitize(payload.replyToSender, 24),
           createdAt: Date.now()
         };
@@ -2230,14 +2286,17 @@ io.on('connection', (socket) => {
         socket.emit('room_action', { type, payload: msg });
         return;
       } else if (type === 'UPDATE_MAX_USERS') {
+        if (!isRoomHost(room, socket, null)) return;
         const maxLimit = room.isVip ? 20 : 8;
         room.maxUsers = Math.min(Math.max(parseInt(payload.maxUsers) || 2, 2), maxLimit);
         broadcastRooms();
         io.to(cleanRoomId).emit('room_user_count_update', { userCount: room.users.length, maxUsers: room.maxUsers });
       } else if (type === 'ROOM_NAME_UPDATE') {
+        if (!isRoomHost(room, socket, null)) return;
         room.name = sanitize(payload.name, 50) || room.name;
         broadcastRooms();
       } else if (type === 'ROOM_THEME_UPDATE') {
+        if (!isRoomHost(room, socket, null)) return;
         room.theme = sanitize(payload.theme, 30) || room.theme;
         broadcastRooms();
       }

@@ -12,7 +12,9 @@ export const processUrl = (url) => {
     return { type: 'vimeo', src: vimeoId || trimmed };
   } else if (trimmed.endsWith('.mp4') || trimmed.endsWith('.webm') || trimmed.endsWith('.ogg') || trimmed.includes('/uploads/')) {
     return { type: 'custom_video', src: trimmed };
-  } else {
+  } else if (/^https:\/\//i.test(trimmed)) {
     return { type: 'iframe', src: trimmed };
+  } else {
+    return { type: 'iframe', src: '' };
   }
 };

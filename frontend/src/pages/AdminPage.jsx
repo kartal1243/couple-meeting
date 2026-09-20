@@ -64,8 +64,7 @@ function AdminPage() {
   }, []);
 
   const api = useCallback(async (path, opts = {}) => {
-    const sep = path.includes('?') ? '&' : '?';
-    const url = `${BACKEND_URL}${path}${sep}pass=${passRef.current}`;
+    const url = `${BACKEND_URL}${path}`;
     const res = await fetch(url, { headers: { ...headers, 'x-admin-pass': passRef.current }, ...opts });
     return res.json();
   }, []);
@@ -249,7 +248,15 @@ function AdminPage() {
     showToast(`Bakım modu: ${newMode ? 'aktif' : 'pasif'}`);
   };
 
-  const handleLogin = (e) => { e.preventDefault(); setAuthed(true); };
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/stats`, { headers: { 'x-admin-pass': passRef.current } });
+      const data = await res.json();
+      if (res.ok && data.ok) { setAuthed(true); }
+      else { showToast('Hatalı şifre.'); }
+    } catch { showToast('Bağlantı hatası.'); }
+  };
 
   const formatTime = (ts) => {
     if (!ts) return '-';
