@@ -3,7 +3,8 @@ import { useState, useRef, useEffect, memo } from 'react';
 
 function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
-  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult, handleVideoUpload
+  currentTheme, handleDirectPlay, handleOpenAddModal, handleSelectSearchResult, handleVideoUpload,
+  currentRoomType
 }) {
   const styles = getStyles(currentTheme);
   const [showResults, setShowResults] = useState(false);
@@ -92,7 +93,7 @@ function SearchBar({
 
       <input
         type="text"
-        placeholder="🔍 Video, şarkı, oyun, film ara..."
+        placeholder={currentRoomType === 'music' ? '🎵 Şarkı ara...' : '🔍 Video, şarkı, oyun, film ara...'}
         value={searchInput}
         onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
         onFocus={() => setShowResults(true)}

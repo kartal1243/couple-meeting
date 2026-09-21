@@ -39,6 +39,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       a().setRoomId(data.roomId);
       a().setRoomName(data.roomName || data.roomId);
       a().setHostUserId(data.hostUserId);
+      if (data.roomType) a().setCurrentRoomType(data.roomType);
       const savedTheme = localStorage.getItem(`cm_theme_${data.roomId}`);
       a().setRoomTheme(savedTheme || data.theme || 'default');
       a().setMySocketId(data.socketId);
@@ -63,8 +64,12 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
         a().setYoutubeError(null);
         a().setMediaType(data.currentMedia.type);
         a().setMediaSrc(data.currentMedia.src);
+        a().setMediaMeta({ title: data.currentMedia.title || '', artist: data.currentMedia.artist || '', thumbnail: data.currentMedia.thumbnail || '' });
+        if (data.currentMedia.type === 'music') {
+          pendingSyncRef.current = data.currentMedia;
+        }
         setTimeout(() => {
-          if ((data.currentMedia.type === 'youtube' || data.currentMedia.type === 'music') && ytPlayerRef.current) {
+          if (data.currentMedia.type === 'youtube' && ytPlayerRef.current) {
             ytPlayerRef.current.seekTo(data.currentMedia.time || 0, true);
             if (data.currentMedia.isPlaying) ytPlayerRef.current.playVideo(); else ytPlayerRef.current.pauseVideo();
           }
@@ -120,17 +125,30 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       }
     });
 
+    const syncAudio = (fn) => {
+      const el = a().audioRef?.current;
+      if (el) { try { fn(el); } catch {} }
+    };
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {} }
+        syncAudio((el) => {
+          try { el.currentTime = payload.time || 0; } catch {}
+          el.play().catch(() => window.dispatchEvent(new Event('cm-audio-blocked')));
+        });
       } else if (type === 'PAUSE') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
+        syncAudio((el) => el.pause());
       } else if (type === 'SEEK') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {} }
+        syncAudio((el) => { try { el.currentTime = payload.time || 0; } catch {} });
       } else if (type === 'CHANGE_MEDIA') {
         a().setYoutubeError(null);
         a().setMediaType(payload.type);
         a().setMediaSrc(payload.src);
+        if (payload.title || payload.src) {
+          a().setMediaMeta({ title: payload.title || '', artist: payload.artist || '', thumbnail: payload.thumbnail || '' });
+        }
       } else if (type === 'CHAT_MESSAGE') {
         a().setMessages((prev) => {
           const idx = prev.findIndex((m) => m.id && payload.id && m.id === payload.id);
@@ -167,7 +185,10 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       if (data.currentMedia) {
         a().setMediaType(data.currentMedia.type || 'none');
         a().setMediaSrc(data.currentMedia.src || '');
-        if (ytPlayerRef.current) {
+        a().setMediaMeta({ title: data.currentMedia.title || '', artist: data.currentMedia.artist || '', thumbnail: data.currentMedia.thumbnail || '' });
+        if (data.currentMedia.type === 'music') {
+          pendingSyncRef.current = data.currentMedia;
+        } else if (ytPlayerRef.current) {
           try {
             const elapsed = data.currentMedia.isPlaying ? (Date.now() - (data.currentMedia.lastUpdated || Date.now())) / 1000 : 0;
             const seekTo = (data.currentMedia.time || 0) + elapsed;
@@ -183,6 +204,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       if (data.hostUserId) a().setHostUserId(data.hostUserId);
       if (data.roomName) a().setRoomName(data.roomName);
       if (data.roomTheme) a().setRoomTheme(data.roomTheme);
+      if (data.roomType) a().setCurrentRoomType(data.roomType);
     });
 
     socket.on('global_chat_history', (items) => a().setGlobalMessages(Array.isArray(items) ? items : []));

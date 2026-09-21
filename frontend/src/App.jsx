@@ -51,6 +51,7 @@ function App() {
   const [roomName, setRoomName] = useState('');
   const [hostUserId, setHostUserId] = useState('');
   const [roomTheme, setRoomTheme] = useState('default');
+  const [currentRoomType, setCurrentRoomType] = useState('video');
 
   const [roomUsersList, setRoomUsersList] = useState([]);
   const [publicRooms, setPublicRooms] = useState([]);
@@ -106,6 +107,7 @@ function App() {
   const [quickRoomPass, setQuickRoomPass] = useState('');
   const [quickMaxUsers, setQuickMaxUsers] = useState('2');
   const [quickVipRoom, setQuickVipRoom] = useState(false);
+  const [quickRoomKind, setQuickRoomKind] = useState('video');
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameError, setNameError] = useState('');
@@ -183,6 +185,7 @@ function App() {
 
   // ── 2. REFS & SOCKET ──
   const ytPlayerRef = useRef(null);
+  const audioRef = useRef(null);
   const pendingSyncRef = useRef(null);
 
   const socketRef = useRef(null);
@@ -605,7 +608,7 @@ function App() {
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
     if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(userId);
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: userId, vipRoom: quickVipRoom && !!authUser?.isVip, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '' };
+    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: userId, vipRoom: quickVipRoom && !!authUser?.isVip, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '', roomType: quickRoomKind === 'music' ? 'music' : 'video' };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -619,6 +622,7 @@ function App() {
     setQuickRoomPass('');
     setQuickMaxUsers('2');
     setQuickVipRoom(false);
+    setQuickRoomKind('video');
   };
 
   const handleJoinRoomFromModal = (e) => {
@@ -696,13 +700,15 @@ function App() {
 
   // ── 7. MEDYA & PLAYLIST ──
   const handlePlay = () => {
-    const currentTime = ytPlayerRef.current?.getCurrentTime?.() || 0;
+    const currentTime = ytPlayerRef.current?.getCurrentTime?.() || audioRef.current?.currentTime || 0;
     if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
+    if (audioRef.current) { try { audioRef.current.play().catch(() => {}); } catch {} }
     sendAction('PLAY', { time: currentTime });
   };
 
   const handlePause = () => {
     if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
+    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
     sendAction('PAUSE', {});
   };
 
@@ -730,7 +736,7 @@ function App() {
     if (!searchInput.trim()) return;
     let media;
     if (searchInput.includes('http://') || searchInput.includes('https://')) media = processUrl(searchInput);
-    else if (searchResults.length > 0) media = { type: 'youtube', src: searchResults[0].src };
+    else if (searchResults.length > 0) media = { type: currentRoomType === 'music' ? 'music' : 'youtube', src: searchResults[0].src };
     else return;
     setYoutubeError(null);
     setMediaType(media.type);
@@ -746,15 +752,18 @@ function App() {
     sendAction('CHANGE_MEDIA', { type: 'custom_video', src: url, title: filename });
   };
 
+  const musicMode = currentRoomType === 'music';
+
   const handleSelectSearchResult = (song, playImmediately = true) => {
     if (!song) return;
     if (playImmediately) {
       setYoutubeError(null);
       if (song.src) {
-        setMediaType('youtube');
+        const t = musicMode ? 'music' : 'youtube';
+        setMediaType(t);
         setMediaSrc(song.src);
         setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title });
+        sendAction('CHANGE_MEDIA', { type: t, src: song.src, title: song.title, artist: song.artist, thumbnail: song.thumbnail });
       } else if (song.youtubeQuery) {
         setSearchInput(song.youtubeQuery);
       }
@@ -764,16 +773,17 @@ function App() {
   };
 
   const handleOpenAddModal = (song = null) => {
+    const defType = musicMode ? 'music' : 'youtube';
     let item;
     if (song) {
-      item = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username };
+      item = { id: Date.now() + Math.random().toString(), title: song.title, type: defType, src: song.src, addedBy: username };
     } else if (searchInput.trim()) {
       if (searchInput.includes('http://') || searchInput.includes('https://')) {
         const media = processUrl(searchInput);
         item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya', type: media.type, src: media.src, addedBy: username };
       } else if (searchResults.length > 0) {
         const s = searchResults[0];
-        item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
+        item = { id: Date.now() + Math.random().toString(), title: s.title, type: defType, src: s.src, addedBy: username };
       }
     }
     if (item) {
@@ -940,10 +950,11 @@ function App() {
 
   // ── 9. SOCKET EVENTS (extracted to hook) ──
   useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pendingSyncRef, saveRoomMessages, navigate, {
+    audioRef,
     setIsConnected, setPublicRooms, setSearchResults, setIsSearching, setInRoom, setErrorMessage,
-    setRoomId, setRoomName, setHostUserId, setRoomTheme, setMySocketId, setRoomUsersList,
+    setRoomId, setRoomName, setHostUserId, setRoomTheme, setCurrentRoomType, setMySocketId, setRoomUsersList,
     setCurrentRoomInfo, setPlaylist, setCategories, setPlayMode, setMessages, setMediaType,
-    setMediaSrc, setYoutubeError, setJoinModalError, setJoinRoomTarget, setShowJoinModal,
+    setMediaSrc, setMediaMeta, setYoutubeError, setJoinModalError, setJoinRoomTarget, setShowJoinModal,
     setDmConversations, setDmMessages, setDmActiveChat, setChatGroups, setGroupMessages,
     setActiveGroup, setAuthUser, setAuthBusy, setAuthForm, setShowAuthModal, setShowSocialModal,
     setFriends, setFriendRequests, setFriendSearchResults, setFriendOnlineStatuses,
@@ -967,7 +978,7 @@ function App() {
   // ── 11. CONTEXT VALUE ──
   const contextValue = useMemo(() => ({
     socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
-    inRoom, roomId, roomName, hostUserId, roomTheme, roomUsersList, toast,
+    inRoom, roomId, roomName, hostUserId, roomTheme, currentRoomType, roomUsersList, toast, audioRef,
     publicRooms, currentRoomInfo, mediaType, mediaSrc, mediaMeta, setMediaMeta,
     playlist, categories, selectedCategory, setSelectedCategory,
     newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
@@ -1008,7 +1019,7 @@ function App() {
     messageReactions, addReaction, removeReaction,
     blockedUsers, blockUser, unblockUser,
     deleteDm, editDm, inviteToRoom, changePassword
-  }), [inRoom, roomId, roomTheme, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows, showNotifPanel]);
+  }), [inRoom, roomId, roomTheme, currentRoomType, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows, showNotifPanel]);
 
   // ── 11. RENDER ──
   return (
@@ -1100,6 +1111,20 @@ function App() {
               <div>
                 <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Sifre (istege bagli)</label>
                 <input type="password" value={quickRoomPass} onChange={(e) => setQuickRoomPass(e.target.value)} placeholder="Sifre koymak istersen yaz" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
+              </div>
+              <div>
+                <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Türü</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button type="button" onClick={() => setQuickRoomKind('video')}
+                    style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomKind === 'video' ? '2px solid #7c3aed' : '1px solid #25313a', background: quickRoomKind === 'video' ? 'rgba(124,58,237,.15)' : '#0b141a', color: quickRoomKind === 'video' ? '#a855f7' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    🎬 Video Odası
+                  </button>
+                  <button type="button" onClick={() => setQuickRoomKind('music')}
+                    style={{ flex:1, padding:'10px', borderRadius:10, border: quickRoomKind === 'music' ? '2px solid #00a884' : '1px solid #25313a', background: quickRoomKind === 'music' ? 'rgba(0,168,132,.15)' : '#0b141a', color: quickRoomKind === 'music' ? '#00a884' : '#94a3b8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    🎵 Müzik Odası
+                  </button>
+                </div>
+                {quickRoomKind === 'music' && <div style={{ color:'#64748b', fontSize:10, marginTop:4 }}>MP3 çalar • arka planda kapanmaz • kilit ekranı kontrolü</div>}
               </div>
               <div>
                 <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kisi</label>

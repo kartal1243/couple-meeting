@@ -1,5 +1,6 @@
 import YouTube from 'react-youtube';
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
+import MusicPlayer from './MusicPlayer';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -9,9 +10,9 @@ function extractVideoId(src) {
 }
 
 function Player({
-  mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
+  mediaType, mediaSrc, youtubeError, ytPlayerRef, audioRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
-  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId, token, authUser, username
+  screenSharing, setScreenSharing, socket, mySocketId, hostUserId, userId, token, authUser, username, currentRoomType
 }) {
   const videoId = extractVideoId(mediaSrc);
   const screenVideoRef = useRef(null);
@@ -170,6 +171,13 @@ function Player({
 
       {showPlayer && !screenSharing && !remoteScreen && (
         <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', overflow: 'hidden' }}>
+          {mediaType === 'music' && (
+            <MusicPlayer
+              videoId={videoId} meta={mediaMeta} audioRef={audioRef}
+              pendingSyncRef={pendingSyncRef} onEnded={handleMediaEnd}
+              onError={handleYouTubeError}
+            />
+          )}
           {mediaType === 'youtube' && (
             <YouTube videoId={videoId} opts={ytOpts}
               style={{ width: '100%', height: '100%', maxWidth: '100%', overflow: 'hidden' }}

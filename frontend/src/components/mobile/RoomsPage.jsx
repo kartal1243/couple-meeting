@@ -49,8 +49,10 @@ const RoomsPage = () => {
               <div className="rooms-page-info">
                 <h3>{room.name}</h3>
                 <div className="rooms-page-meta">
-                  <span className="rooms-page-users">👤 {room.userCount || 0}/{room.maxUsers || 2}</span>
+                  <span className="rooms-page-users">👥 {room.userCount || 0}/{room.maxUsers || 2}</span>
                   <span className="rooms-page-lock">{room.hasPassword ? '🔒 Gizli' : '🔓 Acik'}</span>
+                  {room.roomType === 'music' && <span>🎵</span>}
+                  {room.isVip && <span>👑</span>}
                 </div>
               </div>
               <div className="rooms-page-join">

@@ -31,7 +31,7 @@ export default function PublicRooms({ publicRooms, onJoinRoom, onCreateRoom }) {
               </div>
               <div className="cm-room-name">{r.name}</div>
               <div className="cm-room-meta">
-                {r.isVip ? '👑 VIP Oda' : 'Birlikte İzle & Dinle'}
+                {r.roomType === 'music' ? '🎵 Müzik Odası' : '🎬 Video Odası'}{r.isVip ? ' • 👑 VIP' : ''}
               </div>
               <div className="cm-room-bottom">
                 <div className="cm-room-users">

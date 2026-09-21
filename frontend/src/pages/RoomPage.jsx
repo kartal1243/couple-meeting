@@ -17,7 +17,7 @@ export default function RoomPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [roomTypingUsers, setRoomTypingUsers] = useState([]);
   const {
-    roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
+    roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn, currentRoomType,
     handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
     mediaType, mediaSrc, youtubeError, mediaMeta, ytPlayerRef, reactions,
     openYouTubeExternally, handleMediaEnd, handleYouTubeError, searchInput, setSearchInput,
@@ -27,7 +27,7 @@ export default function RoomPage() {
     playlist, categories, selectedCategory, setSelectedCategory, newCategoryInput,
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, cssVars, handleVideoUpload,
-    toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
+    toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed, audioRef,
     messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
 
@@ -149,16 +149,16 @@ export default function RoomPage() {
             searchResults={searchResults} isSearching={isSearching}
             currentTheme={currentTheme} handleDirectPlay={handleDirectPlay}
             handleOpenAddModal={handleOpenAddModal} handleSelectSearchResult={handleSelectSearchResult}
-            handleVideoUpload={handleVideoUpload}
+            handleVideoUpload={handleVideoUpload} currentRoomType={currentRoomType}
           />
           <ErrorBoundary fallbackMessage="Oynatıcı yüklenirken bir hata oluştu.">
             <Player
               mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
-              ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
+              ytPlayerRef={ytPlayerRef} audioRef={audioRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
               openYouTubeExternally={openYouTubeExternally}
               handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
               screenSharing={screenSharing} setScreenSharing={setScreenSharing}
-              socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken} authUser={authUser} username={username}
+              socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken} authUser={authUser} username={username} currentRoomType={currentRoomType}
             />
           </ErrorBoundary>
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />

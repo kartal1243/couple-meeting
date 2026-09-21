@@ -364,8 +364,38 @@ async function getInnertube() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 6. MP3 STREAMING ENDPOINT (yt-dlp python)
+// 6. MP3 STREAMING ENDPOINT (youtubei.js ses)
 // ═══════════════════════════════════════════════════════════
+const streamCache = new Map();
+const STREAM_TTL = 30 * 60 * 1000;
+
+app.get('/api/music/stream/:videoId', async (req, res) => {
+  const videoId = sanitize(req.params.videoId, 20);
+  if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
+  const cached = streamCache.get(videoId);
+  if (cached && Date.now() - cached.t < STREAM_TTL) return res.json({ ...cached.v, cached: true });
+  try {
+    const yt = await getInnertube();
+    if (!yt) return res.status(503).json({ error: 'Servis hazir degil.' });
+    const info = await yt.getBasicInfo(videoId);
+    const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+    if (!format || !format.decipher(yt.session.player)) {
+      return res.status(502).json({ error: 'Ses bulunamadi.' });
+    }
+    const out = {
+      url: format.decipher(yt.session.player),
+      title: info.basic_info?.title || '',
+      duration: info.basic_info?.duration || 0
+    };
+    streamCache.set(videoId, { v: out, t: Date.now() });
+    if (streamCache.size > 300) streamCache.delete(streamCache.keys().next().value);
+    res.json(out);
+  } catch (e) {
+    logger.warn('Stream hatasi', { videoId, error: e.message });
+    res.status(502).json({ error: 'Ses alinamadi.' });
+  }
+});
+
 // 6.5 ADMIN PANEL
 // ═══════════════════════════════════════════════════════════
 
@@ -1068,6 +1098,7 @@ function getPublicRoomsList() {
   return Object.entries(rooms).map(([id, room]) => ({
     id, name: room.name || id, userCount: room.users.length,
     maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip,
+    roomType: room.roomType || 'video',
     users: room.users.map(u => ({ username: u.username, avatar: u.avatar })).slice(0, 5)
   }));
 }
@@ -2048,7 +2079,7 @@ io.on('connection', (socket) => {
   // 7.6 ODA YÖNETIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId, vipRoom, guestName } = {}) => {
+  socket.on('join_room', ({ roomId, password, maxUsers, token, userCity, clientUserId, vipRoom, guestName, roomType } = {}) => {
     const user = token ? db.getUserByToken(token) : null;
     if (token && !user) { socket.emit('room_error', 'Oturumun süresi dolmuş. Tekrar giriş yap.'); return; }
     const cleanRoomId = sanitize(roomId, 50);
@@ -2064,7 +2095,7 @@ io.on('connection', (socket) => {
       const roomMaxUsers = roomIsVip ? Math.min(Math.max(parseInt(maxUsers) || 2, 2), 20) : Math.min(Math.max(parseInt(maxUsers) || 2, 2), 8);
       rooms[cleanRoomId] = {
         name: cleanRoomId, password: typeof password === 'string' ? password : '',
-        maxUsers: roomMaxUsers,
+        maxUsers: roomMaxUsers, roomType: roomType === 'music' ? 'music' : 'video',
         hostUserId: userId, theme: 'default', users: [],
         kickedUsers: [],
         playlist: [], categories: ['Genel'], playMode: 'sequence',
@@ -2111,6 +2142,7 @@ io.on('connection', (socket) => {
 
     socket.emit('room_joined', {
       roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
+      roomType: room.roomType || 'video',
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
       playMode: room.playMode, messages: (room.messages || []).slice(-100),
@@ -2258,7 +2290,7 @@ io.on('connection', (socket) => {
       } else if (type === 'CHANGE_MEDIA') {
         const rawSrc = typeof payload.src === 'string' ? payload.src.trim() : '';
         const okSrc = /^[\w-]{5,64}$/.test(rawSrc) ? rawSrc : safeUrl(rawSrc);
-        room.currentMedia = { type: payload.type, src: okSrc, title: sanitize(payload.title, 200) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
+        room.currentMedia = { type: payload.type, src: okSrc, title: sanitize(payload.title, 200) || '', artist: sanitize(payload.artist, 100) || '', thumbnail: safeUrl(payload.thumbnail) || '', source: payload.source || payload.type, time: 0, isPlaying: true, lastUpdated: Date.now() };
       } else if (type === 'PLAY') {
         room.currentMedia.isPlaying = true; room.currentMedia.time = payload.time || 0; room.currentMedia.lastUpdated = Date.now();
       } else if (type === 'PAUSE') {
@@ -2378,6 +2410,7 @@ io.on('connection', (socket) => {
         hostUserId: room.hostUserId,
         roomName: room.name,
         roomTheme: room.theme,
+        roomType: room.roomType || 'video',
         maxUsers: room.maxUsers
       });
     }
