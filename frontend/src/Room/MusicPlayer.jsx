@@ -7,6 +7,7 @@ function MusicPlayer({ videoId, meta, audioRef, pendingSyncRef, onEnded, onError
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [retry, setRetry] = useState(0);
   const elRef = useRef(null);
 
   // Stream URL al
@@ -32,7 +33,7 @@ function MusicPlayer({ videoId, meta, audioRef, pendingSyncRef, onEnded, onError
         setLoading(false);
       });
     return () => { cancelled = true; ctrl.abort(); };
-  }, [videoId]);
+  }, [videoId, retry]);
 
   // Audio elementini paylaşılan ref'e bağla
   useEffect(() => {
@@ -104,7 +105,12 @@ function MusicPlayer({ videoId, meta, audioRef, pendingSyncRef, onEnded, onError
       <div style={{ color: '#fff', fontWeight: 900, fontSize: 17, marginTop: 16, textAlign: 'center', maxWidth: '90%' }}>{meta?.title || 'Yükleniyor...'}</div>
       <div style={{ color: '#53e6bc', fontSize: 13, marginTop: 4 }}>{meta?.artist || ''}</div>
       {loading && <div style={{ color: '#64748b', fontSize: 12, marginTop: 12 }}>⏳ Ses hazırlanıyor...</div>}
-      {error && !loading && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 12 }}>{error}</div>}
+      {error && !loading && (
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <div style={{ color: '#ef4444', fontSize: 12 }}>{error}</div>
+          <button onClick={() => { setError(''); setLoading(true); setRetry((r) => r + 1); }} style={{ marginTop: 8, padding: '8px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.06)', color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>🔄 Tekrar Dene</button>
+        </div>
+      )}
       {blocked && !loading && !error && (
         <button onClick={resume} style={{ marginTop: 16, padding: '12px 28px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#00a884,#008f6f)', color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer', boxShadow: '0 8px 25px rgba(0,168,132,.35)' }}>
           ▶ Dinlemeye Devam Et

@@ -374,26 +374,46 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   if (!videoId) return res.status(400).json({ error: 'videoId gerekli' });
   const cached = streamCache.get(videoId);
   if (cached && Date.now() - cached.t < STREAM_TTL) return res.json({ ...cached.v, cached: true });
-  try {
-    const yt = await getInnertube();
-    if (!yt) return res.status(503).json({ error: 'Servis hazir degil.' });
-    const info = await yt.getBasicInfo(videoId);
-    const format = info.chooseFormat({ type: 'audio', quality: 'best' });
-    if (!format || !format.decipher(yt.session.player)) {
-      return res.status(502).json({ error: 'Ses bulunamadi.' });
-    }
-    const out = {
-      url: format.decipher(yt.session.player),
-      title: info.basic_info?.title || '',
-      duration: info.basic_info?.duration || 0
-    };
+  const done = (out) => {
     streamCache.set(videoId, { v: out, t: Date.now() });
     if (streamCache.size > 300) streamCache.delete(streamCache.keys().next().value);
     res.json(out);
-  } catch (e) {
-    logger.warn('Stream hatasi', { videoId, error: e.message });
-    res.status(502).json({ error: 'Ses alinamadi.' });
+  };
+  // 1) youtubei.js
+  try {
+    const yt = await getInnertube();
+    if (yt) {
+      const info = await yt.getBasicInfo(videoId);
+      const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+      if (format && format.decipher(yt.session.player)) {
+        return done({ url: format.decipher(yt.session.player), title: info.basic_info?.title || '', duration: info.basic_info?.duration || 0, via: 'youtubei' });
+      }
+    }
+  } catch (e) { logger.warn('Stream youtubei hatasi', { videoId, error: e.message }); }
+  // 2) Piped yedekleri
+  const piped = ['https://pipedapi.kavin.rocks', 'https://pipedapi.reallyaweso.me', 'https://pipedapi.adminforge.de', 'https://pipedapi.tokhmi.xyz'];
+  for (const base of piped) {
+    try {
+      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const aud = (d.audioStreams || []).filter(a => a.url).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (aud?.url) return done({ url: aud.url, title: d.title || '', duration: d.duration || 0, via: 'piped' });
+    } catch {}
   }
+  // 3) Invidious yedekleri
+  const inv = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://iv.melmac.space', 'https://invidious.jing.rocks'];
+  for (const base of inv) {
+    try {
+      const r = await fetch(`${base}/api/v1/videos/${videoId}`, { signal: AbortSignal.timeout(7000), headers: { Accept: 'application/json' } });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const aud = (d.adaptiveFormats || []).filter(f => f.type?.startsWith('audio/') && f.url).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (aud?.url) return done({ url: aud.url, title: d.title || '', duration: d.lengthSeconds || 0, via: 'invidious' });
+    } catch {}
+  }
+  logger.warn('Stream tum kaynaklar basarisiz', { videoId });
+  res.status(502).json({ error: 'Ses alinamadi.' });
 });
 
 // 6.5 ADMIN PANEL
