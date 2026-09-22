@@ -27,7 +27,7 @@ export default function RoomPage() {
     playlist, categories, selectedCategory, setSelectedCategory, newCategoryInput,
     setNewCategoryInput, handleCreateCategory, playMode, handleModeChange, filteredPlaylist,
     handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, cssVars, handleVideoUpload,
-    toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed, audioRef,
+    toast, hostUserId, userId, roomTheme, socket, playbackSpeed, setPlaybackSpeed,
     messagesSearch, setMessagesSearch, filteredMessages, roomUsersList, pendingSyncRef, authToken
   } = app;
 
@@ -154,7 +154,7 @@ export default function RoomPage() {
           <ErrorBoundary fallbackMessage="Oynatıcı yüklenirken bir hata oluştu.">
             <Player
               mediaType={mediaType} mediaSrc={mediaSrc} youtubeError={youtubeError} mediaMeta={{ ...mediaMeta, roomId }}
-              ytPlayerRef={ytPlayerRef} audioRef={audioRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
+              ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
               openYouTubeExternally={openYouTubeExternally}
               handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
               screenSharing={screenSharing} setScreenSharing={setScreenSharing}

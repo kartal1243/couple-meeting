@@ -125,23 +125,13 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       }
     });
 
-    const syncAudio = (fn) => {
-      const el = a().audioRef?.current;
-      if (el) { try { fn(el); } catch {} }
-    };
     socket.on('room_action', ({ type, payload }) => {
       if (type === 'PLAY') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); ytPlayerRef.current.playVideo(); } catch {} }
-        syncAudio((el) => {
-          try { el.currentTime = payload.time || 0; } catch {}
-          el.play().catch(() => window.dispatchEvent(new Event('cm-audio-blocked')));
-        });
       } else if (type === 'PAUSE') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
-        syncAudio((el) => el.pause());
       } else if (type === 'SEEK') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.seekTo(payload.time || 0, true); } catch {} }
-        syncAudio((el) => { try { el.currentTime = payload.time || 0; } catch {} });
       } else if (type === 'CHANGE_MEDIA') {
         a().setYoutubeError(null);
         a().setMediaType(payload.type);

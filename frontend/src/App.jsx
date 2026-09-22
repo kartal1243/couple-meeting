@@ -185,7 +185,6 @@ function App() {
 
   // ── 2. REFS & SOCKET ──
   const ytPlayerRef = useRef(null);
-  const audioRef = useRef(null);
   const pendingSyncRef = useRef(null);
 
   const socketRef = useRef(null);
@@ -700,15 +699,13 @@ function App() {
 
   // ── 7. MEDYA & PLAYLIST ──
   const handlePlay = () => {
-    const currentTime = ytPlayerRef.current?.getCurrentTime?.() || audioRef.current?.currentTime || 0;
+    const currentTime = ytPlayerRef.current?.getCurrentTime?.() || 0;
     if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo(); } catch {} }
-    if (audioRef.current) { try { audioRef.current.play().catch(() => {}); } catch {} }
     sendAction('PLAY', { time: currentTime });
   };
 
   const handlePause = () => {
     if (ytPlayerRef.current) { try { ytPlayerRef.current.pauseVideo(); } catch {} }
-    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
     sendAction('PAUSE', {});
   };
 
@@ -736,7 +733,7 @@ function App() {
     if (!searchInput.trim()) return;
     let media;
     if (searchInput.includes('http://') || searchInput.includes('https://')) media = processUrl(searchInput);
-    else if (searchResults.length > 0) media = { type: currentRoomType === 'music' ? 'music' : 'youtube', src: searchResults[0].src };
+    else if (searchResults.length > 0) media = { type: 'youtube', src: searchResults[0].src };
     else return;
     setYoutubeError(null);
     setMediaType(media.type);
@@ -752,18 +749,15 @@ function App() {
     sendAction('CHANGE_MEDIA', { type: 'custom_video', src: url, title: filename });
   };
 
-  const musicMode = currentRoomType === 'music';
-
   const handleSelectSearchResult = (song, playImmediately = true) => {
     if (!song) return;
     if (playImmediately) {
       setYoutubeError(null);
       if (song.src) {
-        const t = musicMode ? 'music' : 'youtube';
-        setMediaType(t);
+        setMediaType('youtube');
         setMediaSrc(song.src);
         setMediaMeta({ title: song.title, artist: song.artist, thumbnail: song.thumbnail });
-        sendAction('CHANGE_MEDIA', { type: t, src: song.src, title: song.title, artist: song.artist, thumbnail: song.thumbnail });
+        sendAction('CHANGE_MEDIA', { type: 'youtube', src: song.src, title: song.title, artist: song.artist, thumbnail: song.thumbnail });
       } else if (song.youtubeQuery) {
         setSearchInput(song.youtubeQuery);
       }
@@ -773,17 +767,16 @@ function App() {
   };
 
   const handleOpenAddModal = (song = null) => {
-    const defType = musicMode ? 'music' : 'youtube';
     let item;
     if (song) {
-      item = { id: Date.now() + Math.random().toString(), title: song.title, type: defType, src: song.src, addedBy: username };
+      item = { id: Date.now() + Math.random().toString(), title: song.title, type: 'youtube', src: song.src, addedBy: username };
     } else if (searchInput.trim()) {
       if (searchInput.includes('http://') || searchInput.includes('https://')) {
         const media = processUrl(searchInput);
         item = { id: Date.now() + Math.random().toString(), title: 'Eklenen Medya', type: media.type, src: media.src, addedBy: username };
       } else if (searchResults.length > 0) {
         const s = searchResults[0];
-        item = { id: Date.now() + Math.random().toString(), title: s.title, type: defType, src: s.src, addedBy: username };
+        item = { id: Date.now() + Math.random().toString(), title: s.title, type: 'youtube', src: s.src, addedBy: username };
       }
     }
     if (item) {
@@ -944,13 +937,12 @@ function App() {
       setSearchResults([]); setIsSearching(false); return;
     }
     setIsSearching(true);
-    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim(), token: authToken }); }, 150);
+    const timer = setTimeout(() => { if (socket) socket.emit('search_music', { query: searchInput.trim(), token: authToken, roomType: currentRoomType }); }, 150);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
   // ── 9. SOCKET EVENTS (extracted to hook) ──
   useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pendingSyncRef, saveRoomMessages, navigate, {
-    audioRef,
     setIsConnected, setPublicRooms, setSearchResults, setIsSearching, setInRoom, setErrorMessage,
     setRoomId, setRoomName, setHostUserId, setRoomTheme, setCurrentRoomType, setMySocketId, setRoomUsersList,
     setCurrentRoomInfo, setPlaylist, setCategories, setPlayMode, setMessages, setMediaType,
@@ -978,7 +970,7 @@ function App() {
   // ── 11. CONTEXT VALUE ──
   const contextValue = useMemo(() => ({
     socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
-    inRoom, roomId, roomName, hostUserId, roomTheme, currentRoomType, roomUsersList, toast, audioRef,
+    inRoom, roomId, roomName, hostUserId, roomTheme, currentRoomType, roomUsersList, toast,
     publicRooms, currentRoomInfo, mediaType, mediaSrc, mediaMeta, setMediaMeta,
     playlist, categories, selectedCategory, setSelectedCategory,
     newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
@@ -1124,7 +1116,7 @@ function App() {
                     🎵 Müzik Odası
                   </button>
                 </div>
-                {quickRoomKind === 'music' && <div style={{ color:'#64748b', fontSize:10, marginTop:4 }}>MP3 çalar • arka planda kapanmaz • kilit ekranı kontrolü</div>}
+                {quickRoomKind === 'music' && <div style={{ color:'#64748b', fontSize:10, marginTop:4 }}>YouTube Music • tek oynatıcı • senkron</div>}
               </div>
               <div>
                 <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Maksimum Kisi</label>
