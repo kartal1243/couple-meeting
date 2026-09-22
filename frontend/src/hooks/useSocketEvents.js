@@ -165,8 +165,6 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       } else if (type === 'EDIT_MESSAGE') {
         if (!payload?.messageId) return;
         a().setMessages((prev) => prev.map((m) => m.id === payload.messageId ? { ...m, text: payload.text, edited: true } : m));
-      } else if (type === 'REACTION') {
-        a().showFloatingEmoji(payload);
       } else if (type === 'SPEED') {
         if (ytPlayerRef.current) { try { ytPlayerRef.current.setPlaybackRate(payload.speed || 1); } catch {} }
       } else if (type === 'ROOM_CLOSED') {
@@ -360,9 +358,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
     });
 
     socket.on('reactions_update', (data) => {
-      if (data?.messageType === 'room') {
-        a().setMessages((prev) => prev);
-      }
+      if (!data?.messageId) return;
       a().setMessageReactions((prev) => ({ ...prev, [data.messageId]: data.reactions }));
     });
 

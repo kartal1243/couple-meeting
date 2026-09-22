@@ -90,7 +90,7 @@ function Chat({
   const toggleReact = (msgId, emoji) => {
     if (!authToken || !addReaction) return;
     const current = messageReactions?.[msgId]?.[emoji] || [];
-    const me = authUser?.username || username;
+    const me = username;
     if (current.includes(me)) removeReaction?.(msgId, emoji, 'room');
     else addReaction(msgId, emoji, 'room');
     setReactPicker(null);
@@ -310,12 +310,18 @@ function Chat({
                       {msg.fileType?.startsWith('video/') && (
                         <video src={msg.fileUrl} controls style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
                       )}
-                      {!msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('video/') && (
+                      {msg.fileType?.startsWith('audio/') && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: 14 }}>🎤</span>
+                          <audio src={msg.fileUrl} controls style={{ maxWidth: '100%', height: 32 }} />
+                        </div>
+                      )}
+                      {!msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('video/') && !msg.fileType?.startsWith('audio/') && (
                         <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: isMe ? '#fff' : primary, textDecoration: 'underline', fontSize: 12 }}>
                           📎 {msg.fileName}
                         </a>
                       )}
-                      {msg.fileType?.startsWith('image/') || msg.fileType?.startsWith('video/') ? (
+                      {msg.fileType?.startsWith('image/') || msg.fileType?.startsWith('video/') || msg.fileType?.startsWith('audio/') ? (
                         <div style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,.7)' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
                           📎 {msg.fileName}
                         </div>
@@ -461,7 +467,7 @@ function Chat({
           display: 'flex', gap: 6, background: 'rgba(0,0,0,.3)'
         }}
       >
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" style={{ display: 'none' }} onChange={handleFileSelect} />
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Dosya ekle" style={{
           background: uploading ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.06)',
           color: '#94a3b8', border: '1px solid rgba(255,255,255,.08)',

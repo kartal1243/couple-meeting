@@ -79,7 +79,8 @@ function SocialModal({
   myRole, reportUser, showVerifyModal, setShowVerifyModal, verifyCode, setVerifyCode,
   verifySent, setVerifySent, sendVerificationEmail, verifyEmailCode,
   show2FAModal, setShow2FAModal, twoFAEnabled, setup2FA, disable2FA, twoFASecret, twoFAQR, twoFACode, setTwoFACode, verify2FASetup,
-  showDeleteAccount, setShowDeleteAccount, deleteAccount, deletePass, setDeletePass
+  showDeleteAccount, setShowDeleteAccount, deleteAccount, deletePass, setDeletePass,
+  messageReactions, addReaction, removeReaction, editDm, deleteDm, authToken
 }) {
   useEffect(() => { if (authUser && socialTab === 'dm') loadDmList(); }, [socialTab, authUser]);
   useEffect(() => { if (authUser && socialTab === 'groups') loadGroups(); }, [socialTab, authUser]);
@@ -142,7 +143,7 @@ function SocialModal({
           {/* Content */}
           <div className="cm-social-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
             {socialTab === 'global' && <GlobalChatTab globalMessages={globalMessages} globalChatInput={globalChatInput} setGlobalChatInput={setGlobalChatInput} sendGlobalMessage={sendGlobalMessage} styles={styles} authUser={authUser} />}
-            {socialTab === 'dm' && <DmChat authUser={authUser} dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} followUser={followUser} unfollowUser={unfollowUser} isFollowingUser={isFollowingUser} styles={styles} />}
+            {socialTab === 'dm' && <DmChat authUser={authUser} dmConversations={dmConversations} dmActiveChat={dmActiveChat} setDmActiveChat={setDmActiveChat} dmMessages={dmMessages} dmInput={dmInput} setDmInput={setDmInput} sendDm={sendDm} openDm={openDm} typingUsers={typingUsers} sendDmTyping={sendDmTyping} sendDmStopTyping={sendDmStopTyping} followUser={followUser} unfollowUser={unfollowUser} isFollowingUser={isFollowingUser} styles={styles} messageReactions={messageReactions} addReaction={addReaction} removeReaction={removeReaction} editDm={editDm} deleteDm={deleteDm} authToken={authToken} />}
             {socialTab === 'groups' && <GroupsTab authUser={authUser} chatGroups={chatGroups} activeGroup={activeGroup} setActiveGroup={setActiveGroup} groupMessages={groupMessages} groupInput={groupInput} setGroupInput={setGroupInput} showGroupCreate={showGroupCreate} setShowGroupCreate={setShowGroupCreate} groupNameInput={groupNameInput} setGroupNameInput={setGroupNameInput} groupMemberInput={groupMemberInput} setGroupMemberInput={setGroupMemberInput} friends={friends} createGroup={createGroup} openGroup={openGroup} sendGroupMessage={sendGroupMessage} loadGroups={loadGroups} styles={styles} />}
             {socialTab === 'friends' && <FriendsTab authUser={authUser} friendSearch={friendSearch} setFriendSearch={setFriendSearch} searchFriends={searchFriends} friendSearchResults={friendSearchResults} sendFriendRequest={sendFriendRequest} friendRequests={friendRequests} respondFriendRequest={respondFriendRequest} friends={friends} friendOnlineStatuses={friendOnlineStatuses} openDm={openDm} unfriendUser={unfriendUser} styles={styles} openAuth={openAuth} />}
             {socialTab === 'feed' && <FeedTab authUser={authUser} feedItems={feedItems} suggestedFollows={suggestedFollows} followUser={followUser} createFeedPost={createFeedPost} likeFeedPost={likeFeedPost} commentFeedPost={commentFeedPost} deleteFeedPost={deleteFeedPost} loadFeed={loadFeed} />}

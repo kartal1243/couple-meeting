@@ -1501,6 +1501,7 @@ io.on('connection', (socket) => {
     if (!cleanEmoji) return;
     db.addReaction(messageId, messageType || 'dm', user.username, cleanEmoji);
     const reactions = db.getReactions(messageId, messageType || 'dm');
+    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
     socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
   });
   socket.on('remove_reaction', ({ messageId, messageType, emoji, token }) => {
@@ -1510,6 +1511,7 @@ io.on('connection', (socket) => {
     if (!cleanEmoji) return;
     db.removeReaction(messageId, messageType || 'dm', user.username, cleanEmoji);
     const reactions = db.getReactions(messageId, messageType || 'dm');
+    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
     socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
   });
 
@@ -2140,6 +2142,9 @@ io.on('connection', (socket) => {
       isVip: !!room.isVip,
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
+    if (room.screenSharerId && room.screenSharerId !== socket.id) {
+      socket.emit('screen_share_started', { socketId: room.screenSharerId });
+    }
     updateRoomUsers(cleanRoomId); broadcastRooms();
     try { broadcastAdminActivity('room_join', { username, roomId: cleanRoomId, roomName: room.name, message: `${username} odaya katıldı: ${room.name}` }); } catch (e) {}
     try {
@@ -2352,6 +2357,7 @@ io.on('connection', (socket) => {
     const user = token ? requireAuth(token) : null;
     const userId = user ? user.username : socket.userId;
     if (!userId || !roomId || !rooms[roomId] || !rooms[roomId].users.find(u => u.userId === userId)) return;
+    rooms[roomId].screenSharerId = socket.id;
     socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
   });
 
@@ -2363,6 +2369,7 @@ io.on('connection', (socket) => {
 
   socket.on('screen_share_stop', ({ roomId }) => {
     if (!roomId || !rooms[roomId]) return;
+    if (rooms[roomId].screenSharerId === socket.id) rooms[roomId].screenSharerId = null;
     socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
   });
 
@@ -2481,6 +2488,12 @@ io.on('connection', (socket) => {
       const leftUsername = leftUser?.username;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       rooms[rId].lastActivityAt = Date.now();
+      if (rooms[rId].screenSharerId === socket.id) {
+        rooms[rId].screenSharerId = null;
+        socket.to(rId).emit('screen_share_stopped', { socketId: socket.id });
+      }
+      if (rooms[rId].cameraUsers) delete rooms[rId].cameraUsers[socket.id];
+      if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[socket.id];
       socket.leave(rId); socket.currentRoom = null;
 
       if (rooms[rId].users.length === 0) {
@@ -2519,6 +2532,11 @@ io.on('connection', (socket) => {
         const leftUsername = leftUser?.username;
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
         if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
+        if (rooms[rId].cameraUsers) delete rooms[rId].cameraUsers[sid];
+        if (rooms[rId].screenSharerId === sid) {
+          rooms[rId].screenSharerId = null;
+          io.to(rId).emit('screen_share_stopped', { socketId: sid });
+        }
         rooms[rId].lastActivityAt = Date.now();
 
         if (rooms[rId].users.length === 0) {

@@ -1085,6 +1085,8 @@ function App() {
           setup2FA={setup2FA} disable2FA={disable2FA} twoFASecret={twoFASecret} twoFAQR={twoFAQR}
           twoFACode={twoFACode} setTwoFACode={setTwoFACode} verify2FASetup={verify2FASetup}
           showDeleteAccount={showDeleteAccount} setShowDeleteAccount={setShowDeleteAccount} deleteAccount={deleteAccount} deletePass={deletePass} setDeletePass={setDeletePass}
+          messageReactions={messageReactions} addReaction={addReaction} removeReaction={removeReaction}
+          editDm={editDm} deleteDm={deleteDm} authToken={authToken}
         />
         </Suspense>
       )}
