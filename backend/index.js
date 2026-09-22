@@ -416,6 +416,88 @@ app.get('/api/music/stream/:videoId', async (req, res) => {
   res.status(502).json({ error: 'Ses alinamadi.' });
 });
 
+async function resolveAudioUrl(videoId) {
+  const cached = streamCache.get(videoId);
+  if (cached && Date.now() - cached.t < STREAM_TTL) return cached.v;
+  try {
+    const yt = await getInnertube();
+    if (yt) {
+      const info = await yt.getBasicInfo(videoId);
+      const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+      if (format && format.decipher(yt.session.player)) {
+        const out = { url: format.decipher(yt.session.player), title: info.basic_info?.title || '' };
+        streamCache.set(videoId, { v: out, t: Date.now() });
+        return out;
+      }
+    }
+  } catch (e) { logger.warn('Proxy youtubei hatasi', { videoId, error: e.message }); }
+  const piped = ['https://pipedapi.kavin.rocks', 'https://pipedapi.reallyaweso.me', 'https://pipedapi.adminforge.de', 'https://pipedapi.tokhmi.xyz'];
+  for (const base of piped) {
+    try {
+      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const aud = (d.audioStreams || []).filter(a => a.url).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (aud?.url) {
+        const out = { url: aud.url, title: d.title || '' };
+        streamCache.set(videoId, { v: out, t: Date.now() });
+        return out;
+      }
+    } catch {}
+  }
+  const inv = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://iv.melmac.space', 'https://invidious.jing.rocks'];
+  for (const base of inv) {
+    try {
+      const r = await fetch(`${base}/api/v1/videos/${videoId}`, { signal: AbortSignal.timeout(7000), headers: { Accept: 'application/json' } });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const aud = (d.adaptiveFormats || []).filter(f => f.type?.startsWith('audio/') && f.url).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (aud?.url) {
+        const out = { url: aud.url, title: d.title || '' };
+        streamCache.set(videoId, { v: out, t: Date.now() });
+        return out;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+// MP3 proxy: sesi sunucu uzerinden aktarir (IP kilidi sorunu olmaz) + Range destekli
+app.get('/api/music/audio/:videoId', async (req, res) => {
+  const videoId = sanitize(req.params.videoId, 20);
+  if (!videoId) return res.status(400).end();
+  try {
+    const resolved = await resolveAudioUrl(videoId);
+    if (!resolved?.url) return res.status(502).end();
+    const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', Accept: '*/*' };
+    const range = req.headers.range;
+    if (range) headers.Range = range;
+    const upstream = await fetch(resolved.url, { headers, signal: AbortSignal.timeout(15000) });
+    if (!upstream.ok && upstream.status !== 206) return res.status(502).end();
+    res.status(upstream.status === 206 ? 206 : 200);
+    const ct = upstream.headers.get('content-type');
+    res.setHeader('Content-Type', ct || 'audio/mp4');
+    res.setHeader('Accept-Ranges', 'bytes');
+    const cl = upstream.headers.get('content-length');
+    if (cl) res.setHeader('Content-Length', cl);
+    const cr = upstream.headers.get('content-range');
+    if (cr) res.setHeader('Content-Range', cr);
+    res.setHeader('Cache-Control', 'public, max-age=1800');
+    if (!upstream.body) return res.status(502).end();
+    const reader = upstream.body.getReader();
+    req.on('close', () => { try { reader.cancel(); } catch {} });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!res.write(value)) await new Promise((r) => res.once('drain', r));
+    }
+    res.end();
+  } catch (e) {
+    logger.warn('Audio proxy hatasi', { videoId, error: e.message });
+    try { res.status(502).end(); } catch {}
+  }
+});
+
 // 6.5 ADMIN PANEL
 // ═══════════════════════════════════════════════════════════
 

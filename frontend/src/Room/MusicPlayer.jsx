@@ -10,29 +10,14 @@ function MusicPlayer({ videoId, meta, audioRef, pendingSyncRef, onEnded, onError
   const [retry, setRetry] = useState(0);
   const elRef = useRef(null);
 
-  // Stream URL al
+  // Proxy uzerinden direkt ses (IP kilidi sorunu yok)
   useEffect(() => {
-    let cancelled = false;
     setLoading(true);
     setError('');
-    setStreamUrl('');
     setBlocked(false);
-    if (!videoId) { setLoading(false); return; }
-    const ctrl = new AbortController();
-    fetch(`${BACKEND_URL}/api/music/stream/${videoId}`, { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (d.url) setStreamUrl(d.url);
-        else { setError('Ses alınamadı.'); onError?.({ message: 'Ses alınamadı.' }); }
-        setLoading(false);
-      })
-      .catch((e) => {
-        if (cancelled || e.name === 'AbortError') return;
-        setError('Bağlantı hatası.');
-        setLoading(false);
-      });
-    return () => { cancelled = true; ctrl.abort(); };
+    if (!videoId) { setLoading(false); setStreamUrl(''); return; }
+    setStreamUrl(`${BACKEND_URL}/api/music/audio/${videoId}${retry > 0 ? `?r=${retry}` : ''}`);
+    setLoading(false);
   }, [videoId, retry]);
 
   // Audio elementini paylaşılan ref'e bağla
