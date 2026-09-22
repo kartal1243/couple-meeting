@@ -16,10 +16,9 @@ function Player({
   const playType = mediaType === 'music' ? 'youtube' : mediaType;
   const videoId = extractVideoId(mediaSrc);
   const screenVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
   const screenStreamRef = useRef(null);
-  const screenDomVideoRef = useRef(null);
   const remoteCanvasRef = useRef(null);
-  const frameIntervalRef = useRef(null);
   const [remoteScreen, setRemoteScreen] = useState(false);
   const [screenShareError, setScreenShareError] = useState('');
 
@@ -62,51 +61,28 @@ function Player({
     return () => clearInterval(interval);
   }, [videoId, mediaType]);
 
-  // Screen sharing - capture and relay frames via Socket.IO
+  // WebRTC screen share (P2P) — socket only for signaling
+  const screenPcRef = useRef(null);
+  const remotePeersRef = useRef({});
+  const localStreamRef = useRef(null);
+  const [rtcReady, setRtcReady] = useState(false);
+
+  const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+
   const startScreenShare = async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always', width: 1280, height: 720 }, audio: false });
+      localStreamRef.current = stream;
       screenStreamRef.current = stream;
       setScreenSharing(true);
-      if (socket) socket.emit('screen_share_start', { roomId: mediaMeta?.roomId, token });
-
-      // Create hidden video + canvas for frame capture
-      const video = document.createElement('video');
-      video.muted = true;
-      video.setAttribute('muted', '');
-      video.setAttribute('playsinline', '');
-      video.srcObject = stream;
-      video.style.display = 'none';
-      document.body.appendChild(video);
-      screenDomVideoRef.current = video;
-      try { await video.play(); } catch {}
-
-      const canvas = document.createElement('canvas');
-      canvas.width = 560;
-      canvas.height = 315;
-      const ctx = canvas.getContext('2d');
-
-      video.onloadedmetadata = () => {
-        canvas.width = Math.min(video.videoWidth, 560);
-        canvas.height = Math.min(video.videoHeight, 315);
-      };
-
-      // Send frames every 120ms
-      let sending = false;
-      frameIntervalRef.current = setInterval(() => {
-        if (sending || video.readyState < 2) return;
-        sending = true;
-        try {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const data = canvas.toDataURL('image/jpeg', 0.55);
-          if (socket && socket.connected) socket.emit('screen_share_frame', { roomId: mediaMeta?.roomId, frame: data });
-        } catch {}
-        sending = false;
-      }, 120);
-
+      const roomId = mediaMeta?.roomId;
+      if (socket) socket.emit('screen_share_start', { roomId, token });
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = stream;
+        try { await screenVideoRef.current.play(); } catch {}
+      }
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) {
-      console.error('Ekran paylaşımı hatası:', err);
       let msg = 'Ekran paylaşımı başarısız.';
       if (err.name === 'NotAllowedError') msg = 'Ekran paylaşımı izni reddedildi.';
       else if (err.name === 'NotFoundError') msg = 'Paylaşılacak ekran bulunamadı.';
@@ -116,39 +92,68 @@ function Player({
   };
 
   const stopScreenShare = () => {
-    if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
     if (screenStreamRef.current) { screenStreamRef.current.getTracks().forEach(t => t.stop()); screenStreamRef.current = null; }
-    if (screenDomVideoRef.current) { screenDomVideoRef.current.remove(); screenDomVideoRef.current = null; }
+    Object.values(remotePeersRef.current).forEach(pc => { try { pc.close(); } catch {} });
+    remotePeersRef.current = {};
+    if (screenPcRef.current) { try { screenPcRef.current.close(); } catch {} screenPcRef.current = null; }
     setScreenSharing(false);
+    setRtcReady(false);
     if (socket) socket.emit('screen_share_stop', { roomId: mediaMeta?.roomId });
   };
 
-  // Receive screen share frames
+  // Signaling: create/receive offers for screen share
   useEffect(() => {
     if (!socket) return;
-    const onStart = () => setRemoteScreen(true);
-    const onStop = () => { setRemoteScreen(false); if (remoteCanvasRef.current) { const ctx = remoteCanvasRef.current.getContext('2d'); ctx.clearRect(0, 0, remoteCanvasRef.current.width, remoteCanvasRef.current.height); } };
-    const onFrame = (data) => {
-      if (!remoteCanvasRef.current) return;
-      const img = new Image();
-      img.onload = () => {
-        const ctx = remoteCanvasRef.current.getContext('2d');
-        ctx.drawImage(img, 0, 0, remoteCanvasRef.current.width, remoteCanvasRef.current.height);
-      };
-      img.src = data.frame;
+    const onSignal = async ({ fromId, signal }) => {
+      try {
+        if (signal.type === 'offer') {
+          let pc = remotePeersRef.current[fromId];
+          if (!pc) { pc = new RTCPeerConnection(ICE); remotePeersRef.current[fromId] = pc; }
+          pc.ontrack = (e) => {
+            if (remoteVideoRef.current) { remoteVideoRef.current.srcObject = e.streams[0]; remoteVideoRef.current.play().catch(() => {}); }
+          };
+          pc.onicecandidate = (e) => { if (e.candidate) socket.emit('screen_signal', { targetId: fromId, signal: { type: 'ice-candidate', candidate: e.candidate } }); };
+          await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          const ans = await pc.createAnswer();
+          await pc.setLocalDescription(ans);
+          socket.emit('screen_signal', { targetId: fromId, signal: ans });
+        } else if (signal.type === 'answer' && screenPcRef.current) {
+          await screenPcRef.current.setRemoteDescription(new RTCSessionDescription(signal));
+        } else if (signal.type === 'ice-candidate') {
+          const pc = remotePeersRef.current[fromId] || screenPcRef.current;
+          if (pc && signal.candidate) await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        }
+      } catch {}
     };
-    socket.on('screen_share_started', onStart);
+    const onStarted = async ({ socketId }) => {
+      setRemoteScreen(true);
+      if (!localStreamRef.current || !socketId) return;
+      const pc = new RTCPeerConnection(ICE);
+      screenPcRef.current = pc;
+      localStreamRef.current.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current));
+      pc.onicecandidate = (e) => { if (e.candidate) socket.emit('screen_signal', { targetId: socketId, signal: { type: 'ice-candidate', candidate: e.candidate } }); };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('screen_signal', { targetId: socketId, signal: offer });
+      setRtcReady(true);
+    };
+    const onStop = () => { setRemoteScreen(false); setRtcReady(false); };
+    socket.on('screen_signal', onSignal);
+    socket.on('screen_share_started', onStarted);
     socket.on('screen_share_stopped', onStop);
-    socket.on('screen_share_frame', onFrame);
-    return () => { socket.off('screen_share_started', onStart); socket.off('screen_share_stopped', onStop); socket.off('screen_share_frame', onFrame); };
-  }, [socket]);
+    return () => {
+      socket.off('screen_signal', onSignal);
+      socket.off('screen_share_started', onStarted);
+      socket.off('screen_share_stopped', onStop);
+    };
+  }, [socket, mediaMeta?.roomId, token]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
       if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop());
-      if (screenDomVideoRef.current) screenDomVideoRef.current.remove();
+      if (screenPcRef.current) { try { screenPcRef.current.close(); } catch {} }
+      Object.values(remotePeersRef.current).forEach(pc => { try { pc.close(); } catch {} });
     };
   }, []);
 
@@ -164,8 +169,10 @@ function Player({
 
       {mediaType === 'none' && !screenSharing && !remoteScreen && (
         <div style={{ textAlign: 'center', color: '#8696a0' }}>
-          <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎬</div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Yukarıdan Şarkı veya Video Aratın!</div>
+          <div style={{ fontSize: '56px', marginBottom: '12px' }}>{currentRoomType === 'music' ? '🎵' : '🎬'}</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
+            {currentRoomType === 'music' ? 'Yukarıdan şarkı arayın ve seçin!' : 'Yukarıdan Şarkı veya Video Aratın!'}
+          </div>
         </div>
       )}
 
@@ -222,10 +229,10 @@ function Player({
 
       {remoteScreen && !screenSharing && (
         <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <canvas ref={remoteCanvasRef} width={640} height={360} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(239,68,68,.9)', color: '#fff', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', animation: 'cmLivePulse 1.5s ease infinite' }} />
-            CANLI EKRAN PAYLAŞIMI
+            CANLI EKRAN PAYLAŞIMI {rtcReady ? '(P2P)' : '...'}
           </div>
         </div>
       )}
@@ -260,8 +267,8 @@ function Player({
         </div>
       ))}
 
-      {/* Ekran paylaşımı şu an için devre dışı */}
-      {false && isHost && !screenSharing && (
+      {/* Ekran paylaşımı - WebRTC P2P */}
+      {isHost && !screenSharing && (
         <button onClick={startScreenShare} title="Ekran Paylaş"
           style={{
             position: 'absolute', top: 12, right: 12, zIndex: 15,

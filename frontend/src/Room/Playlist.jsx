@@ -1,13 +1,36 @@
-import { memo } from 'react';
+import { memo, useState, useRef } from 'react';
 
 function Playlist({
   categories, selectedCategory, setSelectedCategory,
   newCategoryInput, setNewCategoryInput, handleCreateCategory,
   playMode, handleModeChange, filteredPlaylist, mediaSrc,
-  handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, currentTheme
+  handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, currentTheme,
+  mediaMeta, onDropMove
 }) {
+  const dragIdRef = useRef(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
   return (
     <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b141a' }}>
+      {mediaMeta && (mediaMeta.title || mediaMeta.thumbnail) && (
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'center', padding: 10, borderRadius: 12,
+          background: `linear-gradient(135deg, ${currentTheme.primary}22, rgba(255,255,255,.04))`,
+          border: `1px solid ${currentTheme.primary}44`
+        }}>
+          {mediaMeta.thumbnail ? (
+            <img src={mediaMeta.thumbnail} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🎵</div>
+          )}
+          <div style={{ overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, color: currentTheme.primary, letterSpacing: 0.5 }}>▶ ŞİMDİ ÇALIYOR</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{mediaMeta.title || 'Bilinmeyen'}</div>
+            {mediaMeta.artist && <div style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{mediaMeta.artist}</div>}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
         {categories.map((cat) => (
           <button
@@ -75,14 +98,27 @@ function Playlist({
           Bu klasör henüz boş.
         </div>
       ) : (
-        filteredPlaylist.map((item) => (
+        filteredPlaylist.map((item, dragIdx) => (
           <div
             key={item.id}
+            draggable
+            onDragStart={() => { dragIdRef.current = item.id; }}
+            onDragOver={(e) => { e.preventDefault(); setDragOverId(item.id); }}
+            onDragLeave={() => setDragOverId((v) => v === item.id ? null : v)}
+            onDrop={(e) => {
+              e.preventDefault();
+              const fromId = dragIdRef.current;
+              dragIdRef.current = null;
+              setDragOverId(null);
+              if (fromId && fromId !== item.id && onDropMove) onDropMove(fromId, item.id, dragIdx);
+            }}
+            onDragEnd={() => { dragIdRef.current = null; setDragOverId(null); }}
             onClick={() => handleSelectPlaylistItem(item)}
             style={{
               background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21',
-              border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}` : '1px solid #222d34',
-              padding: '10px', borderRadius: '10px', cursor: 'pointer',
+              border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}`
+                : dragOverId === item.id ? `1px dashed ${currentTheme.primary}` : '1px solid #222d34',
+              padding: '10px', borderRadius: '10px', cursor: 'grab',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}
           >
@@ -90,7 +126,7 @@ function Playlist({
               fontSize: '12px', fontWeight: 'bold', color: '#fff',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1
             }}>
-              {item.title}
+              <span style={{ opacity: .45, marginRight: 6 }}>⠿</span>{item.title}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
               <button

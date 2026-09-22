@@ -11,16 +11,23 @@ function getAvatarColor(name) {
 function Chat({
   messages, mySocketId, username, chatInput, setChatInput,
   handleSendMessage, currentTheme, replyTo, setReplyTo,
-  messagesSearch, setMessagesSearch, filteredMessages, onFileUpload, socket, roomId, roomTypingUsers
+  messagesSearch, setMessagesSearch, filteredMessages, onFileUpload, socket, roomId, roomTypingUsers,
+  messageReactions, addReaction, removeReaction, authToken, editRoomMessage
 }) {
   const chatBottomRef = useRef(null);
   const [hoveredMsg, setHoveredMsg] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [reactPicker, setReactPicker] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [recording, setRecording] = useState(false);
+  const recRef = useRef(null);
   const fileInputRef = useRef(null);
   const primary = currentTheme?.primary || '#00a884';
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
   const displayMessages = filteredMessages || messages;
+  const REACTION_EMOJIS = ['❤️','😂','😮','🔥','👍','😢'];
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,6 +86,64 @@ function Chat({
     setChatInput(e.target.value);
     handleTyping();
   }, [setChatInput, handleTyping]);
+
+  const toggleReact = (msgId, emoji) => {
+    if (!authToken || !addReaction) return;
+    const current = messageReactions?.[msgId]?.[emoji] || [];
+    const me = authUser?.username || username;
+    if (current.includes(me)) removeReaction?.(msgId, emoji, 'room');
+    else addReaction(msgId, emoji, 'room');
+    setReactPicker(null);
+  };
+
+  const startEdit = (msg) => {
+    setEditingId(msg.id);
+    setEditText(msg.text || '');
+    setHoveredMsg(null);
+  };
+
+  const submitEdit = (msgId) => {
+    const t = editText.trim();
+    if (t && editRoomMessage) editRoomMessage(msgId, t);
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const toggleRecord = async () => {
+    if (recording) {
+      try { recRef.current?.stop(); } catch {}
+      setRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+      const rec = new MediaRecorder(stream, { mimeType: mime });
+      const chunks = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: mime });
+        if (blob.size < 500) return;
+        try {
+          const fd = new FormData();
+          const fname = `voice_${Date.now()}.webm`;
+          fd.append('video', new File([blob], fname, { type: mime }));
+          fd.append('token', localStorage.getItem('cm_auth_token') || '');
+          const res = await fetch('/api/upload-video', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (data.ok && onFileUpload) {
+            onFileUpload({ url: data.url, name: '🎤 Sesli mesaj', type: mime, isImage: false, isVideo: false });
+          }
+        } catch {}
+      };
+      recRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', minHeight: 0 }}>
@@ -206,7 +271,7 @@ function Chat({
                   wordBreak: 'break-word', overflowWrap: 'break-word',
                   maxWidth: '100%', boxSizing: 'border-box'
                 }}>
-                  {msg.replyTo && (
+                    {msg.replyTo && (
                     <div style={{
                       borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,.35)' : primary}`,
                       paddingLeft: 6, marginBottom: 4,
@@ -222,7 +287,22 @@ function Chat({
                       </div>
                     </div>
                   )}
-                  {msg.fileUrl ? (
+                  {editingId === msg.id ? (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                      <input
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') submitEdit(msg.id); if (e.key === 'Escape') setEditingId(null); }}
+                        autoFocus
+                        style={{
+                          flex: 1, minWidth: 0, background: 'rgba(0,0,0,.35)', border: `1px solid ${primary}`,
+                          color: '#fff', borderRadius: 8, padding: '5px 8px', fontSize: 12, outline: 'none'
+                        }}
+                      />
+                      <button onClick={() => submitEdit(msg.id)} style={{ background: primary, border: 'none', color: '#fff', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>✓</button>
+                      <button onClick={() => setEditingId(null)} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#94a3b8', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>✕</button>
+                    </div>
+                  ) : msg.fileUrl ? (
                     <div>
                       {msg.fileType?.startsWith('image/') && (
                         <img src={msg.fileUrl} alt={msg.fileName} style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
@@ -252,24 +332,76 @@ function Chat({
                   }}>
                     {msg.time}{isMe && (msg.senderVipLevel || msg.senderVip) ? <VipBadge level={msg.senderVipLevel || 1} size={8} /> : null}
                   </div>
-                ) : null}
-              </div>
+                  ) : null}
+                  {msg.edited && editingId !== msg.id && (
+                    <span style={{ fontSize: 9, fontStyle: 'italic', opacity: .55, marginLeft: 4 }}>(düzenlendi)</span>
+                  )}
+                </div>
 
-              {(hoveredMsg === idx) && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setReplyTo(msg); setHoveredMsg(null); }}
-                  onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); setReplyTo(msg); setHoveredMsg(null); }}
-                  style={{
-                    position: 'absolute', top: 0,
-                    [isMe ? 'left' : 'right']: -2,
-                    background: primary, color: '#fff', border: 'none',
-                    borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 800,
-                    cursor: 'pointer', whiteSpace: 'nowrap', zIndex: 10,
-                    boxShadow: `0 4px 12px ${primary}66`
-                  }}
-                >
-                  ↩
-                </button>
+                {Object.keys(messageReactions?.[msg.id] || {}).length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4, justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                    {Object.entries(messageReactions[msg.id]).map(([emoji, users]) => (
+                      <button
+                        key={emoji}
+                        onClick={() => toggleReact(msg.id, emoji)}
+                        style={{
+                          background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)',
+                          borderRadius: 10, padding: '1px 6px', fontSize: 11, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1.4
+                        }}
+                        title={(users || []).join(', ')}
+                      >{emoji} <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 800 }}>{(users || []).length}</span></button>
+                    ))}
+                  </div>
+                )}
+
+                {reactPicker === idx && (
+                  <div style={{
+                    display: 'flex', gap: 4, position: 'absolute', top: -28, zIndex: 20,
+                    background: '#111b21', border: '1px solid #2a3942', borderRadius: 12, padding: '4px 6px',
+                    boxShadow: '0 6px 18px rgba(0,0,0,.4)',
+                    [isMe ? 'right' : 'left']: 0
+                  }}>
+                    {REACTION_EMOJIS.map((em) => (
+                      <button key={em} onClick={(e) => { e.stopPropagation(); toggleReact(msg.id, em); }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, padding: 2 }}>{em}</button>
+                    ))}
+                  </div>
+                )}
+
+                {(hoveredMsg === idx) && (
+                <div style={{ display: 'flex', gap: 3, position: 'absolute', top: 0, [isMe ? 'left' : 'right']: -2, zIndex: 10 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setReplyTo(msg); setHoveredMsg(null); }}
+                    onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); setReplyTo(msg); setHoveredMsg(null); }}
+                    style={{
+                      background: primary, color: '#fff', border: 'none',
+                      borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 800,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      boxShadow: `0 4px 12px ${primary}66`
+                    }}
+                  >
+                    ↩
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setReactPicker(reactPicker === idx ? null : idx); }}
+                    style={{
+                      background: 'rgba(255,255,255,.12)', color: '#fff', border: 'none',
+                      borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 800,
+                      cursor: 'pointer', whiteSpace: 'nowrap'
+                    }}
+                  >☺</button>
+                  {isMe && msg.text && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startEdit(msg); }}
+                      style={{
+                        background: 'rgba(255,255,255,.12)', color: '#fff', border: 'none',
+                        borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 800,
+                        cursor: 'pointer', whiteSpace: 'nowrap'
+                      }}
+                    >✏</button>
+                  )}
+                </div>
               )}
             </div>
           );
@@ -330,13 +462,22 @@ function Chat({
         }}
       >
         <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
-        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Dosya ekle" style={{
           background: uploading ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.06)',
           color: '#94a3b8', border: '1px solid rgba(255,255,255,.08)',
           borderRadius: 10, width: 36, height: 36, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 14, cursor: uploading ? 'wait' : 'pointer'
         }}>{uploading ? '⏳' : '📎'}</button>
+        <button type="button" onClick={toggleRecord} title={recording ? 'Kaydı durdur' : 'Sesli mesaj'} style={{
+          background: recording ? 'rgba(239,68,68,.2)' : 'rgba(255,255,255,.06)',
+          color: recording ? '#ef4444' : '#94a3b8',
+          border: recording ? '1px solid rgba(239,68,68,.4)' : '1px solid rgba(255,255,255,.08)',
+          borderRadius: 10, width: 36, height: 36, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, cursor: 'pointer',
+          animation: recording ? 'pulseDot 1s infinite' : 'none'
+        }}>{recording ? '⏹' : '🎤'}</button>
         <input
           type="text"
           placeholder={replyTo ? `${replyTo.sender} yanıtla...` : 'Mesaj yaz...'}

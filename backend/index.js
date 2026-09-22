@@ -25,6 +25,9 @@ app.set('trust proxy', 1);
 // 1. GÜVENLİK & MIDDLEWARE
 // ═══════════════════════════════════════════════════════════
 
+process.on('uncaughtException', (e) => { try { logger.error('uncaughtException', { error: e.message, stack: e.stack }); } catch {} });
+process.on('unhandledRejection', (e) => { try { logger.error('unhandledRejection', { error: String(e && e.message || e) }); } catch {} });
+
 app.use(helmet({ contentSecurityPolicy: false, frameguard: { action: 'sameorigin' } }));
 app.use(compression());
 
@@ -88,9 +91,10 @@ const videoStorage = multer.diskStorage({
   }
 });
 const videoUpload = multer({ storage: videoStorage, limits: { fileSize: 100 * 1024 * 1024 }, fileFilter: (req, file, cb) => {
-  const allowed = /\.(mp4|webm|ogg|mov)$/i;
-  if (allowed.test(path.extname(file.originalname)) && (file.mimetype.startsWith('video/') || file.mimetype === 'application/octet-stream')) cb(null, true);
-  else cb(new Error('Sadece video dosyaları yüklenebilir (mp4, webm, ogg, mov).'));
+  const allowed = /\.(mp4|webm|ogg|mov|m4a|mp3|wav|opus)$/i;
+  const audioOk = file.mimetype.startsWith('audio/') || file.mimetype.startsWith('video/') || file.mimetype === 'application/octet-stream';
+  if (allowed.test(path.extname(file.originalname)) && audioOk) cb(null, true);
+  else cb(new Error('Desteklenmeyen dosya tipi.'));
 }});
 
 app.post('/api/upload-avatar', uploadLimiter, (req, res) => {
@@ -147,6 +151,15 @@ function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
 // ═══════════════════════════════════════════════════════════
 
 app.get('/', (req, res) => res.status(200).send('Couple Meeting Backend Active!'));
+
+app.get('/api/health', async (req, res) => {
+  try {
+    const ok = db.testConnection ? db.testConnection() : true;
+    res.json({ ok: !!ok, uptime: process.uptime(), timestamp: Date.now(), rooms: Object.keys(rooms).length });
+  } catch (e) {
+    res.status(503).json({ ok: false, error: e.message });
+  }
+});
 app.get('/health', (req, res) => res.json({ ok: true, service: 'couple-meeting-backend', time: Date.now(), db: 'sqlite' }));
 
 // ═══════════════════════════════════════════════════════════
@@ -2222,14 +2235,20 @@ io.on('connection', (socket) => {
     io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
   });
 
-  socket.on('move_playlist_item', ({ roomId, itemId, dir }) => {
+  socket.on('move_playlist_item', ({ roomId, itemId, dir, toIndex }) => {
     const room = rooms[sanitize(roomId, 50)];
     if (!room || !Array.isArray(room.playlist)) return;
     if (!room.users.some(u => u.socketId === socket.id)) return;
     const idx = room.playlist.findIndex(i => i.id === itemId);
     if (idx < 0) return;
-    const to = idx + (dir === 'down' ? 1 : -1);
-    if (to < 0 || to >= room.playlist.length) return;
+    let to;
+    if (typeof toIndex === 'number') {
+      to = Math.max(0, Math.min(toIndex, room.playlist.length - 1));
+      if (to === idx) return;
+    } else {
+      to = idx + (dir === 'down' ? 1 : -1);
+      if (to < 0 || to >= room.playlist.length) return;
+    }
     const [item] = room.playlist.splice(idx, 1);
     room.playlist.splice(to, 0, item);
     io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
@@ -2295,6 +2314,16 @@ io.on('connection', (socket) => {
         socket.to(cleanRoomId).emit('room_action', { type, payload: msg });
         socket.emit('room_action', { type, payload: msg });
         return;
+      } else if (type === 'EDIT_MESSAGE') {
+        const member = room.users.find(u => u.socketId === socket.id);
+        if (!member) return;
+        const m = (room.messages || []).find(x => x.id === payload.messageId && x.senderId === member.userId);
+        if (!m) return;
+        m.text = sanitize(payload.text, 500);
+        m.edited = true;
+        socket.to(cleanRoomId).emit('room_action', { type: 'EDIT_MESSAGE', payload: { messageId: m.id, text: m.text } });
+        socket.emit('room_action', { type: 'EDIT_MESSAGE', payload: { messageId: m.id, text: m.text } });
+        return;
       } else if (type === 'UPDATE_MAX_USERS') {
         if (!isRoomHost(room, socket, null)) return;
         const maxLimit = room.isVip ? 20 : 8;
@@ -2337,6 +2366,12 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
   });
 
+  // WebRTC ekran paylaşımı - SDP/ICE relay
+  socket.on('screen_signal', ({ targetId, signal }) => {
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) targetSocket.emit('screen_signal', { fromId: socket.id, signal });
+  });
+
   // Voice chat
   socket.on('voice_join', ({ roomId, token }) => {
     const user = token ? requireAuth(token) : null;
@@ -2376,6 +2411,38 @@ io.on('connection', (socket) => {
   socket.on('voice_signal', ({ targetId, signal }) => {
     const targetSocket = io.sockets.sockets.get(targetId);
     if (targetSocket) targetSocket.emit('voice_signal', { fromId: socket.id, signal });
+  });
+
+  // Kamera (video) WebRTC - voice_signal ile aynı relay
+  socket.on('camera_join', ({ roomId, token }) => {
+    const user = token ? requireAuth(token) : null;
+    const userId = user ? user.username : socket.userId;
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]) return;
+    if (!rooms[cleanRoomId].users.find(u => u.userId === userId)) return;
+    if (!rooms[cleanRoomId].cameraUsers) rooms[cleanRoomId].cameraUsers = {};
+    rooms[cleanRoomId].cameraUsers[socket.id] = { username: user ? user.username : userId };
+    socket.to(cleanRoomId).emit('camera_join', { socketId: socket.id });
+    const cu = Object.entries(rooms[cleanRoomId].cameraUsers).map(([sid, u]) => ({ socketId: sid, username: u.username }));
+    socket.emit('camera_users', { users: cu });
+    socket.to(cleanRoomId).emit('camera_users', { users: cu });
+  });
+
+  socket.on('camera_leave', ({ roomId, token }) => {
+    const user = token ? requireAuth(token) : null;
+    const userId = user ? user.username : socket.userId;
+    const cleanRoomId = sanitize(roomId, 50);
+    if (!rooms[cleanRoomId]) return;
+    if (rooms[cleanRoomId].cameraUsers) delete rooms[cleanRoomId].cameraUsers[socket.id];
+    socket.to(cleanRoomId).emit('camera_leave', { socketId: socket.id });
+    const cu = rooms[cleanRoomId].cameraUsers ? Object.entries(rooms[cleanRoomId].cameraUsers).map(([sid, u]) => ({ socketId: sid, username: u.username })) : [];
+    socket.emit('camera_users', { users: cu });
+    socket.to(cleanRoomId).emit('camera_users', { users: cu });
+  });
+
+  socket.on('camera_signal', ({ targetId, signal }) => {
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) targetSocket.emit('camera_signal', { fromId: socket.id, signal });
   });
 
   socket.on('request_room_sync', ({ roomId } = {}) => {

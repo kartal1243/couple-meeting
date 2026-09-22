@@ -192,7 +192,7 @@ export default function RoomPage() {
 
           {sidebarTab === 'chat' ? (
             <ErrorBoundary fallbackMessage="Sohbet yüklenirken bir hata oluştu.">
-              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} onFileUpload={handleFileUpload} socket={socket} roomId={roomId} roomTypingUsers={roomTypingUsers} />
+              <Chat messages={messages} mySocketId={mySocketId} username={authUser?.username || username} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} currentTheme={{ ...currentTheme, primary: chatTheme.primary }} replyTo={replyTo} setReplyTo={setReplyTo} messagesSearch={messagesSearch} setMessagesSearch={setMessagesSearch} filteredMessages={filteredMessages} onFileUpload={handleFileUpload} socket={socket} roomId={roomId} roomTypingUsers={roomTypingUsers} messageReactions={app.messageReactions} addReaction={app.addReaction} removeReaction={app.removeReaction} authToken={app.authToken} editRoomMessage={app.editRoomMessage} />
             </ErrorBoundary>
           ) : (
             <Playlist
@@ -202,6 +202,7 @@ export default function RoomPage() {
               handleModeChange={handleModeChange} filteredPlaylist={filteredPlaylist}
               mediaSrc={mediaSrc} handleSelectPlaylistItem={handleSelectPlaylistItem}
               handleRemovePlaylistItem={handleRemovePlaylistItem} handleMovePlaylistItem={handleMovePlaylistItem} currentTheme={currentTheme}
+              mediaMeta={mediaMeta} onDropMove={app.handleDropMovePlaylist}
             />
           )}
         </div>

@@ -350,6 +350,7 @@ function App() {
   const editDm = (messageId, withUser, newText) => { if (authToken) socket.emit('dm_edit', { messageId, withUser, newText, token: authToken }); };
   const addReaction = (messageId, emoji, messageType = 'dm') => { if (authToken) socket.emit('add_reaction', { messageId, messageType, emoji, token: authToken }); };
   const removeReaction = (messageId, emoji, messageType = 'dm') => { if (authToken) socket.emit('remove_reaction', { messageId, messageType, emoji, token: authToken }); };
+  const editRoomMessage = (messageId, text) => { sendAction('EDIT_MESSAGE', { messageId, text }); };
   const blockUser = (targetUsername) => { if (authToken) socket.emit('block_user', { targetUsername, token: authToken }); };
   const unblockUser = (targetUsername) => { if (authToken) socket.emit('unblock_user', { targetUsername, token: authToken }); };
   const inviteToRoom = (targetUsername, roomId) => { if (authToken) socket.emit('invite_to_room', { targetUsername, roomId, token: authToken }); };
@@ -810,6 +811,10 @@ function App() {
     socket.emit('move_playlist_item', { roomId: currentRoomIdRef.current, itemId, dir });
   };
 
+  const handleDropMovePlaylist = (fromId, toId, toIndex) => {
+    socket.emit('move_playlist_item', { roomId: currentRoomIdRef.current, itemId: fromId, toIndex });
+  };
+
   const handleModeChange = (mode) => {
     setPlayMode(mode);
     socket.emit('change_play_mode', { roomId: currentRoomIdRef.current, mode });
@@ -994,7 +999,7 @@ function App() {
     handleSaveSettings, handleKickUser, handleTransferAdmin,
     handlePlay, handlePause, handleMediaEnd, handleDirectPlay, handleVideoUpload,
     handleSelectSearchResult, handleOpenAddModal, confirmAddToPlaylist,
-    handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, handleModeChange,
+    handleSelectPlaylistItem, handleRemovePlaylistItem, handleMovePlaylistItem, handleModeChange, handleDropMovePlaylist,
     handleCreateCategory, handleSendMessage, sendReaction, sendAction,
     handleYouTubeError, openYouTubeExternally, handleInstallApp,
     setJoinRoomTarget, setJoinModalPass, setQuickRoomName, setQuickRoomPass,
@@ -1008,7 +1013,7 @@ function App() {
     showGroupCreate, setShowGroupCreate, groupNameInput, setGroupNameInput,
     groupMemberInput, setGroupMemberInput, createGroup, openGroup, sendGroupMessage, loadGroups,
     typingUsers, sendDmTyping, sendDmStopTyping,
-    messageReactions, addReaction, removeReaction,
+    messageReactions, addReaction, removeReaction, editRoomMessage,
     blockedUsers, blockUser, unblockUser,
     deleteDm, editDm, inviteToRoom, changePassword
   }), [inRoom, roomId, roomTheme, currentRoomType, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows, showNotifPanel]);
