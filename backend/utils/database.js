@@ -858,6 +858,17 @@ function getReactions(messageId, messageType) {
   return {};
 }
 
+function getReactionsForMessages(messageIds, messageType) {
+  const out = {};
+  if (!getDb() || !Array.isArray(messageIds) || messageIds.length === 0) return out;
+  for (const id of messageIds) {
+    if (!id) continue;
+    const r = getReactions(id, messageType);
+    if (r && Object.keys(r).length > 0) out[id] = r;
+  }
+  return out;
+}
+
 function followUser(follower, following) {
   if (getDb()) {
     if (follower === following) return false;
@@ -1331,7 +1342,7 @@ module.exports = {
   saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
   saveGroupMessage, getGroupHistory,
   blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
-  addReaction, removeReaction, getReactions,
+  addReaction, removeReaction, getReactions, getReactionsForMessages,
   followUser, unfollowUser, isFollowing, getFollowers, getFollowing, getFollowCounts,
   addFeedItem, getFeedForUser, likeFeedItem, getFeedLikes, addFeedComment, getFeedComments, deleteFeedItem, getMutualFollowers, getSuggestedFollows,
   createNotification, getNotifications, getUnreadNotifCount, markNotifsRead,

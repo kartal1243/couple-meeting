@@ -53,6 +53,9 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       const serverMsgs = Array.isArray(data.messages) ? data.messages : [];
       a().setMessages(serverMsgs);
       if (serverMsgs.length > 0) saveRoomMessages(data.roomId, serverMsgs);
+      if (data.reactions && Object.keys(data.reactions).length > 0) {
+        a().setMessageReactions((prev) => ({ ...prev, ...data.reactions }));
+      }
 
       localStorage.setItem('cm_saved_room', data.roomId);
       a().saveToRecentRooms(data.roomId);
@@ -205,8 +208,11 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
     socket.on('global_chat_cleared', () => { a().setGlobalMessages([]); a().setToast({ msg: 'Canli sohbet admin tarafindan temizlendi', sender: 'Sistem', id: Date.now() }); setTimeout(() => a().setToast(null), 4000); });
 
     socket.on('dm_list', ({ conversations }) => a().setDmConversations(conversations || []));
-    socket.on('dm_history', ({ messages, withUser }) => {
+    socket.on('dm_history', ({ messages, withUser, reactions }) => {
       a().setDmMessages(prev => ({ ...prev, [withUser]: messages || [] }));
+      if (reactions && Object.keys(reactions).length > 0) {
+        a().setMessageReactions((prev) => ({ ...prev, ...reactions }));
+      }
     });
     socket.on('dm_sent', (msg) => {
       a().setDmMessages((prev) => {

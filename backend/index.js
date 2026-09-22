@@ -1882,7 +1882,10 @@ io.on('connection', (socket) => {
     const memMessages = dmMessages[key] || [];
     const allMessages = [...dbMessages, ...memMessages.filter(m => !dbMessages.find(d => d.id === m.id))];
     allMessages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-    socket.emit('dm_history', { messages: allMessages.slice(-50), withUser: other });
+    const page = allMessages.slice(-50);
+    let reactions = {};
+    try { reactions = db.getReactionsForMessages(page.map(m => m.id), 'dm'); } catch (e) {}
+    socket.emit('dm_history', { messages: page, withUser: other, reactions });
   });
 
   socket.on('dm_list', ({ token }) => {
@@ -2133,12 +2136,17 @@ io.on('connection', (socket) => {
     let calcTime = room.currentMedia?.time || 0;
     if (room.currentMedia?.isPlaying) calcTime += (Date.now() - (room.currentMedia.lastUpdated || Date.now())) / 1000;
 
+    const joinMsgs = (room.messages || []).slice(-100);
+    let joinReactions = {};
+    try { joinReactions = db.getReactionsForMessages(joinMsgs.map(m => m.id), 'room'); } catch (e) {}
+
     socket.emit('room_joined', {
       roomId: cleanRoomId, roomName: room.name, hostUserId: room.hostUserId, theme: room.theme,
       roomType: room.roomType || 'video',
       userCount: room.users.length, maxUsers: room.maxUsers, socketId: socket.id,
       users: room.users, playlist: room.playlist, categories: room.categories,
-      playMode: room.playMode, messages: (room.messages || []).slice(-100),
+      playMode: room.playMode, messages: joinMsgs,
+      reactions: joinReactions,
       isVip: !!room.isVip,
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
@@ -2492,8 +2500,18 @@ io.on('connection', (socket) => {
         rooms[rId].screenSharerId = null;
         socket.to(rId).emit('screen_share_stopped', { socketId: socket.id });
       }
-      if (rooms[rId].cameraUsers) delete rooms[rId].cameraUsers[socket.id];
-      if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[socket.id];
+      if (rooms[rId].cameraUsers && rooms[rId].cameraUsers[socket.id]) {
+        delete rooms[rId].cameraUsers[socket.id];
+        socket.to(rId).emit('camera_leave', { socketId: socket.id });
+        const cu = Object.entries(rooms[rId].cameraUsers).map(([csid, u]) => ({ socketId: csid, username: u.username }));
+        socket.to(rId).emit('camera_users', { users: cu });
+      }
+      if (rooms[rId].voiceUsers && rooms[rId].voiceUsers[socket.id]) {
+        delete rooms[rId].voiceUsers[socket.id];
+        socket.to(rId).emit('voice_leave', { socketId: socket.id });
+        const vu = Object.entries(rooms[rId].voiceUsers).map(([csid, u]) => ({ socketId: csid, username: u.username, isMuted: u.isMuted }));
+        socket.to(rId).emit('voice_users', { users: vu });
+      }
       socket.leave(rId); socket.currentRoom = null;
 
       if (rooms[rId].users.length === 0) {
@@ -2532,7 +2550,17 @@ io.on('connection', (socket) => {
         const leftUsername = leftUser?.username;
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
         if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
-        if (rooms[rId].cameraUsers) delete rooms[rId].cameraUsers[sid];
+        if (rooms[rId].cameraUsers) {
+          delete rooms[rId].cameraUsers[sid];
+          io.to(rId).emit('camera_leave', { socketId: sid });
+          const cu = Object.entries(rooms[rId].cameraUsers).map(([csid, u]) => ({ socketId: csid, username: u.username }));
+          io.to(rId).emit('camera_users', { users: cu });
+        }
+        if (rooms[rId].voiceUsers) {
+          io.to(rId).emit('voice_leave', { socketId: sid });
+          const vu = Object.entries(rooms[rId].voiceUsers).map(([csid, u]) => ({ socketId: csid, username: u.username, isMuted: u.isMuted }));
+          io.to(rId).emit('voice_users', { users: vu });
+        }
         if (rooms[rId].screenSharerId === sid) {
           rooms[rId].screenSharerId = null;
           io.to(rId).emit('screen_share_stopped', { socketId: sid });
