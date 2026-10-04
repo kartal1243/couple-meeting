@@ -2,51 +2,31 @@ import { useEffect, useRef, useState, useCallback, memo } from 'react';
 
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
+const AVATAR_GRADIENTS = [
+  'linear-gradient(135deg,#22c55e,#16a34a)',
+  'linear-gradient(135deg,#7c3aed,#ec4899)',
+  'linear-gradient(135deg,#2563eb,#06b6d4)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#06b6d4,#22c55e)',
+];
+
 function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
   const [voiceActive, setVoiceActive] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [voiceUsers, setVoiceUsers] = useState([]);
   const [voiceError, setVoiceError] = useState('');
-  const [camActive, setCamActive] = useState(false);
-  const [camUsers, setCamUsers] = useState([]);
-  const [camError, setCamError] = useState('');
   const localStreamRef = useRef(null);
-  const camStreamRef = useRef(null);
   const peersRef = useRef({});
-  const camPeersRef = useRef({});
   const audioContainerRef = useRef(null);
-  const camContainerRef = useRef(null);
-  const localCamRef = useRef(null);
-
-  const startCam = useCallback(async () => {
-    setCamError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
-      camStreamRef.current = stream;
-      if (localCamRef.current) { localCamRef.current.srcObject = stream; try { await localCamRef.current.play(); } catch {} }
-      setCamActive(true);
-      if (socket) socket.emit('camera_join', { roomId, token });
-    } catch (err) {
-      if (err.name === 'NotAllowedError') setCamError('Kamera izni reddedildi.');
-      else if (err.name === 'NotFoundError') setCamError('Kamera bulunamadı.');
-      else setCamError('Kamera erişimi başarısız.');
-      setTimeout(() => setCamError(''), 5000);
-    }
-  }, [socket, roomId]);
-
-  const stopCam = useCallback(() => {
-    if (camStreamRef.current) { camStreamRef.current.getTracks().forEach(t => t.stop()); camStreamRef.current = null; }
-    Object.values(camPeersRef.current).forEach(pc => { try { pc.close(); } catch {} });
-    camPeersRef.current = {};
-    setCamActive(false);
-    setCamUsers([]);
-    if (camContainerRef.current) camContainerRef.current.innerHTML = '';
-    if (socket) socket.emit('camera_leave', { roomId, token });
-  }, [socket, roomId]);
 
   const startVoice = useCallback(async () => {
     setVoiceError('');
+    setConnecting(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false
+      });
       localStreamRef.current = stream;
       setVoiceActive(true);
       if (socket) socket.emit('voice_join', { roomId, token });
@@ -62,8 +42,10 @@ function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
         setVoiceError('Mikrofon erişimi başarısız. Lütfen tekrar deneyin.');
       }
       setTimeout(() => setVoiceError(''), 5000);
+    } finally {
+      setConnecting(false);
     }
-  }, [socket, roomId]);
+  }, [socket, roomId, token]);
 
   const stopVoice = useCallback(() => {
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); localStreamRef.current = null; }
@@ -73,7 +55,7 @@ function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
     setVoiceUsers([]);
     if (audioContainerRef.current) audioContainerRef.current.innerHTML = '';
     if (socket) socket.emit('voice_leave', { roomId, token });
-  }, [socket, roomId]);
+  }, [socket, roomId, token]);
 
   const toggleMute = useCallback(() => {
     if (localStreamRef.current) {
@@ -125,159 +107,109 @@ function VoiceChat({ socket, roomId, mySocketId, isMuted, setIsMuted, token }) {
     socket.on('voice_leave', onLeave);
     socket.on('voice_users', onUsers);
     socket.on('voice_signal', onSignal);
-    return () => { socket.off('voice_join', onJoin); socket.off('voice_leave', onLeave); socket.off('voice_users', onUsers); socket.off('voice_signal', onSignal); stopVoice(); };
+    return () => { socket.off('voice_join', onJoin); socket.off('voice_leave', onLeave); socket.off('voice_users', onUsers); socket.off('voice_signal', onSignal); };
   }, [socket, mySocketId]);
 
-  // Kamera WebRTC (video mesh)
+  // Odadan çıkınca / component kapanınca mikrofonu temizle
   useEffect(() => {
-    if (!socket) return;
-    const createCamPeer = (targetId, initiator) => {
-      if (camPeersRef.current[targetId]) return camPeersRef.current[targetId];
-      const pc = new RTCPeerConnection(ICE_SERVERS);
-      camPeersRef.current[targetId] = pc;
-      if (camStreamRef.current) camStreamRef.current.getTracks().forEach(t => pc.addTrack(t, camStreamRef.current));
-      pc.onicecandidate = (e) => { if (e.candidate) socket.emit('camera_signal', { targetId, signal: { type: 'ice-candidate', candidate: e.candidate } }); };
-      pc.ontrack = (e) => {
-        let el = document.getElementById(`c-${targetId}`);
-        if (!el) {
-          el = document.createElement('video');
-          el.id = `c-${targetId}`;
-          el.autoplay = true; el.playsInline = true; el.muted = true;
-          el.style.cssText = 'width:140px;height:105px;border-radius:10px;object-fit:cover;background:#000;border:2px solid rgba(255,255,255,.15)';
-          if (camContainerRef.current) camContainerRef.current.appendChild(el);
-        }
-        el.srcObject = e.streams[0];
-      };
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-          try { pc.close(); } catch {}
-          delete camPeersRef.current[targetId];
-          document.getElementById(`c-${targetId}`)?.remove();
-        }
-      };
-      if (initiator) pc.createOffer().then(o => { pc.setLocalDescription(o); socket.emit('camera_signal', { targetId, signal: o }); }).catch(() => {});
-      return pc;
-    };
-    const onCamJoin = ({ socketId }) => { if (socketId !== mySocketId && camStreamRef.current) createCamPeer(socketId, true); };
-    const onCamLeave = ({ socketId }) => {
-      try { camPeersRef.current[socketId]?.close(); } catch {}
-      delete camPeersRef.current[socketId];
-      document.getElementById(`c-${socketId}`)?.remove();
-    };
-    const onCamUsers = ({ users }) => setCamUsers(users || []);
-    const onCamSignal = async ({ fromId, signal }) => {
-      if (!camStreamRef.current) return;
-      if (signal.type === 'offer') {
-        const pc = createCamPeer(fromId, false);
-        await pc.setRemoteDescription(new RTCSessionDescription(signal));
-        const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
-        socket.emit('camera_signal', { targetId: fromId, signal: ans });
-      } else if (signal.type === 'answer' && camPeersRef.current[fromId]) {
-        await camPeersRef.current[fromId].setRemoteDescription(new RTCSessionDescription(signal));
-      } else if (signal.type === 'ice-candidate' && camPeersRef.current[fromId] && signal.candidate) {
-        await camPeersRef.current[fromId].addIceCandidate(new RTCIceCandidate(signal.candidate));
-      }
-    };
-    socket.on('camera_join', onCamJoin);
-    socket.on('camera_leave', onCamLeave);
-    socket.on('camera_users', onCamUsers);
-    socket.on('camera_signal', onCamSignal);
     return () => {
-      socket.off('camera_join', onCamJoin);
-      socket.off('camera_leave', onCamLeave);
-      socket.off('camera_users', onCamUsers);
-      socket.off('camera_signal', onCamSignal);
-      stopCam();
+      if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
+      Object.values(peersRef.current).forEach(pc => { try { pc.close(); } catch {} });
     };
-  }, [socket, mySocketId]);
+  }, []);
+
+  const visibleUsers = voiceUsers.slice(0, 5);
+  const extraCount = Math.max(0, voiceUsers.length - visibleUsers.length);
 
   return (
     <>
       <div ref={audioContainerRef} style={{ display: 'none' }} />
-      {camActive && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <video ref={localCamRef} autoPlay playsInline muted style={{
-            width: 140, height: 105, borderRadius: 10, objectFit: 'cover',
-            background: '#000', border: '2px solid rgba(59,130,246,.5)'
-          }} />
-        </div>
-      )}
-      <div ref={camContainerRef} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }} />
 
-      {(voiceError || camError) && (
+      {voiceError && (
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
           background: 'rgba(239,68,68,.95)', color: '#fff', padding: '10px 18px',
           borderRadius: 12, fontSize: 12, fontWeight: 700, zIndex: 9999,
           boxShadow: '0 8px 30px rgba(239,68,68,.4)', maxWidth: 350, textAlign: 'center'
-        }}>⚠️ {voiceError || camError}</div>
+        }}>⚠️ {voiceError}</div>
       )}
 
-      {/* Voice user indicators */}
-      {voiceActive && voiceUsers.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginRight: 6 }}>
-          {voiceUsers.map((u, i) => (
-            <div key={u.socketId || i} title={u.username} style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: `linear-gradient(135deg, ${u.isMuted ? '#475569' : '#22c55e'}, ${u.isMuted ? '#334155' : '#16a34a'})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 900, color: '#fff', border: '2px solid rgba(0,0,0,.4)',
-              boxShadow: u.isMuted ? 'none' : '0 0 10px rgba(34,197,94,.5), 0 0 20px rgba(34,197,94,.2)',
-              animation: u.isMuted ? 'none' : 'cmVoicePulse 2s ease infinite',
-              flexShrink: 0
-            }}>
-              {u.username?.charAt(0)?.toUpperCase() || '?'}
+      {!voiceActive ? (
+        <button onClick={startVoice} disabled={connecting} title="Sesli sohbeti başlat" style={{
+          background: 'linear-gradient(135deg,#22c55e,#16a34a)', color: '#fff',
+          border: 'none', borderRadius: 12,
+          padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: connecting ? 'wait' : 'pointer',
+          display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap',
+          boxShadow: '0 4px 15px rgba(34,197,94,.35)', minHeight: 38, opacity: connecting ? 0.75 : 1
+        }}>
+          <span style={{ fontSize: 15 }}>{connecting ? '⏳' : '🎤'}</span>
+          {connecting ? 'Bağlanıyor…' : 'Sesli Katıl'}
+        </button>
+      ) : (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'linear-gradient(135deg,rgba(34,197,94,.16),rgba(22,163,74,.08))',
+          border: '1px solid rgba(34,197,94,.35)', borderRadius: 12,
+          padding: '5px 6px 5px 10px', minHeight: 38
+        }}>
+          {/* Katılımcılar */}
+          <div style={{ display: 'flex', alignItems: 'center' }} title={`${voiceUsers.length} kişi seste`}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%', background: '#22c55e',
+              boxShadow: '0 0 8px rgba(34,197,94,.8)', marginRight: 7, flexShrink: 0,
+              animation: 'cmVoiceLive 1.6s ease-in-out infinite'
+            }} />
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {visibleUsers.map((u, i) => (
+                <div key={u.socketId || i} title={`${u.username || 'Dinleyici'}${u.isMuted ? ' (sessiz)' : ''}`} style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: u.isMuted ? '#475569' : AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length],
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 900, color: '#fff',
+                  border: '2px solid #0b141a', marginLeft: i === 0 ? 0 : -8,
+                  opacity: u.isMuted ? 0.65 : 1, flexShrink: 0
+                }}>
+                  {u.isMuted ? '🔇' : (u.username?.charAt(0)?.toUpperCase() || '?')}
+                </div>
+              ))}
+              {extraCount > 0 && (
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%', background: '#1e293b',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, color: '#94a3b8',
+                  border: '2px solid #0b141a', marginLeft: -8, flexShrink: 0
+                }}>+{extraCount}</div>
+              )}
             </div>
-          ))}
+            <span style={{ color: '#86efac', fontSize: 11, fontWeight: 800, marginLeft: 7, whiteSpace: 'nowrap' }}>
+              {voiceUsers.length || 1}
+            </span>
+          </div>
+
+          <div style={{ width: 1, height: 22, background: 'rgba(34,197,94,.25)', flexShrink: 0 }} />
+
+          {/* Mikrofon aç/kapat */}
+          <button onClick={toggleMute} title={isMuted ? 'Mikrofonu aç' : 'Mikrofonu kapat'} style={{
+            background: isMuted ? 'rgba(239,68,68,.2)' : 'rgba(255,255,255,.08)',
+            color: isMuted ? '#fca5a5' : '#fff',
+            border: `1px solid ${isMuted ? 'rgba(239,68,68,.4)' : 'rgba(255,255,255,.12)'}`,
+            borderRadius: 9, width: 32, height: 30, fontSize: 14,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>{isMuted ? '🔇' : '🎤'}</button>
+
+          {/* Ayrıl */}
+          <button onClick={stopVoice} title="Sesten ayrıl" style={{
+            background: 'rgba(239,68,68,.9)', color: '#fff',
+            border: 'none', borderRadius: 9, width: 32, height: 30, fontSize: 13, fontWeight: 800,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>✕</button>
+
           <style>{`
-            @keyframes cmVoicePulse {
-              0%, 100% { box-shadow: 0 0 8px rgba(34,197,94,.4); }
-              50% { box-shadow: 0 0 16px rgba(34,197,94,.7), 0 0 24px rgba(34,197,94,.3); }
+            @keyframes cmVoiceLive {
+              0%, 100% { opacity: 1; transform: scale(1); }
+              50% { opacity: .5; transform: scale(.8); }
             }
           `}</style>
-        </div>
-      )}
-
-      {/* Camera controls */}
-      {!camActive ? (
-        <button onClick={startCam} title="Kamera Aç" style={{
-          background: 'rgba(37,99,235,.12)', color: '#60a5fa',
-          border: '1px solid rgba(37,99,235,.2)', borderRadius: 10,
-          padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
-          transition: 'all 0.2s', minHeight: 36
-        }}>📹 Kamera</button>
-      ) : (
-        <button onClick={stopCam} title="Kamera Kapat" style={{
-          background: 'rgba(239,68,68,.12)', color: '#ef4444',
-          border: '1px solid rgba(239,68,68,.2)', borderRadius: 8,
-          padding: '6px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', lineHeight: 1
-        }}>📹✕</button>
-      )}
-
-      {/* Voice controls */}
-      {!voiceActive ? (
-        <button onClick={startVoice} title="Sesli Sohbet" style={{
-          background: 'rgba(34,197,94,.12)', color: '#22c55e',
-          border: '1px solid rgba(34,197,94,.2)', borderRadius: 10,
-          padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
-          transition: 'all 0.2s', minHeight: 36
-        }}>🎤 Ses</button>
-      ) : (
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <button onClick={toggleMute} style={{
-            background: isMuted ? 'rgba(239,68,68,.15)' : 'rgba(34,197,94,.15)',
-            color: isMuted ? '#ef4444' : '#22c55e',
-            border: `1px solid ${isMuted ? 'rgba(239,68,68,.3)' : 'rgba(34,197,94,.3)'}`,
-            borderRadius: 8, padding: '6px 8px', fontSize: 12, fontWeight: 800,
-            cursor: 'pointer', transition: 'all 0.2s', lineHeight: 1
-          }}>{isMuted ? '🔇' : '🎤'}</button>
-          <button onClick={stopVoice} style={{
-            background: 'rgba(239,68,68,.12)', color: '#ef4444',
-            border: '1px solid rgba(239,68,68,.2)', borderRadius: 8,
-            padding: '6px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', lineHeight: 1
-          }}>✕</button>
         </div>
       )}
     </>

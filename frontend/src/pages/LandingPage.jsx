@@ -9,7 +9,6 @@ function LandingPage() {
     { icon: '🎵', title: 'Müzik Paylaş', desc: 'Favori şarkılarını paylaş, birlikte dinleyin. Oluşturma listeleri oluştur, kategorilere ayır.' },
     { icon: '💬', title: 'Canlı Sohbet', desc: 'Yazılı ve sesli sohbet ile arkadaşlarınla anında iletişim kur. Mesajlara tepki ver, yanıtla.' },
     { icon: '🎤', title: 'Sesli Sohbet Odaları', desc: 'Mikrofonunu aç, sesli olarak sohbet et. Grup sesli konuşmaları yap.' },
-    { icon: '📺', title: 'Ekran Paylaşımı', desc: 'Ekranını arkadaşlarınla paylaş. Sunum yap, oyun oyna, video göster.' },
     { icon: '🔒', title: 'Özel Odalar', desc: 'Şifreli odalar oluştur, sadece davet ettiklerin girsin. Gizliliğin korunur.' },
     { icon: '👑', title: 'VIP Özellikler', desc: 'VIP olarak ekstra özellikler kazan. Daha fazla oda, özel temalar, öncelikli destek.' },
     { icon: '👥', title: 'Arkadaş Ekleme', desc: 'Arkadaşlarını bul, ekle, çevrimiçi olduklarında haberdar ol.' },
@@ -33,8 +32,7 @@ function LandingPage() {
     { q: 'Couple Meeting ücretsiz mi?', a: 'Evet, Couple Meeting tamamen ücretsizdir. Kayıt olarak hemen kullanmaya başlayabilirsin.' },
     { q: 'Kaç kişi aynı anda odaya girebilir?', a: 'Bir odada 2-8 kişi aynı anda bulunabilir. VIP kullanıcılar için bu sınır artırılabilir.' },
     { q: 'Şifreli oda oluşturabilir miyim?', a: 'Evet, her odaya şifre koyabilirsin. Sadece şifreyi bilenler odaya girebilir.' },
-    { q: 'Mobilde kullanabilir miyim?', a: 'Evet, Couple Meeting mobil tarayıcılarda tam uyumludur. Uygulama indirmene gerek yok.' },
-    { q: 'Ekran paylaşımı yapabilir miyim?', a: 'Evet, ekran paylaşımı özelliği ile sunum, oyun veya herhangi bir içeriği arkadaşlarınla paylaşabilirsin.' }
+    { q: 'Mobilde kullanabilir miyim?', a: 'Evet, Couple Meeting mobil tarayıcılarda tam uyumludur. Uygulama indirmene gerek yok.' }
   ];
 
   return (

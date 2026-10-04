@@ -2150,9 +2150,6 @@ io.on('connection', (socket) => {
       isVip: !!room.isVip,
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
-    if (room.screenSharerId && room.screenSharerId !== socket.id) {
-      socket.emit('screen_share_started', { socketId: room.screenSharerId });
-    }
     updateRoomUsers(cleanRoomId); broadcastRooms();
     try { broadcastAdminActivity('room_join', { username, roomId: cleanRoomId, roomName: room.name, message: `${username} odaya katıldı: ${room.name}` }); } catch (e) {}
     try {
@@ -2361,32 +2358,6 @@ io.on('connection', (socket) => {
   // 7.9 AYRILMA & BAGLANTI KESIMI
   // ──────────────────────────────────────────────────────
 
-  socket.on('screen_share_start', ({ roomId, token }) => {
-    const user = token ? requireAuth(token) : null;
-    const userId = user ? user.username : socket.userId;
-    if (!userId || !roomId || !rooms[roomId] || !rooms[roomId].users.find(u => u.userId === userId)) return;
-    rooms[roomId].screenSharerId = socket.id;
-    socket.to(roomId).emit('screen_share_started', { socketId: socket.id });
-  });
-
-  socket.on('screen_share_frame', ({ roomId, frame }) => {
-    if (!roomId || !rooms[roomId]) return;
-    if (typeof frame !== 'string' || frame.length > 500000) return;
-    socket.to(roomId).emit('screen_share_frame', { frame, socketId: socket.id });
-  });
-
-  socket.on('screen_share_stop', ({ roomId }) => {
-    if (!roomId || !rooms[roomId]) return;
-    if (rooms[roomId].screenSharerId === socket.id) rooms[roomId].screenSharerId = null;
-    socket.to(roomId).emit('screen_share_stopped', { socketId: socket.id });
-  });
-
-  // WebRTC ekran paylaşımı - SDP/ICE relay
-  socket.on('screen_signal', ({ targetId, signal }) => {
-    const targetSocket = io.sockets.sockets.get(targetId);
-    if (targetSocket) targetSocket.emit('screen_signal', { fromId: socket.id, signal });
-  });
-
   // Voice chat
   socket.on('voice_join', ({ roomId, token }) => {
     const user = token ? requireAuth(token) : null;
@@ -2428,38 +2399,6 @@ io.on('connection', (socket) => {
     if (targetSocket) targetSocket.emit('voice_signal', { fromId: socket.id, signal });
   });
 
-  // Kamera (video) WebRTC - voice_signal ile aynı relay
-  socket.on('camera_join', ({ roomId, token }) => {
-    const user = token ? requireAuth(token) : null;
-    const userId = user ? user.username : socket.userId;
-    const cleanRoomId = sanitize(roomId, 50);
-    if (!rooms[cleanRoomId]) return;
-    if (!rooms[cleanRoomId].users.find(u => u.userId === userId)) return;
-    if (!rooms[cleanRoomId].cameraUsers) rooms[cleanRoomId].cameraUsers = {};
-    rooms[cleanRoomId].cameraUsers[socket.id] = { username: user ? user.username : userId };
-    socket.to(cleanRoomId).emit('camera_join', { socketId: socket.id });
-    const cu = Object.entries(rooms[cleanRoomId].cameraUsers).map(([sid, u]) => ({ socketId: sid, username: u.username }));
-    socket.emit('camera_users', { users: cu });
-    socket.to(cleanRoomId).emit('camera_users', { users: cu });
-  });
-
-  socket.on('camera_leave', ({ roomId, token }) => {
-    const user = token ? requireAuth(token) : null;
-    const userId = user ? user.username : socket.userId;
-    const cleanRoomId = sanitize(roomId, 50);
-    if (!rooms[cleanRoomId]) return;
-    if (rooms[cleanRoomId].cameraUsers) delete rooms[cleanRoomId].cameraUsers[socket.id];
-    socket.to(cleanRoomId).emit('camera_leave', { socketId: socket.id });
-    const cu = rooms[cleanRoomId].cameraUsers ? Object.entries(rooms[cleanRoomId].cameraUsers).map(([sid, u]) => ({ socketId: sid, username: u.username })) : [];
-    socket.emit('camera_users', { users: cu });
-    socket.to(cleanRoomId).emit('camera_users', { users: cu });
-  });
-
-  socket.on('camera_signal', ({ targetId, signal }) => {
-    const targetSocket = io.sockets.sockets.get(targetId);
-    if (targetSocket) targetSocket.emit('camera_signal', { fromId: socket.id, signal });
-  });
-
   socket.on('request_room_sync', ({ roomId } = {}) => {
     const cleanRoomId = sanitize(roomId, 50);
     const room = rooms[cleanRoomId];
@@ -2496,16 +2435,6 @@ io.on('connection', (socket) => {
       const leftUsername = leftUser?.username;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       rooms[rId].lastActivityAt = Date.now();
-      if (rooms[rId].screenSharerId === socket.id) {
-        rooms[rId].screenSharerId = null;
-        socket.to(rId).emit('screen_share_stopped', { socketId: socket.id });
-      }
-      if (rooms[rId].cameraUsers && rooms[rId].cameraUsers[socket.id]) {
-        delete rooms[rId].cameraUsers[socket.id];
-        socket.to(rId).emit('camera_leave', { socketId: socket.id });
-        const cu = Object.entries(rooms[rId].cameraUsers).map(([csid, u]) => ({ socketId: csid, username: u.username }));
-        socket.to(rId).emit('camera_users', { users: cu });
-      }
       if (rooms[rId].voiceUsers && rooms[rId].voiceUsers[socket.id]) {
         delete rooms[rId].voiceUsers[socket.id];
         socket.to(rId).emit('voice_leave', { socketId: socket.id });
@@ -2550,20 +2479,10 @@ io.on('connection', (socket) => {
         const leftUsername = leftUser?.username;
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
         if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
-        if (rooms[rId].cameraUsers) {
-          delete rooms[rId].cameraUsers[sid];
-          io.to(rId).emit('camera_leave', { socketId: sid });
-          const cu = Object.entries(rooms[rId].cameraUsers).map(([csid, u]) => ({ socketId: csid, username: u.username }));
-          io.to(rId).emit('camera_users', { users: cu });
-        }
         if (rooms[rId].voiceUsers) {
           io.to(rId).emit('voice_leave', { socketId: sid });
           const vu = Object.entries(rooms[rId].voiceUsers).map(([csid, u]) => ({ socketId: csid, username: u.username, isMuted: u.isMuted }));
           io.to(rId).emit('voice_users', { users: vu });
-        }
-        if (rooms[rId].screenSharerId === sid) {
-          rooms[rId].screenSharerId = null;
-          io.to(rId).emit('screen_share_stopped', { socketId: sid });
         }
         rooms[rId].lastActivityAt = Date.now();
 

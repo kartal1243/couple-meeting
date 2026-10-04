@@ -13,7 +13,6 @@ import { useState, useCallback, useEffect } from 'react';
 export default function RoomPage() {
   const app = useApp();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [screenSharing, setScreenSharing] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [roomTypingUsers, setRoomTypingUsers] = useState([]);
   const {
@@ -157,8 +156,7 @@ export default function RoomPage() {
               ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
               openYouTubeExternally={openYouTubeExternally}
               handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-              screenSharing={screenSharing} setScreenSharing={setScreenSharing}
-              socket={socket} mySocketId={mySocketId} hostUserId={hostUserId} userId={userId} token={authToken} authUser={authUser} username={username} currentRoomType={currentRoomType}
+              currentRoomType={currentRoomType}
             />
           </ErrorBoundary>
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />
