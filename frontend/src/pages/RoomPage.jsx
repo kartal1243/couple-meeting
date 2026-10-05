@@ -185,7 +185,7 @@ export default function RoomPage() {
                 borderBottom: sidebarTab === 'playlist' ? `2px solid ${chatTheme.primary}` : '2px solid transparent',
                 transition: 'all 0.25s ease'
               }}
-            >📚 Kitaplık</button>
+            >📚 Oynatma Listesi</button>
           </div>
 
           {sidebarTab === 'chat' ? (
