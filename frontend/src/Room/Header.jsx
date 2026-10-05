@@ -62,15 +62,13 @@ function Header({
         {/* Yeni logo: kompakt marka rozeti */}
         <div
           className="cm-brand"
-          style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', minWidth: 0 }}
-          onClick={handleLeaveRoom}
-          title="Odadan çık"
+          style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}
         >
-          <div style={{
-            width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+          <div className="cm-brand-logo" style={{
+            width: 46, height: 46, borderRadius: 14, flexShrink: 0,
             background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 17, boxShadow: '0 4px 14px rgba(124,58,237,.4)',
+            fontSize: 21, boxShadow: '0 4px 14px rgba(124,58,237,.4)',
             border: '1px solid rgba(255,255,255,.15)', position: 'relative'
           }}>
             💕

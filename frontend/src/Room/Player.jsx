@@ -1,5 +1,5 @@
 import YouTube from 'react-youtube';
-import { useCallback, useEffect, useRef, memo } from 'react';
+import { useCallback, useEffect, useRef, useState, memo } from 'react';
 
 function extractVideoId(src) {
   if (!src) return null;
@@ -16,11 +16,26 @@ function Player({
   const playType = mediaType === 'music' ? 'youtube' : mediaType;
   const videoId = extractVideoId(mediaSrc);
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [nativeControls, setNativeControls] = useState(true);
+  const [repeat, setRepeat] = useState(false);
+  const [liveMode, setLiveMode] = useState(false);
+  const repeatRef = useRef(false); repeatRef.current = repeat;
+  const wrapRef = useRef(null);
+  const settingsRef = useRef(null);
+
   const ytOpts = {
     height: '100%', width: '100%',
     host: 'https://www.youtube-nocookie.com',
-    playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1 }
+    playerVars: { autoplay: 1, controls: nativeControls ? 1 : 0, playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1 }
   };
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDoc = (e) => { if (settingsRef.current && !settingsRef.current.contains(e.target)) setSettingsOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [settingsOpen]);
 
   const handleYTReady = useCallback((e) => {
     ytPlayerRef.current = e.target;
@@ -48,7 +63,12 @@ function Player({
         const state = player.getPlayerState?.();
         if (state === 0) {
           endedRef.current = true;
-          handleMediaEnd();
+          if (repeatRef.current) {
+            try { player.seekTo(0, true); player.playVideo(); } catch {}
+            setTimeout(() => { endedRef.current = false; }, 1000);
+          } else {
+            handleMediaEnd();
+          }
         }
       } catch {}
     }, 2000);
@@ -57,8 +77,13 @@ function Player({
 
   const showPlayer = mediaType !== 'none' && mediaSrc && !youtubeError;
 
+  const menuBtn = {
+    background: 'transparent', border: 'none', color: '#94a3b8', textAlign: 'left',
+    padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700
+  };
+
   return (
-    <div className="cm-video-wrap" style={{
+    <div className="cm-video-wrap" ref={wrapRef} style={{
       flex: 1, position: 'relative', width: '100%', minHeight: 0,
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       background: '#0b141a', overflow: 'hidden'
@@ -76,7 +101,7 @@ function Player({
       {showPlayer && (
         <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', overflow: 'hidden' }}>
           {playType === 'youtube' && (
-            <YouTube videoId={videoId} opts={ytOpts}
+            <YouTube key={nativeControls ? 'c1' : 'c0'} videoId={videoId} opts={ytOpts}
               style={{ width: '100%', height: '100%', maxWidth: '100%', overflow: 'hidden' }}
               onReady={handleYTReady} onError={handleYouTubeError} onEnd={handleMediaEnd} />
           )}
@@ -92,7 +117,7 @@ function Player({
           {mediaType === 'custom_video' && (
             <video
               src={mediaSrc}
-              controls
+              controls={nativeControls}
               autoPlay
               style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
               onEnded={handleMediaEnd}
@@ -126,6 +151,44 @@ function Player({
             background: 'linear-gradient(135deg, #ff0033 0%, #cc0000 100%)',
             color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer'
           }}>▶ {mediaType === 'youtube' ? "YouTube'da Aç" : mediaType === 'vimeo' ? "Vimeo'da Aç" : "Dışarıda Aç"}</button>
+        </div>
+      )}
+
+      {showPlayer && (
+        <div ref={settingsRef} style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 120 }}>
+          <button
+            onClick={() => setSettingsOpen((v) => !v)}
+            aria-label="Oynatıcı ayarları"
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: '1px solid rgba(255,255,255,.15)',
+              background: 'rgba(0,0,0,.55)', color: '#fff', cursor: 'pointer', fontSize: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)'
+            }}
+          >⚙️</button>
+          {settingsOpen && (
+            <div style={{
+              position: 'absolute', right: 0, bottom: 44, minWidth: 170, borderRadius: 12,
+              background: 'rgba(15,23,42,.97)', border: '1px solid rgba(255,255,255,.1)',
+              boxShadow: '0 16px 40px rgba(0,0,0,.6)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2
+            }}>
+              <button onClick={() => wrapRef.current?.requestFullscreen?.()} style={menuBtn}>⤢ Fullscreen</button>
+              <button onClick={() => setNativeControls(v => !v)} style={{ ...menuBtn, color: nativeControls ? '#00a884' : '#94a3b8' }}>
+                {nativeControls ? '✓ ' : ''}Native Controls
+              </button>
+              <button onClick={() => setRepeat(v => !v)} style={{ ...menuBtn, color: repeat ? '#00a884' : '#94a3b8' }}>
+                {repeat ? '✓ ' : ''}Repeat
+              </button>
+              <button onClick={() => {
+                setLiveMode(v => {
+                  const next = !v;
+                  if (next) { try { const p = ytPlayerRef.current; const d = p?.getDuration?.(); if (d) p.seekTo(Math.max(0, d - 2), true); } catch {} }
+                  return next;
+                });
+              }} style={{ ...menuBtn, color: liveMode ? '#ef4444' : '#94a3b8' }}>
+                {liveMode ? '🔴 ' : ''}Live Mode
+              </button>
+            </div>
+          )}
         </div>
       )}
 

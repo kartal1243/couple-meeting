@@ -118,15 +118,18 @@ function Playlist({
               background: mediaSrc === item.src ? 'rgba(0, 168, 132, 0.15)' : '#111b21',
               border: mediaSrc === item.src ? `1px solid ${currentTheme.primary}`
                 : dragOverId === item.id ? `1px dashed ${currentTheme.primary}` : '1px solid #222d34',
-              padding: '10px', borderRadius: '10px', cursor: 'grab',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              padding: '8px', borderRadius: '10px', cursor: 'grab',
+              display: 'flex', alignItems: 'center', gap: 10
             }}
           >
-            <div style={{
-              fontSize: '12px', fontWeight: 'bold', color: '#fff',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1
-            }}>
-              <span style={{ opacity: .45, marginRight: 6 }}>⠿</span>{item.title}
+            {item.thumbnail ? (
+              <img src={item.thumbnail} alt="" style={{ width: 56, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 56, height: 36, borderRadius: 6, background: 'rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🎬</div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+              {item.artist && <div style={{ fontSize: 10, color: '#7f8c98', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.artist}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
               <button

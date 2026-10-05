@@ -5,12 +5,6 @@ function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAct
   const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
   const primary = currentTheme?.primary || '#00a884';
 
-  const handleSpeedChange = (speed) => {
-    setPlaybackSpeed(speed);
-    sendAction('SPEED', { speed });
-    if (ytPlayerRef?.current) { try { ytPlayerRef.current.setPlaybackRate(speed); } catch {} }
-  };
-
   return (
     <div className="cm-controls-wrap" style={{
       padding: '12px 16px',
@@ -35,8 +29,8 @@ function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAct
         )}
       </div>
 
-      {/* Row 2: Emojis */}
-      <div className="cm-controls-row-center">
+      {/* Row 2: Emojis + Speed (kompakt tek satır) */}
+      <div className="cm-controls-row-center" style={{ flexWrap: 'wrap' }}>
         {['❤️', '🔥', '😂', '😮', '👏', '😍', '🎉', '💯'].map((emoji) => (
           <button
             key={emoji}
@@ -47,24 +41,23 @@ function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAct
             onMouseLeave={() => setHovered(null)}
           >{emoji}</button>
         ))}
-      </div>
-
-      {/* Row 3: Speed */}
-      <div className="cm-controls-row-center" style={{ marginTop: 8 }}>
-        <span className="cm-speed-label">HIZ</span>
-        {speeds.map((s) => (
-          <button
-            key={s}
-            className="cm-speed-btn"
-            onClick={() => handleSpeedChange(s)}
-            style={playbackSpeed === s ? {
-              background: `linear-gradient(135deg, ${primary}, ${primary}cc)`,
-              borderColor: `${primary}88`, color: '#fff'
-            } : hovered === 'speed_' + s ? { background: 'rgba(255,255,255,.08)' } : {}}
-            onMouseEnter={() => setHovered('speed_' + s)}
-            onMouseLeave={() => setHovered(null)}
-          >{s}x</button>
-        ))}
+        <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,.1)', margin: '0 6px' }} />
+        <span className="cm-speed-label" style={{ fontSize: 10 }}>HIZ</span>
+        <select
+          value={playbackSpeed}
+          onChange={(e) => {
+            const speed = Number(e.target.value);
+            setPlaybackSpeed(speed);
+            sendAction('SPEED', { speed });
+            if (ytPlayerRef?.current) { try { ytPlayerRef.current.setPlaybackRate(speed); } catch {} }
+          }}
+          style={{
+            background: 'rgba(255,255,255,.06)', color: '#fff', border: '1px solid rgba(255,255,255,.12)',
+            borderRadius: 8, padding: '4px 8px', fontSize: 11, fontWeight: 800, cursor: 'pointer', outline: 'none'
+          }}
+        >
+          {speeds.map((s) => <option key={s} value={s} style={{ color: '#000' }}>{s}x</option>)}
+        </select>
       </div>
     </div>
   );
