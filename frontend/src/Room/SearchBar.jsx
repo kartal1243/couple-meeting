@@ -79,7 +79,7 @@ function SearchBar({
       className="cm-search-bar"
       style={{
         padding: '8px 12px', background: currentTheme.cardBg,
-        borderBottom: '1px solid #222d34', zIndex: 999, display: 'flex',
+        borderBottom: `1px solid ${currentTheme.primary}44`, zIndex: 999, display: 'flex',
         gap: '6px', alignItems: 'center', position: 'relative'
       }}
     >

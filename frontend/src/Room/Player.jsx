@@ -11,7 +11,7 @@ function extractVideoId(src) {
 function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
-  currentRoomType
+  currentRoomType, currentTheme
 }) {
   const playType = mediaType === 'music' ? 'youtube' : mediaType;
   const videoId = extractVideoId(mediaSrc);
@@ -86,7 +86,7 @@ function Player({
     <div className="cm-video-wrap" ref={wrapRef} style={{
       flex: 1, position: 'relative', width: '100%', minHeight: 0,
       display: 'flex', justifyContent: 'center', alignItems: 'center',
-      background: '#0b141a', overflow: 'hidden'
+      background: `radial-gradient(circle at center, ${currentTheme?.primary || '#00a884'}1f 0%, #0b141a 75%)`, overflow: 'hidden'
     }}>
 
       {mediaType === 'none' && (

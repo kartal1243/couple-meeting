@@ -136,7 +136,7 @@ export default function RoomPage() {
         </div>
       )}
 
-      <div className="cm-room-root">
+      <div className="cm-room-root" style={{ background: `linear-gradient(180deg, ${chatTheme.primary}14 0%, #0a0e14 30%, #0f172a 60%, ${chatTheme.primary}10 100%)` }}>
         <div className="cm-room-header">
           <Header
             roomName={roomName} currentTheme={currentTheme} isConnected={isConnected}
@@ -181,7 +181,7 @@ export default function RoomPage() {
               ytPlayerRef={ytPlayerRef} pendingSyncRef={pendingSyncRef} reactions={reactions}
               openYouTubeExternally={openYouTubeExternally}
               handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
-              currentRoomType={currentRoomType}
+              currentRoomType={currentRoomType} currentTheme={currentTheme}
             />
           </ErrorBoundary>
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />

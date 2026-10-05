@@ -8,7 +8,7 @@ function Controls({ currentTheme, handlePlay, handlePause, sendReaction, sendAct
   return (
     <div className="cm-controls-wrap" style={{
       padding: '12px 16px',
-      background: 'linear-gradient(180deg, rgba(15,23,42,.95), rgba(30,41,59,.95))',
+      background: `linear-gradient(180deg, ${primary}26, rgba(15,23,42,.95) 60%, rgba(30,41,59,.95))`,
       backdropFilter: 'blur(20px)',
       borderTop: '1px solid rgba(255,255,255,.06)'
     }}>
