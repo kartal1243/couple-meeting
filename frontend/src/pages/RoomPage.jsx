@@ -15,6 +15,13 @@ export default function RoomPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [roomTypingUsers, setRoomTypingUsers] = useState([]);
+  const [railShareTip, setRailShareTip] = useState('');
+
+  const railBtn = {
+    width: 42, height: 42, borderRadius: 12, border: '1px solid rgba(255,255,255,.08)',
+    background: 'rgba(255,255,255,.05)', fontSize: 17, cursor: 'pointer', color: '#cbd5e1',
+    display: 'flex', alignItems: 'center', justifyContent: 'center'
+  };
   const {
     roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn, currentRoomType,
     handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
@@ -140,6 +147,24 @@ export default function RoomPage() {
             roomUsersList={roomUsersList} hostUserId={hostUserId}
             onCloseRoom={handleCloseRoom} roomId={roomId} userId={userId}
           />
+        </div>
+
+        <div className="cm-left-rail">
+          {showInstallBtn && (
+            <button onClick={handleInstallApp} title="Uygulamayı İndir" style={railBtn}>⬇️</button>
+          )}
+          <button onClick={() => setShowSettingsModal(true)} title="Ayarlar" style={railBtn}>⚙️</button>
+          <button onClick={() => {
+            const url = window.location.origin + '/room/' + encodeURIComponent(roomId);
+            if (navigator.share) navigator.share({ title: roomName || 'Couple Meeting', text: 'Bu odaya katıl!', url });
+            else { navigator.clipboard.writeText(url); setRailShareTip('Kopyalandı!'); setTimeout(() => setRailShareTip(''), 2000); }
+          }} title="Paylaş" style={railBtn}>📤</button>
+          {railShareTip && <div style={{ fontSize: 9, color: '#00a884', fontWeight: 800, textAlign: 'center' }}>{railShareTip}</div>}
+          {authUser && (
+            <button onClick={() => setShowProfileModal(true)} title="Profil" style={{ ...railBtn, fontSize: 18 }}>{authUser.avatar || myAvatar}</button>
+          )}
+          <div style={{ flex: 1 }} />
+          <button onClick={handleLeaveClick} title="Çıkış" style={{ ...railBtn, background: 'rgba(239,68,68,.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,.2)' }}>✕</button>
         </div>
 
         <div className="cm-player-col">

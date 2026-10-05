@@ -45,8 +45,8 @@ function Header({
   return (
     <header className="cm-room-topbar" style={{
       height: 60, padding: '0 14px',
-      background: 'linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,41,59,.95))',
-      backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,.06)',
+      background: `linear-gradient(135deg, ${(currentTheme?.primary || '#7c3aed')}2e, rgba(15,23,42,.95) 40%, rgba(30,41,59,.95))`,
+      backdropFilter: 'blur(20px)', borderBottom: `1px solid ${(currentTheme?.primary || '#ffffff')}33`,
       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
       flexShrink: 0, width: '100vw', boxSizing: 'border-box',
       position: 'relative', zIndex: 100
@@ -54,7 +54,7 @@ function Header({
       {/* Animated gradient line at top */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-        background: 'linear-gradient(90deg, #7c3aed, #ec4899, #00a884, #7c3aed)',
+        background: `linear-gradient(90deg, ${currentTheme?.primary || '#7c3aed'}, ${currentTheme?.primary || '#ec4899'}, #00a884, ${currentTheme?.primary || '#7c3aed'})`,
         backgroundSize: '300% 100%', animation: 'cmGradientFlow 4s linear infinite'
       }} />
 
@@ -86,9 +86,8 @@ function Header({
             }}>
               {roomName}
             </h2>
-            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={liveDotStyle} />
-              {isConnected ? 'Canlı' : 'Bağlanıyor'} • 👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
+            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>
+              👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}
             </div>
           </div>
         </div>
@@ -109,7 +108,7 @@ function Header({
           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.05)'; }}
         >
           <span style={liveDotStyle} />
-          <span>👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}</span>
+          <span>{isConnected ? 'Canlı' : '...'} • 👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}</span>
 
           {showUsers && roomUsersList && roomUsersList.length > 0 && (
             <div style={{

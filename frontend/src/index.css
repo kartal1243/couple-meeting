@@ -194,6 +194,19 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
 }
 .cm-player-col > * { min-height: 0; }
 .cm-sidebar > * { min-height: 0; }
+.cm-left-rail { display: none; }
+@media (min-width: 901px) {
+  .cm-room-root { grid-template-columns: 64px 1fr 380px; }
+  .cm-left-rail {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 14px 0; grid-row: 2; grid-column: 1; min-height: 0; overflow-y: auto;
+    background: linear-gradient(180deg, #0f172a, #0a0e14);
+    border-right: 1px solid rgba(255,255,255,.06);
+  }
+  .cm-player-col { grid-column: 2; }
+  .cm-sidebar { grid-column: 3; }
+  .cm-room-topbar .cm-topbar-actions { display: none !important; }
+}
 @media (max-width: 900px) {
   .cm-room-root { grid-template-columns: 1fr; grid-template-rows: 52px auto 1fr; }
   .cm-player-col { background: transparent; flex-shrink: 0; }
@@ -202,9 +215,10 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; margin:
 @media (max-width: 480px) {
   .cm-room-root { grid-template-rows: 0px auto 1fr !important; }
 }
-@media (orientation: landscape) and (max-height: 500px) {
-  .cm-room-root { grid-template-rows: 44px 1fr; grid-template-columns: 1fr 320px; }
-  .cm-sidebar { grid-row: 2; grid-column: 2; }
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 901px) {
+  .cm-room-root { grid-template-rows: 44px 1fr; grid-template-columns: 60px 1fr 320px; }
+  .cm-player-col { grid-column: 2; }
+  .cm-sidebar { grid-row: 2; grid-column: 3; }
 }
 
 /* === CONTROLS CSS (from Controls.jsx) === */
