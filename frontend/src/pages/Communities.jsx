@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/layout/Navbar';
 
 const COMM_MOBILE_CSS = `
 @media (max-width: 768px) {
@@ -116,6 +117,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     return (
       <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
         <style>{COMM_MOBILE_CSS}</style>
+        <Navbar />
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           <button onClick={() => { setSelected(null); selectedRef.current = null; setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#e2e8f0', cursor: 'pointer', fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
             ← Topluluklara Dön
@@ -179,6 +181,7 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
   return (
     <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
       <style>{COMM_MOBILE_CSS}</style>
+      <Navbar />
 
       <div className="cm-comm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

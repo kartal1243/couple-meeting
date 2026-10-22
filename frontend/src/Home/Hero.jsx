@@ -1,30 +1,7 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { trackInviteShared } from '../utils/analytics';
 
-export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpenSocial }) {
+export default function Hero({ handleQuickCreateRoom }) {
   const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
-
-  const handleShareHero = async () => {
-    trackInviteShared('hero');
-    const shareData = {
-      title: 'Couple Meeting — Birlikte İzle & Dinle',
-      text: 'Sevgilinle ve arkadaşlarınla aynı saniyede YouTube izle, müzik dinle, sesli sohbet et!',
-      url: 'https://couplemeeting.com.tr'
-    };
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (_) {}
-    }
-    try {
-      await navigator.clipboard.writeText(shareData.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch (_) {}
-  };
 
   return (
     <section className="cm-hero">
@@ -47,70 +24,138 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
         BİRLİKTE<br />İZLE & DİNLE
       </h1>
 
-      <p style={{
-        maxWidth: 580, margin: '10px auto 22px', color: '#94a3b8',
-        fontSize: 'clamp(13px, 2.2vw, 16px)', lineHeight: 1.65, fontWeight: 500, padding: '0 12px'
+      {/* 2-Card Dual Concept Grid */}
+      <div style={{
+        maxWidth: 820,
+        margin: '24px auto 28px',
+        padding: '0 14px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: 18,
+        textAlign: 'left'
       }}>
-        Mesafeleri sıfırla 💕 Sevgilinle veya en yakın arkadaşlarınla aynı saniyede YouTube izle, müzik dinle, sesli konuş ve çift oyunları oyna — uygulama indirmeden, tek linkle.
-      </p>
-
-      <div className="cm-hero-actions">
-        <button
-          className="cm-big-btn"
-          onClick={handleQuickCreateRoom}
-          style={{ background: 'linear-gradient(135deg,#00a884,#008f6f)' }}
-        >
-          🚀 Hemen Oda Oluştur
-        </button>
-        {authUser ? (
+        {/* Card 1: Özel Oda & Birlikte İzle */}
+        <div style={{
+          background: 'linear-gradient(160deg, rgba(17,27,33,.92), rgba(11,20,26,.96))',
+          border: '1px solid rgba(0,168,132,.28)',
+          borderRadius: 24,
+          padding: '24px 22px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: '0 24px 60px rgba(0,0,0,.45), 0 0 40px rgba(0,168,132,.06)'
+        }}>
+          <div>
+            <div style={{
+              display: 'inline-block',
+              padding: '4px 10px',
+              borderRadius: 99,
+              background: 'rgba(0,168,132,.14)',
+              border: '1px solid rgba(0,168,132,.3)',
+              color: '#34d399',
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: '0.5px',
+              marginBottom: 12
+            }}>
+              🎬 SEVGİLİNLE VEYA ARKADAŞLARINLA
+            </div>
+            <h2 style={{ margin: '0 0 6px', color: '#fff', fontSize: 21, fontWeight: 950, letterSpacing: '-0.3px' }}>
+              Özel Sinema & Müzik Odası
+            </h2>
+            <p style={{ margin: '0 0 14px', color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>
+              Aynı saniyede YouTube izle, müzik dinle, sesli konuş.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
+              {['🍿 Sinema Koltuğu', '🚗 Yağmurlu Araba', '🎵 Müzik'].map((pill) => (
+                <span key={pill} style={{
+                  fontSize: 11, fontWeight: 700, color: '#cbd5e1',
+                  background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
+                  padding: '4px 10px', borderRadius: 99
+                }}>
+                  {pill}
+                </span>
+              ))}
+            </div>
+          </div>
           <button
-            className="cm-big-btn"
-            onClick={() => onOpenSocial('friends')}
-            style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)' }}
+            type="button"
+            onClick={handleQuickCreateRoom}
+            style={{
+              width: '100%', padding: '14px 18px', borderRadius: 14, border: 'none',
+              background: 'linear-gradient(135deg, #00a884, #059669)',
+              color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(0,168,132,.3)'
+            }}
           >
-            🤝 Arkadaşları Keşfet
+            🚀 Hemen Oda Oluştur
           </button>
-        ) : (
-          <button
-            className="cm-big-btn"
-            onClick={() => openAuth('register')}
-            style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)' }}
-          >
-            👤 Ücretsiz Hesap Aç
-          </button>
-        )}
-        <button
-          className="cm-big-btn"
-          onClick={handleShareHero}
-          style={{
-            background: copied ? 'rgba(0,168,132,.2)' : 'rgba(168,85,247,.15)',
-            border: copied ? '1px solid rgba(0,168,132,.4)' : '1px solid rgba(168,85,247,.25)',
-            color: copied ? '#00a884' : '#a855f7'
-          }}
-        >
-          {copied ? '✅ Link Kopyalandı!' : '📤 Davet Linki Paylaş'}
-        </button>
-      </div>
-
-      {authUser && (
-        <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button onClick={() => onOpenSocial('global')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>🌐 Global Sohbet</button>
-          <button onClick={() => onOpenSocial('dm')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>💬 Mesajlar</button>
-          <button onClick={() => onOpenSocial('groups')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>👥 Gruplar</button>
-          <button onClick={() => onOpenSocial('profile')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>👤 Profilim</button>
         </div>
-      )}
 
-      <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button onClick={() => navigate('/communities')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'rgba(0,168,132,.13)', color: '#00a884', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>🏘️ Topluluklar</button>
-        <button onClick={() => navigate('/events')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'rgba(168,85,247,.13)', color: '#a855f7', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>📅 Etkinlikler</button>
+        {/* Card 2: Sanal Date & Canlı Eşleş */}
+        <div style={{
+          background: 'linear-gradient(160deg, rgba(38,14,26,.92), rgba(15,10,20,.96))',
+          border: '1px solid rgba(251,113,133,.35)',
+          borderRadius: 24,
+          padding: '24px 22px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: '0 24px 60px rgba(0,0,0,.45), 0 0 40px rgba(225,29,72,.12)'
+        }}>
+          <div>
+            <div style={{
+              display: 'inline-block',
+              padding: '4px 10px',
+              borderRadius: 99,
+              background: 'rgba(251,113,133,.16)',
+              border: '1px solid rgba(251,113,133,.35)',
+              color: '#fb7185',
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: '0.5px',
+              marginBottom: 12
+            }}>
+              💘 CANLI EŞLEŞME • BLIND DATE
+            </div>
+            <h2 style={{ margin: '0 0 6px', color: '#fff', fontSize: 21, fontWeight: 950, letterSpacing: '-0.3px' }}>
+              Sanal Date&apos;e Çık
+            </h2>
+            <p style={{ margin: '0 0 14px', color: '#cbd5e1', fontSize: 13, lineHeight: 1.5 }}>
+              Müzik ve film zevkinle eşleş, 10 dk sesli/müzikli Date odasına gir.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
+              {['🎧 3 Şarkı Date\'i', '🧊 Buzkıran Sorular', '☕ Loş Kafe'].map((pill) => (
+                <span key={pill} style={{
+                  fontSize: 11, fontWeight: 700, color: '#fecdd3',
+                  background: 'rgba(251,113,133,.08)', border: '1px solid rgba(251,113,133,.18)',
+                  padding: '4px 10px', borderRadius: 99
+                }}>
+                  {pill}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/date')}
+            style={{
+              width: '100%', padding: '14px 18px', borderRadius: 14, border: 'none',
+              background: 'linear-gradient(135deg, #e11d48, #db2777)',
+              color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(225,29,72,.35)'
+            }}
+          >
+            💘 Sanal Date Lobisine Gir →
+          </button>
+        </div>
       </div>
 
       <div className="cm-hero-features">
         <span>✓ Kayıtsız Misafir Girişi</span>
         <span>✓ Senkronize Video & Müzik</span>
         <span>✓ Sesli & Yazılı Sohbet</span>
-        <span>✓ Çift Oyunları & Randevu Fişi</span>
+        <span>✓ Canlı Sanal Date & Ambience</span>
       </div>
 
       {/* Cihaz mockupları */}

@@ -12,6 +12,7 @@ import AppContext from './contexts/AppContext';
 
 import HomePage from './pages/HomePage';
 import RoomPage from './pages/RoomPage';
+import DatePage from './pages/DatePage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
@@ -52,6 +53,17 @@ function App() {
   const [hostUserId, setHostUserId] = useState('');
   const [roomTheme, setRoomTheme] = useState('default');
   const [currentRoomType, setCurrentRoomType] = useState('video');
+  const [roomDateState, setRoomDateState] = useState({
+    isDateRoom: false,
+    dateConcept: 'none',
+    dateAmbience: 'none',
+    dateStartedAt: null,
+    dateExtended: false,
+    dateExtendVotes: [],
+    icebreakerIndex: 0,
+    icebreakerAnswers: {},
+    favSongs: []
+  });
 
   const [roomUsersList, setRoomUsersList] = useState([]);
   const [publicRooms, setPublicRooms] = useState([]);
@@ -699,6 +711,17 @@ function App() {
     setMediaSrc('');
     setMessages([]);
     setReplyTo(null);
+    setRoomDateState({
+      isDateRoom: false,
+      dateConcept: 'none',
+      dateAmbience: 'none',
+      dateStartedAt: null,
+      dateExtended: false,
+      dateExtendVotes: [],
+      icebreakerIndex: 0,
+      icebreakerAnswers: {},
+      favSongs: []
+    });
     localStorage.removeItem('cm_saved_room');
     localStorage.removeItem('cm_saved_pass');
     if (rid) {
@@ -1017,7 +1040,7 @@ function App() {
   // ── 9. SOCKET EVENTS (extracted to hook) ──
   useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pendingSyncRef, saveRoomMessages, navigate, {
     setIsConnected, setPublicRooms, setSearchResults, setIsSearching, setInRoom, setErrorMessage,
-    setRoomId, setRoomName, setHostUserId, setRoomTheme, setCurrentRoomType, setMySocketId, setRoomUsersList,
+    setRoomId, setRoomName, setHostUserId, setRoomTheme, setCurrentRoomType, setRoomDateState, setMySocketId, setRoomUsersList,
     setCurrentRoomInfo, setPlaylist, setCategories, setPlayMode, setMessages, setMediaType,
     setMediaSrc, setMediaMeta, setYoutubeError, setJoinModalError, setJoinRoomTarget, setShowJoinModal,
     setDmConversations, setDmMessages, setDmActiveChat, setChatGroups, setGroupMessages,
@@ -1043,7 +1066,7 @@ function App() {
   // ── 11. CONTEXT VALUE ──
   const contextValue = useMemo(() => ({
     socket, userId, username, userCity, myAvatar, setMyAvatar, mySocketId,
-    inRoom, roomId, roomName, hostUserId, roomTheme, currentRoomType, roomUsersList, toast,
+    inRoom, roomId, roomName, hostUserId, roomTheme, currentRoomType, roomDateState, setRoomDateState, roomUsersList, toast,
     publicRooms, currentRoomInfo, mediaType, mediaSrc, mediaMeta, setMediaMeta,
     playlist, categories, selectedCategory, setSelectedCategory,
     newCategoryInput, setNewCategoryInput, playMode, searchInput, setSearchInput,
@@ -1084,7 +1107,7 @@ function App() {
     messageReactions, addReaction, removeReaction, editRoomMessage,
     blockedUsers, blockUser, unblockUser,
     deleteDm, editDm, inviteToRoom, changePassword
-  }), [inRoom, roomId, roomTheme, currentRoomType, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows, showNotifPanel]);
+  }), [inRoom, roomId, roomTheme, currentRoomType, roomDateState, authUser, isConnected, publicRooms, globalMessages, playlist, categories, selectedCategory, playMode, searchInput, messages, chatInput, mediaType, mediaSrc, sidebarTab, friendSearch, friendSearchResults, friends, friendRequests, friendOnlineStatuses, profileBioInput, profileStatusInput, socialTab, showInstallBtn, showSettingsModal, showFolderModal, showAuthModal, showSocialModal, showVipModal, showQuickCreate, showJoinModal, authBusy, quickRoomName, quickRoomPass, quickMaxUsers, joinRoomTarget, joinModalPass, editRoomNameInput, filteredPlaylist, reactions, youtubeError, searchResults, isSearching, myAvatar, username, userCity, mySocketId, currentTheme, styles, cssVars, mediaMeta, dmConversations, dmActiveChat, dmMessages, chatGroups, activeGroup, groupMessages, typingUsers, messageReactions, blockedUsers, followCounts, isFollowingUser, followersList, followingList, showFollowersModal, showFollowingModal, feedItems, showFeedModal, suggestedFollows, showNotifPanel]);
 
   // ── 11. RENDER ──
   return (
@@ -1127,6 +1150,7 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/date" element={<DatePage />} />
         <Route path="/room/:roomIdParam" element={<RoomPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/communities" element={<Communities currentTheme={currentTheme} token={authToken} username={authUser?.username} avatar={authUser?.avatar} socket={socket} />} />

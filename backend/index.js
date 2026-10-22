@@ -987,10 +987,50 @@ const io = new Server(server, {
 });
 
 const rooms = {};
+const dateQueue = [];
 const globalDmMessages = {};
 const globalChatGroups = {};
 const onlineUsers = {};
 const adminSocketIds = new Set();
+
+function getDateStatePayload(room) {
+  if (!room) return {};
+  return {
+    isDateRoom: !!room.isDateRoom,
+    dateConcept: room.dateConcept || 'none',
+    dateAmbience: room.dateAmbience || 'none',
+    dateStartedAt: room.dateStartedAt || null,
+    dateDurationSec: room.dateDurationSec || 600,
+    dateExtended: !!room.dateExtended,
+    dateExtendVotes: room.dateExtendVotes || [],
+    icebreakerIndex: room.icebreakerIndex || 0,
+    icebreakerAnswers: room.icebreakerAnswers || {},
+    favSongs: room.favSongs || []
+  };
+}
+
+function getOpenDateRooms() {
+  return Object.entries(rooms)
+    .filter(([, r]) => r && r.isDateRoom && Array.isArray(r.users) && r.users.length === 1)
+    .map(([id, r]) => ({
+      id: r.id || id,
+      name: r.name || '💘 Sanal Date Odası',
+      host: r.host || r.users[0]?.username || r.hostUserId || 'Misafir',
+      hostAvatar: r.users[0]?.avatar || '🐱',
+      dateConcept: r.dateConcept || 'car_rain',
+      dateAmbience: r.dateAmbience || 'car_rain',
+      favSong: r.favSongs?.[0] || '',
+      userCount: r.users.length,
+      maxUsers: r.maxUsers || 2
+    }));
+}
+
+function broadcastDateLobbyStats() {
+  io.emit('date_lobby_stats', {
+    queueCount: dateQueue.length,
+    openDateRooms: getOpenDateRooms()
+  });
+}
 
 // DB'den odalari yukle
 function loadRoomsFromDb() {
@@ -1159,6 +1199,10 @@ function getPublicRoomsList() {
   return Object.entries(rooms).map(([id, room]) => ({
     id, name: room.name || id, userCount: room.users.length,
     maxUsers: room.maxUsers, hasPassword: !!room.password, isVip: !!room.isVip,
+    isDateRoom: !!room.isDateRoom,
+    dateConcept: room.dateConcept || 'none',
+    dateAmbience: room.dateAmbience || 'none',
+    favSong: room.favSongs?.[0] || '',
     roomType: room.roomType || 'video',
     users: room.users.map(u => ({ username: u.username, avatar: u.avatar })).slice(0, 5)
   }));
@@ -1166,6 +1210,7 @@ function getPublicRoomsList() {
 
 function broadcastRooms() {
   io.emit('public_rooms_update', getPublicRoomsList());
+  try { broadcastDateLobbyStats(); } catch (e) {}
   try { broadcastAdminDashboard(); } catch (e) { /* admin broadcast hatasi onemsiz */ }
 }
 
@@ -2290,8 +2335,27 @@ io.on('connection', (socket) => {
       playMode: room.playMode, messages: joinMsgs,
       reactions: joinReactions,
       isVip: !!room.isVip,
+      allowAllControl: !!room.allowAllControl,
+      isDateRoom: !!room.isDateRoom,
+      dateConcept: room.dateConcept || 'none',
+      dateAmbience: room.dateAmbience || 'none',
+      dateStartedAt: room.dateStartedAt || null,
+      dateDurationSec: room.dateDurationSec || 600,
+      dateExtended: !!room.dateExtended,
+      dateExtendVotes: room.dateExtendVotes || [],
+      icebreakerIndex: room.icebreakerIndex || 0,
+      icebreakerAnswers: room.icebreakerAnswers || {},
+      favSongs: room.favSongs || [],
       currentMedia: { ...room.currentMedia, time: calcTime }
     });
+    if (room.isDateRoom) {
+      if (room.users.length === 2 && !room._dateBothJoined) {
+        room.dateStartedAt = Date.now();
+        room._dateBothJoined = true;
+      }
+      io.to(cleanRoomId).emit('date_state_update', getDateStatePayload(room));
+      broadcastDateLobbyStats();
+    }
     updateRoomUsers(cleanRoomId); broadcastRooms();
     try { broadcastAdminActivity('room_join', { username, roomId: cleanRoomId, roomName: room.name, message: `${username} odaya katıldı: ${room.name}` }); } catch (e) {}
     try {
@@ -2573,7 +2637,9 @@ io.on('connection', (socket) => {
         roomName: room.name,
         roomTheme: room.theme,
         roomType: room.roomType || 'video',
-        maxUsers: room.maxUsers
+        maxUsers: room.maxUsers,
+        allowAllControl: !!room.allowAllControl,
+        ...getDateStatePayload(room)
       });
     }
   });
@@ -2591,6 +2657,233 @@ io.on('connection', (socket) => {
       from,
       ts: Date.now()
     });
+  });
+
+  // ── SANAL DATE MATCHMAKING & IN-ROOM DATE ENGINE ──
+  const VALID_DATE_CONCEPTS = ['car_rain', 'cinema', 'cafe', 'campfire'];
+  const VALID_DATE_AMBIENCES = ['none', 'rain_car', 'fireplace', 'cafe', 'ocean'];
+
+  socket.on('date_get_lobby', () => {
+    socket.emit('date_lobby_stats', {
+      queueCount: dateQueue.length,
+      openDateRooms: getOpenDateRooms()
+    });
+  });
+
+  socket.on('date_queue_join', (data = {}) => {
+    const myGender = ['male', 'female', 'other'].includes(data.myGender) ? data.myGender : 'other';
+    const targetGender = ['male', 'female', 'any'].includes(data.targetGender) ? data.targetGender : 'any';
+    const dateConcept = VALID_DATE_CONCEPTS.includes(data.dateConcept) ? data.dateConcept : 'car_rain';
+    const favSong = sanitize(data.favSong || '', 100);
+    const nickname = sanitize(data.nickname || socket.socialUsername || socket.userId || 'Misafir', 24) || 'Misafir';
+    const userObj = socket.socialUsername ? db.getUser(socket.socialUsername) : null;
+    const avatar = sanitize(data.avatar || userObj?.avatar || '💘', 10) || '💘';
+
+    const existingIdx = dateQueue.findIndex(q => q.socketId === socket.id);
+    if (existingIdx !== -1) dateQueue.splice(existingIdx, 1);
+
+    const matchIdx = dateQueue.findIndex(other =>
+      other.socketId !== socket.id &&
+      io.sockets.sockets.has(other.socketId) &&
+      (targetGender === 'any' || targetGender === other.myGender) &&
+      (other.targetGender === 'any' || other.targetGender === myGender)
+    );
+
+    if (matchIdx !== -1) {
+      const other = dateQueue.splice(matchIdx, 1)[0];
+      const rId = 'date-' + Math.random().toString(36).substring(2, 8);
+      const chosenConcept = other.dateConcept || dateConcept || 'car_rain';
+      const chosenAmbience = chosenConcept === 'car_rain' ? 'rain_car' : (chosenConcept === 'campfire' ? 'fireplace' : (chosenConcept === 'cafe' ? 'cafe' : 'none'));
+
+      rooms[rId] = {
+        name: '💘 Sanal Date Odası',
+        password: '',
+        maxUsers: 2,
+        isDateRoom: true,
+        dateConcept: chosenConcept,
+        dateAmbience: chosenAmbience,
+        dateStartedAt: Date.now(),
+        dateDurationSec: 600,
+        dateExtended: false,
+        dateExtendVotes: [],
+        icebreakerIndex: 0,
+        icebreakerAnswers: {},
+        favSongs: [other.favSong, favSong].filter(Boolean),
+        videoId: 'jfKfPfyJRdk',
+        mediaType: 'youtube',
+        roomType: 'video',
+        isPlaying: true,
+        currentTime: 0,
+        lastUpdate: Date.now(),
+        currentMedia: {
+          type: 'youtube',
+          src: 'jfKfPfyJRdk',
+          title: 'Lofi Hip Hop Radio - Beats to Relax/Study to',
+          artist: 'Lofi Girl',
+          thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/hqdefault.jpg',
+          source: 'youtube',
+          time: 0,
+          isPlaying: true,
+          lastUpdated: Date.now()
+        },
+        hostUserId: other.username,
+        theme: 'default',
+        users: [],
+        kickedUsers: [],
+        messages: [],
+        playlist: [],
+        categories: ['Genel'],
+        playMode: 'sequence',
+        allowAllControl: true,
+        createdAt: Date.now(),
+        lastActivityAt: Date.now(),
+        isVip: false
+      };
+
+      const compatibility = 86 + Math.floor(Math.random() * 13);
+      io.to(other.socketId).emit('date_match_found', {
+        roomId: rId,
+        dateConcept: rooms[rId].dateConcept,
+        compatibility,
+        partner: { username: nickname, avatar, favSong }
+      });
+      socket.emit('date_match_found', {
+        roomId: rId,
+        dateConcept: rooms[rId].dateConcept,
+        compatibility,
+        partner: { username: other.username, avatar: other.avatar, favSong: other.favSong }
+      });
+      broadcastDateLobbyStats();
+      broadcastRooms();
+    } else {
+      dateQueue.push({
+        socketId: socket.id,
+        username: nickname,
+        avatar,
+        myGender,
+        targetGender,
+        dateConcept,
+        favSong,
+        joinedAt: Date.now()
+      });
+      socket.emit('date_queue_waiting', { queueCount: dateQueue.length });
+      broadcastDateLobbyStats();
+    }
+  });
+
+  socket.on('date_queue_leave', () => {
+    const idx = dateQueue.findIndex(q => q.socketId === socket.id);
+    if (idx !== -1) dateQueue.splice(idx, 1);
+    broadcastDateLobbyStats();
+  });
+
+  socket.on('date_create_waiting_room', (data = {}) => {
+    const rId = 'date-' + Math.random().toString(36).substring(2, 8);
+    const chosenConcept = VALID_DATE_CONCEPTS.includes(data.dateConcept) ? data.dateConcept : 'car_rain';
+    const chosenAmbience = chosenConcept === 'car_rain' ? 'rain_car' : (chosenConcept === 'campfire' ? 'fireplace' : (chosenConcept === 'cafe' ? 'cafe' : 'none'));
+    const cleanFavSong = data.favSong ? sanitize(data.favSong, 100) : '';
+    const hostName = sanitize(data.nickname || socket.socialUsername || socket.userId || 'Misafir', 24) || 'Misafir';
+
+    rooms[rId] = {
+      name: sanitize(data.roomName, 50) || '💘 Sanal Date Odası',
+      password: '',
+      maxUsers: 2,
+      isDateRoom: true,
+      dateConcept: chosenConcept,
+      dateAmbience: chosenAmbience,
+      dateStartedAt: Date.now(),
+      dateDurationSec: 600,
+      dateExtended: false,
+      dateExtendVotes: [],
+      icebreakerIndex: 0,
+      icebreakerAnswers: {},
+      favSongs: cleanFavSong ? [cleanFavSong] : [],
+      videoId: 'jfKfPfyJRdk',
+      mediaType: 'youtube',
+      roomType: 'video',
+      isPlaying: true,
+      currentTime: 0,
+      lastUpdate: Date.now(),
+      currentMedia: {
+        type: 'youtube',
+        src: 'jfKfPfyJRdk',
+        title: 'Lofi Hip Hop Radio - Beats to Relax/Study to',
+        artist: 'Lofi Girl',
+        thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/hqdefault.jpg',
+        source: 'youtube',
+        time: 0,
+        isPlaying: true,
+        lastUpdated: Date.now()
+      },
+      hostUserId: hostName,
+      theme: 'default',
+      users: [],
+      kickedUsers: [],
+      messages: [],
+      playlist: [],
+      categories: ['Genel'],
+      playMode: 'sequence',
+      allowAllControl: true,
+      createdAt: Date.now(),
+      lastActivityAt: Date.now(),
+      isVip: false
+    };
+
+    socket.emit('room_created', { roomId: rId, isDateRoom: true });
+    broadcastDateLobbyStats();
+    broadcastRooms();
+  });
+
+  socket.on('date_room_action', (data = {}) => {
+    const { roomId, type, payload } = data;
+    const rId = sanitize(roomId || socket.currentRoom || '', 50);
+    const room = rooms[rId];
+    if (!room) return;
+    const member = room.users.find(u => u.socketId === socket.id);
+    const senderName = sanitize(data.username || payload?.username || member?.username || socket.socialUsername || socket.userId || 'Partner', 24) || 'Partner';
+
+    if (type === 'SET_AMBIENCE') {
+      const nextAmbience = data.ambience || payload?.ambience;
+      const nextConcept = data.concept || payload?.concept;
+      if (nextAmbience && VALID_DATE_AMBIENCES.includes(nextAmbience)) {
+        room.dateAmbience = nextAmbience;
+        if (nextAmbience !== 'none' && !room.dateStartedAt) {
+          room.dateStartedAt = Date.now();
+        }
+      }
+      if (nextConcept && VALID_DATE_CONCEPTS.includes(nextConcept)) {
+        room.dateConcept = nextConcept;
+      }
+      io.to(rId).emit('date_state_update', getDateStatePayload(room));
+    } else if (type === 'ICEBREAKER_ANSWER' || type === 'ANSWER_ICEBREAKER') {
+      const ans = sanitize(data.answer || payload?.answer || '', 300);
+      if (!room.icebreakerAnswers || typeof room.icebreakerAnswers !== 'object') {
+        room.icebreakerAnswers = {};
+      }
+      room.icebreakerAnswers[senderName] = ans;
+      io.to(rId).emit('date_state_update', getDateStatePayload(room));
+    } else if (type === 'NEXT_ICEBREAKER') {
+      room.icebreakerIndex = ((room.icebreakerIndex || 0) + 1) % 30;
+      room.icebreakerAnswers = {};
+      io.to(rId).emit('date_state_update', getDateStatePayload(room));
+    } else if (type === 'EXTEND_DATE') {
+      if (!Array.isArray(room.dateExtendVotes)) room.dateExtendVotes = [];
+      if (!room.dateExtendVotes.includes(senderName)) {
+        room.dateExtendVotes.push(senderName);
+      }
+      if (room.dateExtendVotes.length >= 2 || room.users.length <= 1) {
+        room.dateExtended = true;
+        room.dateDurationSec = (room.dateDurationSec || 600) + 1800;
+      }
+      io.to(rId).emit('date_state_update', getDateStatePayload(room));
+    } else if (type === 'DEDICATE_SONG') {
+      io.to(rId).emit('date_song_dedicated', {
+        from: senderName,
+        songTitle: sanitize(data.songTitle || payload?.songTitle || '', 120),
+        note: sanitize(data.note || payload?.note || '', 200),
+        ts: Date.now()
+      });
+    }
   });
 
   // ──────────────────────────────────────────────────────
@@ -2649,6 +2942,11 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     adminSocketIds.delete(socket.id);
+    const qIdx = dateQueue.findIndex(q => q.socketId === socket.id);
+    if (qIdx !== -1) {
+      dateQueue.splice(qIdx, 1);
+      broadcastDateLobbyStats();
+    }
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom; const sid = socket.id;
       if (rooms[rId]) {

@@ -46,6 +46,21 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       if (data.users) a().setRoomUsersList(data.users);
       a().setCurrentRoomInfo({ userCount: data.userCount, maxUsers: data.maxUsers });
 
+      if (a().setRoomDateState) {
+        const ds = data.dateState || {};
+        a().setRoomDateState({
+          isDateRoom: Boolean(data.isDateRoom ?? ds.isDateRoom ?? false),
+          dateConcept: data.dateConcept || ds.dateConcept || 'none',
+          dateAmbience: data.dateAmbience || ds.dateAmbience || data.dateConcept || ds.dateConcept || 'none',
+          dateStartedAt: data.dateStartedAt ?? ds.dateStartedAt ?? (data.isDateRoom ? Date.now() : null),
+          dateExtended: Boolean(data.dateExtended ?? ds.dateExtended ?? false),
+          dateExtendVotes: Array.isArray(data.dateExtendVotes || ds.dateExtendVotes) ? (data.dateExtendVotes || ds.dateExtendVotes) : [],
+          icebreakerIndex: typeof (data.icebreakerIndex ?? ds.icebreakerIndex) === 'number' ? (data.icebreakerIndex ?? ds.icebreakerIndex) : 0,
+          icebreakerAnswers: (data.icebreakerAnswers || ds.icebreakerAnswers) || {},
+          favSongs: Array.isArray(data.favSongs || ds.favSongs) ? (data.favSongs || ds.favSongs) : []
+        });
+      }
+
       if (Array.isArray(data.playlist)) { a().setPlaylist(data.playlist); localStorage.setItem('cm_local_playlist', JSON.stringify(data.playlist)); }
       if (Array.isArray(data.categories)) { a().setCategories(data.categories); localStorage.setItem('cm_local_categories', JSON.stringify(data.categories)); }
       if (data.playMode) a().setPlayMode(data.playMode);
@@ -78,6 +93,17 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
           }
         }, 800);
       }
+    });
+
+    socket.on('date_state_update', (dateState) => {
+      if (!dateState || !a().setRoomDateState) return;
+      a().setRoomDateState((prev) => ({
+        ...prev,
+        ...dateState,
+        dateAmbience: dateState.dateAmbience ?? prev.dateAmbience,
+        dateConcept: dateState.dateConcept ?? prev.dateConcept,
+        icebreakerAnswers: dateState.icebreakerAnswers ?? prev.icebreakerAnswers
+      }));
     });
 
     socket.on('room_user_count_update', (data) => {
@@ -201,6 +227,16 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       if (data.roomName) a().setRoomName(data.roomName);
       if (data.roomTheme) a().setRoomTheme(data.roomTheme);
       if (data.roomType) a().setCurrentRoomType(data.roomType);
+      if (a().setRoomDateState && (data.isDateRoom !== undefined || data.dateConcept || data.dateAmbience || data.dateState)) {
+        const ds = data.dateState || {};
+        a().setRoomDateState((prev) => ({
+          ...prev,
+          ...ds,
+          isDateRoom: Boolean(data.isDateRoom ?? ds.isDateRoom ?? prev.isDateRoom),
+          dateConcept: data.dateConcept || ds.dateConcept || prev.dateConcept,
+          dateAmbience: data.dateAmbience || ds.dateAmbience || prev.dateAmbience
+        }));
+      }
     });
 
     socket.on('global_chat_history', (items) => a().setGlobalMessages(Array.isArray(items) ? items : []));
@@ -482,7 +518,7 @@ export function useSocketEvents(socket, socketRef, authTokenRef, ytPlayerRef, pe
       socket.off('search_results'); socket.off('room_joined'); socket.off('room_user_count_update');
       socket.off('room_settings_updated'); socket.off('room_host_changed'); socket.off('kicked_from_room'); socket.off('categories_updated');
       socket.off('playlist_updated'); socket.off('play_mode_changed'); socket.off('room_error'); socket.off('room_action');
-      socket.off('room_sync_data');
+      socket.off('room_sync_data'); socket.off('date_state_update');
       socket.off('global_chat_history'); socket.off('global_chat_message'); socket.off('global_chat_cleared'); socket.off('social_profile'); socket.off('auth_result');
       socket.off('friends_update'); socket.off('friend_search_results'); socket.off('friend_request_received');
       socket.off('friend_request_status'); socket.off('friend_online_status'); socket.off('global_online_update'); socket.off('vip_activated');

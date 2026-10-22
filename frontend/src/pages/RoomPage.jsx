@@ -24,6 +24,7 @@ export default function RoomPage() {
   };
   const {
     roomName, roomId, currentTheme, isConnected, currentRoomInfo, showInstallBtn, currentRoomType,
+    roomDateState, setRoomDateState,
     handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
     mediaType, mediaSrc, youtubeError, mediaMeta, ytPlayerRef, reactions,
     openYouTubeExternally, handleMediaEnd, handleYouTubeError, searchInput, setSearchInput,
@@ -146,6 +147,7 @@ export default function RoomPage() {
             authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveClick}
             roomUsersList={roomUsersList} hostUserId={hostUserId}
             onCloseRoom={handleCloseRoom} roomId={roomId} userId={userId} username={username}
+            socket={socket} roomDateState={roomDateState} setRoomDateState={setRoomDateState}
           />
         </div>
 
@@ -183,6 +185,8 @@ export default function RoomPage() {
               handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
               currentRoomType={currentRoomType} currentTheme={currentTheme}
               roomUsersList={roomUsersList} roomName={roomName} roomId={roomId}
+              socket={socket} roomDateState={roomDateState} setRoomDateState={setRoomDateState}
+              username={authUser?.username || username}
             />
           </ErrorBoundary>
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />

@@ -1,15 +1,88 @@
 import { useState, memo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+
+const AMBIENCE_OPTIONS = [
+  { id: 'none', label: '🎬 Standart' },
+  { id: 'car_rain', label: '🚗🌧️ Yağmur & Araba' },
+  { id: 'cinema', label: '🍿 Sinema' },
+  { id: 'cafe', label: '☕ Kafe' },
+  { id: 'campfire', label: '🔥 Kamp Ateşi' }
+];
 
 function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
-  roomUsersList, hostUserId, onCloseRoom, roomId, userId, username
+  roomUsersList, hostUserId, onCloseRoom, roomId, userId, username,
+  socket, roomDateState, setRoomDateState
 }) {
+  const navigate = useNavigate();
   const [showUsers, setShowUsers] = useState(false);
+  const [showAmbienceMenu, setShowAmbienceMenu] = useState(false);
   const [showQuickLeave, setShowQuickLeave] = useState(false);
   const [shareTooltip, setShareTooltip] = useState('');
+  const [remainingSecs, setRemainingSecs] = useState(600);
   const usersRef = useRef(null);
+  const ambienceRef = useRef(null);
+
+  const activeAmbience = roomDateState?.dateAmbience || roomDateState?.dateConcept || 'none';
+  const isDateActive = Boolean(roomDateState?.isDateRoom || (activeAmbience && activeAmbience !== 'none'));
+  const myDisplayName = authUser?.username || username || 'Izleyici';
+  const hasVotedExtend = Array.isArray(roomDateState?.dateExtendVotes) && roomDateState.dateExtendVotes.includes(myDisplayName);
+
+  useEffect(() => {
+    if (!isDateActive || roomDateState?.dateExtended) return;
+    const startTs = roomDateState?.dateStartedAt || Date.now();
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startTs) / 1000);
+      setRemainingSecs(Math.max(0, 600 - elapsed));
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [isDateActive, roomDateState?.dateStartedAt, roomDateState?.dateExtended]);
+
+  const formatTimer = (secs) => {
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const handleSelectAmbience = (ambience) => {
+    setShowAmbienceMenu(false);
+    if (setRoomDateState) {
+      setRoomDateState((prev) => ({
+        ...prev,
+        dateAmbience: ambience,
+        dateStartedAt: prev?.dateStartedAt || (ambience !== 'none' ? Date.now() : null)
+      }));
+    }
+    if (socket && roomId) {
+      socket.emit('date_room_action', { roomId, type: 'SET_AMBIENCE', ambience });
+    }
+  };
+
+  const handleExtendDate = () => {
+    if (setRoomDateState) {
+      setRoomDateState((prev) => {
+        const votes = Array.from(new Set([...(prev?.dateExtendVotes || []), myDisplayName]));
+        return {
+          ...prev,
+          dateExtendVotes: votes,
+          dateExtended: votes.length >= 2 || prev?.dateExtended
+        };
+      });
+    }
+    if (socket && roomId) {
+      socket.emit('date_room_action', { roomId, type: 'EXTEND_DATE', username: myDisplayName });
+    }
+  };
+
+  const handleNextDate = () => {
+    if (socket) socket.emit('leave_room');
+    navigate('/date');
+  };
+
   const isHost = Boolean(
     hostUserId && (
       hostUserId === authUser?.username ||
@@ -35,10 +108,13 @@ function Header({
   }, []);
 
   useEffect(() => {
-    if (!showUsers) return;
+    if (!showUsers && !showAmbienceMenu) return;
     const handleClickOutside = (e) => {
       if (usersRef.current && !usersRef.current.contains(e.target)) {
         setShowUsers(false);
+      }
+      if (ambienceRef.current && !ambienceRef.current.contains(e.target)) {
+        setShowAmbienceMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -47,7 +123,9 @@ function Header({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [showUsers]);
+  }, [showUsers, showAmbienceMenu]);
+
+  const currentAmbienceMeta = AMBIENCE_OPTIONS.find((a) => a.id === activeAmbience) || AMBIENCE_OPTIONS[0];
 
   return (
     <header className="cm-room-topbar" style={{
@@ -65,17 +143,17 @@ function Header({
         backgroundSize: '300% 100%', animation: 'cmGradientFlow 4s linear infinite'
       }} />
 
-      <div className="cm-topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+      <div className="cm-topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
         {/* Yeni logo: kompakt marka rozeti */}
         <div
           className="cm-brand"
           style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}
         >
           <div className="cm-brand-logo" style={{
-            width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+            width: 42, height: 42, borderRadius: 13, flexShrink: 0,
             background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 21, boxShadow: '0 4px 14px rgba(124,58,237,.4)',
+            fontSize: 20, boxShadow: '0 4px 14px rgba(124,58,237,.4)',
             border: '1px solid rgba(255,255,255,.15)', position: 'relative'
           }}>
             💕
@@ -87,9 +165,9 @@ function Header({
           </div>
           <div style={{ minWidth: 0, lineHeight: 1.2 }}>
             <h2 className="cm-room-title" style={{
-              margin: 0, color: '#fff', fontSize: 14, fontWeight: 900,
+              margin: 0, color: '#fff', fontSize: 13.5, fontWeight: 900,
               letterSpacing: '-0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              maxWidth: '38vw'
+              maxWidth: '28vw'
             }}>
               {roomName}
             </h2>
@@ -105,14 +183,12 @@ function Header({
           className="cm-users-pill"
           style={{
             position: 'relative', fontSize: 10, fontWeight: 800,
-            padding: '4px 12px', borderRadius: 20, cursor: 'pointer', userSelect: 'none',
+            padding: '4px 10px', borderRadius: 20, cursor: 'pointer', userSelect: 'none',
             background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
             color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: 6,
             transition: 'all 0.2s', flexShrink: 0
           }}
           onClick={(e) => { e.stopPropagation(); setShowUsers(!showUsers); }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.1)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.05)'; }}
         >
           <span style={liveDotStyle} />
           <span>{isConnected ? 'Canlı' : '...'} • 👥 {currentRoomInfo.userCount}/{currentRoomInfo.maxUsers}</span>
@@ -149,6 +225,112 @@ function Header({
             </div>
           )}
         </div>
+
+        {/* ✨ Date Modu Ambience Selector Pill */}
+        <div ref={ambienceRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowAmbienceMenu((v) => !v); }}
+            style={{
+              padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+              background: activeAmbience !== 'none'
+                ? 'linear-gradient(135deg, rgba(244,63,94,.24), rgba(168,85,247,.24))'
+                : 'rgba(255,255,255,.06)',
+              border: activeAmbience !== 'none'
+                ? '1px solid rgba(251,113,133,.5)'
+                : '1px solid rgba(255,255,255,.12)',
+              color: activeAmbience !== 'none' ? '#fda4af' : '#cbd5e1',
+              fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 5
+            }}
+          >
+            <span>✨ Date Modu:</span>
+            <span style={{ color: '#fff', fontWeight: 900 }}>{currentAmbienceMeta.label}</span>
+          </button>
+
+          {showAmbienceMenu && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'absolute', top: 34, left: 0, minWidth: 200,
+                background: 'rgba(15,23,42,.97)', backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(251,113,133,.3)', borderRadius: 14,
+                padding: 6, zIndex: 9999, boxShadow: '0 20px 50px rgba(0,0,0,.65)',
+                display: 'flex', flexDirection: 'column', gap: 3
+              }}
+            >
+              <div style={{ fontSize: 10, color: '#fda4af', fontWeight: 900, padding: '4px 8px' }}>
+                ✨ ODA DATE AMBİYANSI SEÇ
+              </div>
+              {AMBIENCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleSelectAmbience(opt.id)}
+                  style={{
+                    textAlign: 'left', padding: '7px 10px', borderRadius: 9, cursor: 'pointer',
+                    border: 'none',
+                    background: activeAmbience === opt.id ? 'rgba(244,63,94,.22)' : 'transparent',
+                    color: activeAmbience === opt.id ? '#fff' : '#cbd5e1',
+                    fontSize: 12, fontWeight: 800
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 10:00 Speed Date Sayacı & Beğendim/Sonraki Date Kontrolleri */}
+        {isDateActive && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+            padding: '4px 8px', borderRadius: 999,
+            background: 'rgba(15,23,42,.75)', border: '1px solid rgba(251,113,133,.3)'
+          }}>
+            {roomDateState?.dateExtended ? (
+              <span style={{ color: '#4ade80', fontSize: 11, fontWeight: 900, padding: '0 4px' }}>
+                💖 Eşleşme Onaylandı! (Süresiz Date)
+              </span>
+            ) : (
+              <>
+                <span style={{
+                  color: remainingSecs < 60 ? '#fb7185' : '#fde047',
+                  fontSize: 11, fontWeight: 900, fontVariantNumeric: 'tabular-nums'
+                }}>
+                  ⏱️ {formatTimer(remainingSecs)}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleExtendDate}
+                  style={{
+                    padding: '4px 9px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                    background: hasVotedExtend
+                      ? 'rgba(34,197,94,.25)'
+                      : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                    color: '#fff', fontSize: 10.5, fontWeight: 900
+                  }}
+                  title="İki taraf da tıkladığında Date süresiz olur!"
+                >
+                  {hasVotedExtend ? '💚 Onayladın (Partner Bekleniyor)' : '💚 Beğendim / Süreyi Uzat'}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handleNextDate}
+              style={{
+                padding: '4px 8px', borderRadius: 999,
+                border: '1px solid rgba(255,255,255,.15)',
+                background: 'rgba(255,255,255,.06)',
+                color: '#cbd5e1', fontSize: 10.5, fontWeight: 800, cursor: 'pointer'
+              }}
+              title="Bu odadan çıkıp Sanal Date lobisinde yeni partner bul"
+            >
+              ⏭️ Sonraki Date
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="cm-topbar-actions" style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>

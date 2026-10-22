@@ -1,5 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/layout/Navbar';
 
 function Events({ currentTheme, token, username, socket }) {
   const navigate = useNavigate();
@@ -91,6 +92,7 @@ function Events({ currentTheme, token, username, socket }) {
     const isCreator = Boolean(username && (ev.createdBy === username || ev.created_by === username));
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 20 }}>
+        <Navbar />
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <button onClick={() => setSelectedEvent(null)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}>← Etkinliklere Dön</button>
           <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,.04)', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}>🏠 Ana Sayfa</button>
@@ -149,6 +151,7 @@ function Events({ currentTheme, token, username, socket }) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 20 }}>
+      <Navbar />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', color: '#e2e8f0', borderRadius: 10, padding: '8px 12px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
