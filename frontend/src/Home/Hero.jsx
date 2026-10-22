@@ -4,74 +4,100 @@ export default function Hero({ handleQuickCreateRoom }) {
   const navigate = useNavigate();
 
   return (
-    <section className="cm-hero">
-      {/* Pulse Hearts Logo */}
-      <div className="cm-pulse-hearts">
-        <div className="cm-pulse-hearts-glow" />
-        <div className="cm-pulse-hearts-pair">
-          <div className="cm-pulse-heart cm-pulse-heart-1">
-            <span>♥</span>
-          </div>
-          <div className="cm-pulse-heart cm-pulse-heart-2">
-            <span>♥</span>
-          </div>
-        </div>
-        <div className="cm-pulse-line" />
+    <section className="cm-hero" style={{ padding: '36px 0 20px', position: 'relative' }}>
+      {/* Pulse Hearts Micro-Badge */}
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 999, background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.25)', marginBottom: 20 }}>
+        <span style={{ fontSize: 13, animation: 'cmPulseHeart 1.4s ease-in-out infinite' }}>💕</span>
+        <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.6px', color: '#fda4af', textTransform: 'uppercase' }}>
+          DİJİTAL ÇİFT EVİ & SENKRONİZE BULUŞMA
+        </span>
       </div>
 
-      {/* Büyük başlık */}
-      <h1 className="cm-hero-title">
-        BİRLİKTE<br />İZLE & DİNLE
+      {/* Modern, Elegant Headline */}
+      <h1 style={{
+        fontSize: 'clamp(38px, 6.5vw, 68px)',
+        fontWeight: 950,
+        lineHeight: 1.08,
+        letterSpacing: '-2px',
+        color: '#fff',
+        margin: '0 auto 16px',
+        maxWidth: 860
+      }}>
+        Birlikte İzle, Dinle <br />
+        <span style={{
+          background: 'linear-gradient(135deg, #f43f5e 0%, #ec4899 45%, #a855f7 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          filter: 'drop-shadow(0 4px 28px rgba(244, 63, 94, 0.35))'
+        }}>
+          & Sevgilinle Buluş.
+        </span>
       </h1>
 
-      {/* 2-Card Dual Concept Grid */}
+      <p style={{
+        maxWidth: 600,
+        margin: '0 auto 32px',
+        color: '#94a3b8',
+        fontSize: 'clamp(14px, 2vw, 16px)',
+        lineHeight: 1.6,
+        fontWeight: 500,
+        padding: '0 16px'
+      }}>
+        Uzak mesafe sevgilileri ve yakın arkadaşlar için aynı saniyede senkronize YouTube, müzik sahneleri, sesli sohbet ve yeni nesil Sanal Date deneyimi.
+      </p>
+
+      {/* 2-Card Dual Concept Grid - Luxury Dark Glass */}
       <div style={{
-        maxWidth: 820,
-        margin: '24px auto 28px',
-        padding: '0 14px',
+        maxWidth: 880,
+        margin: '0 auto 28px',
+        padding: '0 16px',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: 18,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: 20,
         textAlign: 'left'
       }}>
         {/* Card 1: Özel Oda & Birlikte İzle */}
         <div style={{
-          background: 'linear-gradient(160deg, rgba(17,27,33,.92), rgba(11,20,26,.96))',
-          border: '1px solid rgba(0,168,132,.28)',
+          background: 'linear-gradient(165deg, rgba(20, 24, 40, 0.72) 0%, rgba(11, 14, 25, 0.88) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.09)',
           borderRadius: 24,
-          padding: '24px 22px',
+          padding: '26px 24px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          boxShadow: '0 24px 60px rgba(0,0,0,.45), 0 0 40px rgba(0,168,132,.06)'
+          boxShadow: '0 24px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+          transition: 'all 0.25s ease'
         }}>
           <div>
             <div style={{
-              display: 'inline-block',
-              padding: '4px 10px',
-              borderRadius: 99,
-              background: 'rgba(0,168,132,.14)',
-              border: '1px solid rgba(0,168,132,.3)',
-              color: '#34d399',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 11px',
+              borderRadius: 999,
+              background: 'rgba(99, 102, 241, 0.14)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              color: '#a5b4fc',
               fontSize: 10,
               fontWeight: 900,
               letterSpacing: '0.5px',
-              marginBottom: 12
+              marginBottom: 14
             }}>
               🎬 SEVGİLİNLE VEYA ARKADAŞLARINLA
             </div>
-            <h2 style={{ margin: '0 0 6px', color: '#fff', fontSize: 21, fontWeight: 950, letterSpacing: '-0.3px' }}>
+            <h2 style={{ margin: '0 0 8px', color: '#fff', fontSize: 22, fontWeight: 950, letterSpacing: '-0.4px' }}>
               Özel Sinema & Müzik Odası
             </h2>
-            <p style={{ margin: '0 0 14px', color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>
-              Aynı saniyede YouTube izle, müzik dinle, sesli konuş.
+            <p style={{ margin: '0 0 16px', color: '#94a3b8', fontSize: 13, lineHeight: 1.55 }}>
+              YouTube videolarını ve müzikleri aynı saniyede izleyin, sesli sohbet edin ve tepki verin.
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
-              {['🍿 Sinema Koltuğu', '🚗 Yağmurlu Araba', '🎵 Müzik'].map((pill) => (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 22 }}>
+              {['🍿 Sinema Koltuğu', '🚗 Yağmurlu Araba', '🎧 Müzik & Sohbet'].map((pill) => (
                 <span key={pill} style={{
                   fontSize: 11, fontWeight: 700, color: '#cbd5e1',
-                  background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
-                  padding: '4px 10px', borderRadius: 99
+                  background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.09)',
+                  padding: '5px 11px', borderRadius: 999
                 }}>
                   {pill}
                 </span>
@@ -83,53 +109,60 @@ export default function Hero({ handleQuickCreateRoom }) {
             onClick={handleQuickCreateRoom}
             style={{
               width: '100%', padding: '14px 18px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #00a884, #059669)',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
               color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
-              boxShadow: '0 8px 24px rgba(0,168,132,.3)'
+              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
+              transition: 'transform 0.15s ease'
             }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            🚀 Hemen Oda Oluştur
+            🚀 Hemen Odanı Kur
           </button>
         </div>
 
         {/* Card 2: Sanal Date & Canlı Eşleş */}
         <div style={{
-          background: 'linear-gradient(160deg, rgba(38,14,26,.92), rgba(15,10,20,.96))',
-          border: '1px solid rgba(251,113,133,.35)',
+          background: 'linear-gradient(165deg, rgba(32, 16, 28, 0.72) 0%, rgba(15, 10, 18, 0.88) 100%)',
+          border: '1px solid rgba(244, 63, 94, 0.25)',
           borderRadius: 24,
-          padding: '24px 22px',
+          padding: '26px 24px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          boxShadow: '0 24px 60px rgba(0,0,0,.45), 0 0 40px rgba(225,29,72,.12)'
+          boxShadow: '0 24px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+          transition: 'all 0.25s ease'
         }}>
           <div>
             <div style={{
-              display: 'inline-block',
-              padding: '4px 10px',
-              borderRadius: 99,
-              background: 'rgba(251,113,133,.16)',
-              border: '1px solid rgba(251,113,133,.35)',
-              color: '#fb7185',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 11px',
+              borderRadius: 999,
+              background: 'rgba(244, 63, 94, 0.14)',
+              border: '1px solid rgba(244, 63, 94, 0.35)',
+              color: '#fda4af',
               fontSize: 10,
               fontWeight: 900,
               letterSpacing: '0.5px',
-              marginBottom: 12
+              marginBottom: 14
             }}>
               💘 CANLI EŞLEŞME • BLIND DATE
             </div>
-            <h2 style={{ margin: '0 0 6px', color: '#fff', fontSize: 21, fontWeight: 950, letterSpacing: '-0.3px' }}>
-              Sanal Date&apos;e Çık
+            <h2 style={{ margin: '0 0 8px', color: '#fff', fontSize: 22, fontWeight: 950, letterSpacing: '-0.4px' }}>
+              Sanal Date&apos;e Çık & Tanış
             </h2>
-            <p style={{ margin: '0 0 14px', color: '#cbd5e1', fontSize: 13, lineHeight: 1.5 }}>
-              Müzik ve film zevkinle eşleş, 10 dk sesli/müzikli Date odasına gir.
+            <p style={{ margin: '0 0 16px', color: '#cbd5e1', fontSize: 13, lineHeight: 1.55 }}>
+              Müzik ve film zevkinle eşleş, 10 dakikalık hızlı date odasında baş başa sohbet et.
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
-              {['🎧 3 Şarkı Date\'i', '🧊 Buzkıran Sorular', '☕ Loş Kafe'].map((pill) => (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 22 }}>
+              {['🎧 3 Şarkı Blind Date', '🧊 Buzkıran Sorular', '☕ Loş Kafe'].map((pill) => (
                 <span key={pill} style={{
                   fontSize: 11, fontWeight: 700, color: '#fecdd3',
-                  background: 'rgba(251,113,133,.08)', border: '1px solid rgba(251,113,133,.18)',
-                  padding: '4px 10px', borderRadius: 99
+                  background: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.2)',
+                  padding: '5px 11px', borderRadius: 999
                 }}>
                   {pill}
                 </span>
@@ -141,136 +174,38 @@ export default function Hero({ handleQuickCreateRoom }) {
             onClick={() => navigate('/date')}
             style={{
               width: '100%', padding: '14px 18px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #e11d48, #db2777)',
+              background: 'linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)',
               color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
-              boxShadow: '0 8px 24px rgba(225,29,72,.35)'
+              boxShadow: '0 8px 24px rgba(244, 63, 94, 0.38)',
+              transition: 'transform 0.15s ease'
             }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            💘 Sanal Date Lobisine Gir →
+            ✨ Sanal Date Lobisine Gir →
           </button>
         </div>
       </div>
 
-      <div className="cm-hero-features">
-        <span>✓ Kayıtsız Misafir Girişi</span>
-        <span>✓ Senkronize Video & Müzik</span>
-        <span>✓ Sesli & Yazılı Sohbet</span>
-        <span>✓ Canlı Sanal Date & Ambience</span>
-      </div>
-
-      {/* Cihaz mockupları */}
-      <div className="cm-devices-showcase">
-        {/* Laptop */}
-        <div className="cm-device cm-device-laptop">
-          <div className="cm-device-screen">
-            <div className="cm-screen-header">
-              <span className="cm-screen-dot" style={{ background: '#ff5f57' }} />
-              <span className="cm-screen-dot" style={{ background: '#ffbd2e' }} />
-              <span className="cm-screen-dot" style={{ background: '#28c840' }} />
-              <span className="cm-screen-title">Couple Meeting</span>
-            </div>
-            <div className="cm-screen-body">
-              <div className="cm-screen-player">
-                <div className="cm-screen-album" />
-                <div className="cm-screen-song">
-                  <div className="cm-screen-song-name">Şımarık</div>
-                  <div className="cm-screen-song-artist">Tarkan</div>
-                </div>
-              </div>
-              <div className="cm-screen-chat">
-                <div className="cm-screen-msg cm-msg-them">Başlattım gelsene ❤️</div>
-                <div className="cm-screen-msg cm-msg-me">Geliyorum!</div>
-                <div className="cm-screen-msg cm-msg-them">💝</div>
-              </div>
-            </div>
-          </div>
-          <div className="cm-device-base" />
-          <div className="cm-device-label">
-            <span>🖥️</span> Masaüstü
-          </div>
-        </div>
-
-        {/* Telefon 1 */}
-        <div className="cm-device cm-device-phone cm-phone-left">
-          <div className="cm-device-notch" />
-          <div className="cm-device-screen cm-phone-screen">
-            <div className="cm-screen-header">
-              <span className="cm-screen-title" style={{ fontSize: 8 }}>Couple Meeting</span>
-            </div>
-            <div className="cm-screen-body">
-              <div className="cm-screen-player">
-                <div className="cm-screen-album cm-album-small" />
-                <div className="cm-screen-song">
-                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Ahh</div>
-                  <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Mabel Matiz</div>
-                </div>
-              </div>
-              <div className="cm-screen-chat">
-                <div className="cm-screen-msg cm-msg-them" style={{ fontSize: 7 }}>Müzik harika 🔥</div>
-                <div className="cm-screen-msg cm-msg-me" style={{ fontSize: 7 }}>Biliyorum!</div>
-              </div>
-            </div>
-          </div>
-          <div className="cm-device-label">
-            <span>📱</span> iPhone
-          </div>
-        </div>
-
-        {/* Telefon 2 */}
-        <div className="cm-device cm-device-phone cm-phone-right">
-          <div className="cm-device-notch" />
-          <div className="cm-device-screen cm-phone-screen">
-            <div className="cm-screen-header">
-              <span className="cm-screen-title" style={{ fontSize: 8 }}>Couple Meeting</span>
-            </div>
-            <div className="cm-screen-body">
-              <div className="cm-screen-player">
-                <div className="cm-screen-album cm-album-small" />
-                <div className="cm-screen-song">
-                  <div className="cm-screen-song-name" style={{ fontSize: 9 }}>Güneşleneceğim</div>
-                  <div className="cm-screen-song-artist" style={{ fontSize: 7 }}>Mabel Matiz</div>
-                </div>
-              </div>
-              <div className="cm-screen-chat">
-                <div className="cm-screen-msg cm-msg-me" style={{ fontSize: 7 }}>Bu gece de dinliyoruz 🌙</div>
-                <div className="cm-screen-msg cm-msg-them" style={{ fontSize: 7 }}>Her gece ❤️</div>
-              </div>
-            </div>
-          </div>
-          <div className="cm-device-label">
-            <span>📱</span> Android
-          </div>
-        </div>
-
-        {/* Büyük ekran */}
-        <div className="cm-device cm-device-desktop">
-          <div className="cm-device-screen cm-desktop-screen">
-            <div className="cm-screen-header">
-              <span className="cm-screen-dot" style={{ background: '#ff5f57' }} />
-              <span className="cm-screen-dot" style={{ background: '#ffbd2e' }} />
-              <span className="cm-screen-dot" style={{ background: '#28c840' }} />
-              <span className="cm-screen-title">Couple Meeting</span>
-            </div>
-            <div className="cm-screen-body">
-              <div className="cm-screen-player">
-                <div className="cm-screen-album" />
-                <div className="cm-screen-song">
-                  <div className="cm-screen-song-name">Tükeneceğiz</div>
-                  <div className="cm-screen-song-artist">Sezen Aksu</div>
-                </div>
-              </div>
-              <div className="cm-screen-chat">
-                <div className="cm-screen-msg cm-msg-them">İzliyor musun? 🎬</div>
-                <div className="cm-screen-msg cm-msg-me">Evet başladım!</div>
-                <div className="cm-screen-msg cm-msg-them">Süper ❤️</div>
-              </div>
-            </div>
-          </div>
-          <div className="cm-device-base" />
-          <div className="cm-device-label">
-            <span>🖥️</span> Windows
-          </div>
-        </div>
+      {/* Feature Highlights Ribbon */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 20,
+        flexWrap: 'wrap',
+        margin: '18px auto 0',
+        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: 700
+      }}>
+        <span>⚡ Sıfır Gecikme Senkronizasyon</span>
+        <span style={{ opacity: 0.3 }}>•</span>
+        <span>🔒 Şifreli Özel Çift Odaları</span>
+        <span style={{ opacity: 0.3 }}>•</span>
+        <span>📱 Uygulama İndirmeden Tek Linkle</span>
+        <span style={{ opacity: 0.3 }}>•</span>
+        <span>🎧 Kristal Netliğinde Sesli Sohbet</span>
       </div>
     </section>
   );
