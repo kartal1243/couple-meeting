@@ -42,7 +42,7 @@ function App() {
     try { const u = JSON.parse(localStorage.getItem('cm_auth_user')); if (u?.username) return u.username; } catch {}
     return localStorage.getItem('cm_username') || 'Izleyici';
   });
-  const [userCity] = useState(() => localStorage.getItem('cm_user_city') || 'Zonguldak');
+  const [userCity] = useState(() => localStorage.getItem('cm_user_city') || '');
   const [myAvatar, setMyAvatar] = useState(() => localStorage.getItem('cm_user_avatar') || '🐱');
   const [mySocketId, setMySocketId] = useState('');
 
@@ -353,7 +353,13 @@ function App() {
   const editRoomMessage = (messageId, text) => { sendAction('EDIT_MESSAGE', { messageId, text }); };
   const blockUser = (targetUsername) => { if (authToken) socket.emit('block_user', { targetUsername, token: authToken }); };
   const unblockUser = (targetUsername) => { if (authToken) socket.emit('unblock_user', { targetUsername, token: authToken }); };
-  const inviteToRoom = (targetUsername, roomId) => { if (authToken) socket.emit('invite_to_room', { targetUsername, roomId, token: authToken }); };
+  const inviteToRoom = (targetUsername, targetRoomId) => {
+    const rid = targetRoomId || currentRoomIdRef.current || roomId;
+    if (authToken && targetUsername && rid) {
+      socket.emit('invite_to_room', { targetUsername, roomId: rid, token: authToken });
+      showToast(`@${targetUsername} odaya davet edildi! 💕`, 'Davet');
+    }
+  };
   const changePassword = (currentPassword, newPassword) => { if (authToken) socket.emit('change_password', { token: authToken, currentPassword, newPassword }); };
 
   const openDm = (withUser) => {
@@ -595,20 +601,36 @@ function App() {
     setNameError('');
     const run = pendingJoinRef.current;
     pendingJoinRef.current = null;
-    if (run) run();
+    if (run) run(clean);
   };
 
   const handleQuickCreateSubmit = (e) => {
-    e.preventDefault();
-    if (needName()) {
-      pendingJoinRef.current = () => handleQuickCreateSubmit(e);
-      setNameInput(''); setNameError(''); setShowNameModal(true);
-      return;
+    if (e) e.preventDefault();
+    let activeGuestName = localStorage.getItem('cm_username') || username;
+    if (!authToken && !authUser) {
+      const candidate = (nameInput.trim() || localStorage.getItem('cm_username') || '').trim();
+      if (candidate.length < 2) {
+        setNameError('Lütfen odada görünecek ismini yaz (en az 2 harf).');
+        return;
+      }
+      localStorage.setItem('cm_username', candidate);
+      setUsername(candidate);
+      activeGuestName = candidate;
+      setNameError('');
     }
     const finalRoomId = quickRoomName.trim().toLowerCase() || 'oda-' + Math.floor(1000 + Math.random() * 9000);
     localStorage.setItem('cm_saved_pass', quickRoomPass.trim());
-    if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(userId);
-    const joinData = { roomId: finalRoomId, password: quickRoomPass.trim(), maxUsers: quickMaxUsers, token: authToken, userCity, clientUserId: userId, vipRoom: quickVipRoom && !!authUser?.isVip, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '', roomType: quickRoomKind === 'music' ? 'music' : 'video' };
+    const joinData = {
+      roomId: finalRoomId,
+      password: quickRoomPass.trim(),
+      maxUsers: quickMaxUsers,
+      token: authToken,
+      userCity,
+      clientUserId: userId,
+      vipRoom: quickVipRoom && !!authUser?.isVip,
+      guestName: !authToken ? activeGuestName : '',
+      roomType: quickRoomKind === 'music' ? 'music' : 'video'
+    };
 
     if (socket.connected) {
       socket.emit('join_room', joinData);
@@ -626,16 +648,21 @@ function App() {
   };
 
   const handleJoinRoomFromModal = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!joinRoomTarget) return;
-    if (needName()) {
-      pendingJoinRef.current = () => handleJoinRoomFromModal(e);
-      setNameInput(''); setNameError(''); setShowNameModal(true);
-      return;
+    let activeGuestName = localStorage.getItem('cm_username') || username;
+    if (!authToken && !authUser) {
+      const candidate = (nameInput.trim() || localStorage.getItem('cm_username') || '').trim();
+      if (candidate.length < 2) {
+        setJoinModalError('Lütfen odada görünecek ismini yaz (en az 2 harf).');
+        return;
+      }
+      localStorage.setItem('cm_username', candidate);
+      setUsername(candidate);
+      activeGuestName = candidate;
     }
     localStorage.setItem('cm_saved_pass', joinModalPass.trim());
     setJoinModalError('');
-    if (!authToken && !authUser && !localStorage.getItem('cm_username')) setUsername(userId);
     const timeoutId = setTimeout(() => {
       setShowJoinModal(false);
       setJoinRoomTarget(null);
@@ -660,7 +687,7 @@ function App() {
     socket.emit('join_room', {
       roomId: joinRoomTarget.id, password: joinModalPass.trim(),
       token: authToken, userCity, clientUserId: userId,
-      guestName: !authToken ? (localStorage.getItem('cm_username') || username) : ''
+      guestName: !authToken ? activeGuestName : ''
     });
   };
 
@@ -919,17 +946,58 @@ function App() {
     return () => { if (wakeLock) wakeLock.release(); };
   }, [mediaType]);
 
+  // ?action=create parametresi ile doğrudan oda oluşturma modalını aç
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'create') {
+      setShowQuickCreate(true);
+    }
+  }, [location.search]);
+
+  // Oda davetlerini tıklanabilir toast olarak yakala
+  useEffect(() => {
+    if (!socket) return;
+    const onInvite = (data) => {
+      if (!data) return;
+      setToast({
+        msg: `seni "${data.roomName || data.roomId}" odasına davet etti!`,
+        sender: data.from || 'Partnerin',
+        roomId: data.roomId,
+        id: Date.now()
+      });
+    };
+    socket.on('room_invite', onInvite);
+    return () => socket.off('room_invite', onInvite);
+  }, [socket]);
+
   // URL'den odaya otomatik katil (/room/:roomId)
   useEffect(() => {
     const match = location.pathname.match(/^\/room\/(.+)$/);
     if (match && match[1] && socket && !inRoom) {
       const targetRoomId = decodeURIComponent(match[1]);
-      const doJoin = () => {
+      const doJoin = (customGuestName) => {
         const savedPass = localStorage.getItem('cm_saved_pass') || '';
-        socket.emit('join_room', { roomId: targetRoomId, password: savedPass, token: authToken, userCity, clientUserId: userId, guestName: !authToken ? (localStorage.getItem('cm_username') || username) : '' });
+        const guestNick = customGuestName || localStorage.getItem('cm_username') || username;
+        const onDeepJoinError = (msg) => {
+          if (msg && (msg.toLowerCase().includes('şifre') || msg.toLowerCase().includes('sifre') || msg.toLowerCase().includes('parola'))) {
+            setJoinRoomTarget({ id: targetRoomId, name: targetRoomId, hasPassword: true, userCount: 1, maxUsers: 2 });
+            setJoinModalError(msg);
+            setShowJoinModal(true);
+          }
+        };
+        socket.once('room_error', onDeepJoinError);
+        socket.once('room_joined', () => socket.off('room_error', onDeepJoinError));
+        socket.emit('join_room', {
+          roomId: targetRoomId,
+          password: savedPass,
+          token: authToken,
+          userCity,
+          clientUserId: userId,
+          guestName: !authToken ? guestNick : ''
+        });
       };
       if (needName()) {
-        pendingJoinRef.current = doJoin;
+        pendingJoinRef.current = (cleanName) => doJoin(cleanName);
         setNameInput(''); setNameError(''); setShowNameModal(true);
         return;
       }
@@ -1029,15 +1097,31 @@ function App() {
           backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,.1)',
           padding: '10px 20px', borderRadius: 14,
           boxShadow: '0 10px 40px rgba(0,0,0,.5)',
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center', gap: 12,
           animation: 'cmGlobalToastIn 0.3s ease'
         }}>
           <span style={{ fontSize: 16 }}>💬</span>
           <div>
             <span style={{ fontWeight: 800, color: '#00a884', fontSize: 12 }}>{toast.sender}</span>
-            <span style={{ color: '#94a3b8', fontSize: 12, marginLeft: 6 }}>{toast.msg}</span>
+            <span style={{ color: '#e2e8f0', fontSize: 12, marginLeft: 6 }}>{toast.msg}</span>
           </div>
-
+          {toast.roomId && (
+            <button
+              onClick={() => {
+                const target = toast.roomId;
+                setToast(null);
+                setShowSocialModal(false);
+                navigate(`/room/${encodeURIComponent(target)}`);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #fb7185, #e11d48)',
+                color: '#fff', border: 'none', borderRadius: 8,
+                padding: '6px 12px', fontSize: 11, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              🚀 Odaya Katıl
+            </button>
+          )}
         </div>
       )}
 
@@ -1087,6 +1171,7 @@ function App() {
           showDeleteAccount={showDeleteAccount} setShowDeleteAccount={setShowDeleteAccount} deleteAccount={deleteAccount} deletePass={deletePass} setDeletePass={setDeletePass}
           messageReactions={messageReactions} addReaction={addReaction} removeReaction={removeReaction}
           editDm={editDm} deleteDm={deleteDm} authToken={authToken}
+          inviteToRoom={inviteToRoom} inRoom={inRoom} roomId={roomId}
         />
         </Suspense>
       )}
@@ -1103,9 +1188,22 @@ function App() {
               <button onClick={() => setShowQuickCreate(false)} style={{ background:'rgba(255,255,255,.06)', border:'none', color:'#7f8c98', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:14 }}>✕</button>
             </div>
             <form onSubmit={handleQuickCreateSubmit} style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
+              {!authUser && (
+                <div>
+                  <label style={{ color:'#fb7185', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>👋 Senin İsmin / Rumuzun</label>
+                  <input
+                    value={nameInput || localStorage.getItem('cm_username') || ''}
+                    onChange={(e) => { setNameInput(e.target.value); setNameError(''); }}
+                    placeholder="Örn: Ömer, Elif, GeceKuşu..."
+                    maxLength={20}
+                    style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border: nameError ? '1px solid #ef4444' : '1px solid rgba(251,113,133,.35)', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box', fontWeight:700 }}
+                  />
+                  {nameError && <div style={{ color:'#ef4444', fontSize:11, marginTop:4 }}>{nameError}</div>}
+                </div>
+              )}
               <div>
                 <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Oda Adi</label>
-                <input value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)} placeholder="orn: muzik gecesi" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
+                <input value={quickRoomName} onChange={(e) => setQuickRoomName(e.target.value)} placeholder="orn: bizim sinema odamiz 💕" style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid #25313a', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box' }} />
               </div>
               <div>
                 <label style={{ color:'#94a3b8', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>Sifre (istege bagli)</label>
@@ -1216,6 +1314,18 @@ function App() {
               {joinModalError && (
                 <div style={{ background:'rgba(239,68,68,.1)', border:'1px solid rgba(239,68,68,.2)', borderRadius:10, padding:'10px 14px', color:'#ef4444', fontSize:12, fontWeight:700, textAlign:'center' }}>
                   ⚠️ {joinModalError}
+                </div>
+              )}
+              {!authUser && (
+                <div>
+                  <label style={{ color:'#fb7185', fontSize:11, fontWeight:800, display:'block', marginBottom:5 }}>👋 Senin İsmin / Rumuzun</label>
+                  <input
+                    value={nameInput || localStorage.getItem('cm_username') || ''}
+                    onChange={(e) => { setNameInput(e.target.value); setJoinModalError(''); }}
+                    placeholder="Odada görünecek ismin..."
+                    maxLength={20}
+                    style={{ width:'100%', padding:'12px 14px', background:'#0b141a', border:'1px solid rgba(251,113,133,.35)', color:'#e9edef', borderRadius:12, fontSize:13, outline:'none', boxSizing:'border-box', fontWeight:700 }}
+                  />
                 </div>
               )}
               {joinRoomTarget.hasPassword && (

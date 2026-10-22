@@ -376,6 +376,10 @@ function initTables() {
   try { db.exec(`ALTER TABLE room_messages ADD COLUMN file_name TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN vip_level INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN invisible_mode INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN partner_username TEXT DEFAULT NULL`); } catch {}
+  try { db.exec(`ALTER TABLE room_playlists ADD COLUMN category TEXT DEFAULT 'Genel'`); } catch {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS profile_visitors (
@@ -437,7 +441,7 @@ function createUser(username, email, passwordHash, avatar, bio) {
   }
 }
 
-const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'reset_expiry', 'email_verified', 'is_vip', 'vip_expiry', 'vip_plan', 'vip_activated_at', 'vip_level', 'invisible_mode', 'stripe_customer_id', 'stripe_subscription_id', 'last_seen', 'totp_secret', 'two_factor_enabled', 'is_banned', 'role', 'frozen']);
+const ALLOWED_USER_FIELDS = new Set(['bio', 'status', 'avatar', 'username', 'email', 'password_hash', 'reset_token', 'reset_expiry', 'email_verified', 'is_vip', 'vip_expiry', 'vip_plan', 'vip_activated_at', 'vip_level', 'invisible_mode', 'stripe_customer_id', 'stripe_subscription_id', 'last_seen', 'totp_secret', 'two_factor_enabled', 'is_banned', 'role', 'frozen', 'partner_username']);
 
 function updateUser(username, fields) {
   const safeFields = {};
@@ -631,7 +635,12 @@ function formatUser(row) {
     resetToken: row.reset_token || row.resetToken || '',
     resetExpiry: row.reset_expiry || row.resetExpiry || 0,
     createdAt: row.created_at || row.createdAt, lastSeen: row.last_seen || row.lastSeen,
-    frozen: !!(row.frozen)
+    frozen: !!(row.frozen),
+    isBanned: !!(row.is_banned || row.isBanned),
+    is_banned: !!(row.is_banned || row.isBanned),
+    role: row.role || 'user',
+    partnerUsername: row.partner_username || row.partnerUsername || null,
+    partner_username: row.partner_username || row.partnerUsername || null
   };
 }
 
@@ -696,6 +705,26 @@ function saveDmMessage(msg) {
         .run(msg.id, msg.from, msg.to, msg.text, msg.time, msg.createdAt, msg.read ? 1 : 0);
     } catch {}
   }
+}
+
+function deleteDMMessage(id, senderUsername) {
+  if (getDb()) {
+    try {
+      const info = db.prepare('DELETE FROM dm_messages WHERE id = ? AND from_username = ?').run(id, senderUsername);
+      return info.changes > 0;
+    } catch { return false; }
+  }
+  return false;
+}
+
+function editDMMessage(id, senderUsername, newText) {
+  if (getDb()) {
+    try {
+      const info = db.prepare('UPDATE dm_messages SET text = ? WHERE id = ? AND from_username = ?').run(newText, id, senderUsername);
+      return info.changes > 0;
+    } catch { return false; }
+  }
+  return false;
 }
 
 function getDmHistory(user1, user2, limit = 100) {
@@ -1241,6 +1270,14 @@ function saveRoomMessage(msg) {
   } catch (e) { logger.error?.('Room message save hatası: ' + e.message); }
 }
 
+function editRoomMessage(roomId, msgId, senderUsername, newText) {
+  if (!getDb()) return false;
+  try {
+    const info = db.prepare('UPDATE room_messages SET text = ? WHERE id = ? AND room_id = ? AND username = ?').run(newText, msgId, roomId, senderUsername);
+    return info.changes > 0;
+  } catch (e) { return false; }
+}
+
 function getRoomMessages(roomId, limit = 200) {
   if (!getDb()) return [];
   try {
@@ -1251,8 +1288,8 @@ function getRoomMessages(roomId, limit = 200) {
 function saveRoomPlaylistItem(roomId, video) {
   if (!getDb()) return;
   try {
-    db.prepare('INSERT OR REPLACE INTO room_playlists (room_id, video_id, title, thumbnail, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-      roomId, video.id, video.title || '', video.thumbnail || '', video.addedBy || '', Date.now()
+    db.prepare('INSERT OR REPLACE INTO room_playlists (room_id, video_id, title, thumbnail, added_by, added_at, category) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      roomId, video.id, video.title || '', video.thumbnail || video.src || '', video.addedBy || '', Date.now(), video.category || 'Genel'
     );
   } catch (e) {}
 }
@@ -1263,6 +1300,8 @@ function deleteRoomPlaylistItem(roomId, videoId) {
     db.prepare('DELETE FROM room_playlists WHERE room_id = ? AND video_id = ?').run(roomId, videoId);
   } catch (e) {}
 }
+
+const removeRoomPlaylistItem = deleteRoomPlaylistItem;
 
 function clearRoomPlaylist(roomId) {
   if (!getDb()) return;
@@ -1339,7 +1378,7 @@ module.exports = {
   updateFriendRequest, areFriends, addFriendship, removeFriendship, getFriends, hasPendingRequest,
   searchUsers, addGlobalMessage, getGlobalMessages, clearGlobalMessages, getAllUsers, closeDb, backupDb,
   addConnectionLog, getConnectionLogs, getLogStats,
-  saveDmMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
+  saveDmMessage, deleteDMMessage, editDMMessage, getDmHistory, markDmRead, getUnreadDmCount, getDmConversations,
   saveGroupMessage, getGroupHistory,
   blockUser, unblockUser, isBlocked, getBlockedUsers, isBlockedBy,
   addReaction, removeReaction, getReactions, getReactionsForMessages,
@@ -1351,8 +1390,8 @@ module.exports = {
   savePushSubscription, getPushSubscriptions, removePushSubscription,
   createEmailVerification, verifyEmailCode, isEmailVerified,
   setupTwoFactor, enableTwoFactor, disableTwoFactor, getTwoFactor, isTwoFactorEnabled,
-  saveRoom, deleteRoom, saveRoomMessage, getRoomMessages,
-  saveRoomPlaylistItem, deleteRoomPlaylistItem, clearRoomPlaylist, getRoomPlaylist,
+  saveRoom, deleteRoom, saveRoomMessage, editRoomMessage, getRoomMessages,
+  saveRoomPlaylistItem, deleteRoomPlaylistItem, removeRoomPlaylistItem, clearRoomPlaylist, getRoomPlaylist,
   getAllRooms, updateRoomActivity, saveGroupChatDef, deleteGroupChatDef, getAllGroupChatDefs,
   addBetaTester, getBetaTesters
 };

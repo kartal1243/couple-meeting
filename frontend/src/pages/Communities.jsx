@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const COMM_MOBILE_CSS = `
 @media (max-width: 768px) {
@@ -36,6 +37,7 @@ const COMM_MOBILE_CSS = `
 `;
 
 function Communities({ currentTheme, token, username, avatar, socket }) {
+  const navigate = useNavigate();
   const [communities, setCommunities] = useState([]);
   const [selected, setSelected] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -114,9 +116,14 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     return (
       <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
         <style>{COMM_MOBILE_CSS}</style>
-        <button onClick={() => { setSelected(null); selectedRef.current = null; setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: 14, fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
-          ← Geri
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <button onClick={() => { setSelected(null); selectedRef.current = null; setPosts([]); setMembers([]); }} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#e2e8f0', cursor: 'pointer', fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
+            ← Topluluklara Dön
+          </button>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,.04)', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: '8px 14px', borderRadius: 10, fontWeight: 700 }}>
+            🏠 Ana Sayfa
+          </button>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <span className="cm-comm-detail-icon" style={{ fontSize: 40, flexShrink: 0 }}>{selected.icon}</span>
@@ -173,8 +180,13 @@ function Communities({ currentTheme, token, username, avatar, socket }) {
     <div className="cm-comm-root" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 16, paddingBottom: 40, width: '100%', overflowX: 'hidden' }}>
       <style>{COMM_MOBILE_CSS}</style>
 
-      <div className="cm-comm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div className="cm-comm-title" style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>🏘️ Topluluklar</div>
+      <div className="cm-comm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', color: '#e2e8f0', borderRadius: 10, padding: '8px 12px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+            ← Ana Sayfa
+          </button>
+          <div className="cm-comm-title" style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>🏘️ Topluluklar</div>
+        </div>
         <button onClick={() => setShowCreate(true)} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>
           + Yeni
         </button>

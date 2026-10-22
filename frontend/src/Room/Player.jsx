@@ -11,7 +11,7 @@ function extractVideoId(src) {
 function Player({
   mediaType, mediaSrc, youtubeError, ytPlayerRef, pendingSyncRef, mediaMeta,
   reactions, openYouTubeExternally, handleMediaEnd, handleYouTubeError,
-  currentRoomType, currentTheme
+  currentRoomType, currentTheme, roomUsersList, roomName, roomId
 }) {
   const playType = mediaType === 'music' ? 'youtube' : mediaType;
   const videoId = extractVideoId(mediaSrc);
@@ -20,9 +20,29 @@ function Player({
   const [nativeControls, setNativeControls] = useState(true);
   const [repeat, setRepeat] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   const repeatRef = useRef(false); repeatRef.current = repeat;
   const wrapRef = useRef(null);
   const settingsRef = useRef(null);
+
+  const activeRoomId = roomId || mediaMeta?.roomId || '';
+  const inviteUrl = typeof window !== 'undefined' && activeRoomId
+    ? `${window.location.origin}/room/${encodeURIComponent(activeRoomId)}`
+    : (typeof window !== 'undefined' ? window.location.href : '');
+  const userCount = Array.isArray(roomUsersList) && roomUsersList.length > 0 ? roomUsersList.length : 1;
+
+  const handleCopyInvite = () => {
+    if (!inviteUrl) return;
+    navigator.clipboard?.writeText(inviteUrl);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2500);
+  };
+
+  const handleWhatsAppInvite = () => {
+    const label = roomName || activeRoomId || 'Couple Meeting';
+    const text = `💕 "${label}" odasını açtım, seni bekliyorum! Tıkla ve yanıma gel, birlikte izleyip dinleyelim: ${inviteUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  };
 
   const ytOpts = {
     height: '100%', width: '100%',
@@ -90,10 +110,55 @@ function Player({
     }}>
 
       {mediaType === 'none' && (
-        <div style={{ textAlign: 'center', color: '#8696a0' }}>
-          <div style={{ fontSize: '56px', marginBottom: '12px' }}>{currentRoomType === 'music' ? '🎵' : '🎬'}</div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-            {currentRoomType === 'music' ? 'Yukarıdan şarkı arayın ve seçin!' : 'Yukarıdan Şarkı veya Video Aratın!'}
+        <div style={{
+          width: 'min(480px, 92%)', padding: '24px 22px', borderRadius: 24,
+          background: 'linear-gradient(145deg, rgba(17,27,33,.92), rgba(10,15,20,.95))',
+          border: '1px solid rgba(251,113,133,.22)',
+          boxShadow: '0 24px 60px rgba(0,0,0,.55), 0 0 40px rgba(251,113,133,.08)',
+          textAlign: 'center', color: '#e2e8f0'
+        }}>
+          <div style={{ fontSize: 44, marginBottom: 8 }}>
+            {userCount <= 1 ? '💑' : (currentRoomType === 'music' ? '🎵' : '🎬')}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 6 }}>
+            {userCount <= 1
+              ? 'Sevgilini / Arkadaşını Odaya Çağır 💕'
+              : (currentRoomType === 'music' ? 'Yukarıdan Şarkı Arayın ve Seçin!' : 'Yukarıdan Şarkı veya Video Aratın!')}
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 16 }}>
+            {userCount <= 1
+              ? 'Oda hazır! Aşağıdaki butonla oda linkini gönder; tıkladığı an hesap açmadan yanına katılabilir.'
+              : `Odada ${userCount} kişisiniz! Üstteki arama çubuğundan bir film, video veya şarkı seçip aynı anda başlatın.`}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={handleWhatsAppInvite}
+              style={{
+                flex: '1 1 180px', padding: '11px 14px', borderRadius: 12, border: 'none',
+                background: 'linear-gradient(135deg, #25D366, #128C7E)', color: '#fff',
+                fontSize: 12, fontWeight: 900, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                boxShadow: '0 6px 20px rgba(37,211,102,.25)'
+              }}
+            >
+              💬 WhatsApp'tan Çağır
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyInvite}
+              style={{
+                flex: '1 1 160px', padding: '11px 14px', borderRadius: 12,
+                border: copiedInvite ? '1px solid #34d399' : '1px solid rgba(255,255,255,.14)',
+                background: copiedInvite ? 'rgba(16,185,129,.18)' : 'rgba(255,255,255,.06)',
+                color: copiedInvite ? '#34d399' : '#fff',
+                fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+              }}
+            >
+              {copiedInvite ? '✅ Link Kopyalandı!' : '📋 Davet Linkini Kopyala'}
+            </button>
           </div>
         </div>
       )}

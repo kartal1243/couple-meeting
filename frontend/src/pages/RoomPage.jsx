@@ -145,7 +145,7 @@ export default function RoomPage() {
             setShowProfileModal={setShowProfileModal}
             authUser={authUser} myAvatar={myAvatar} handleLeaveRoom={handleLeaveClick}
             roomUsersList={roomUsersList} hostUserId={hostUserId}
-            onCloseRoom={handleCloseRoom} roomId={roomId} userId={userId}
+            onCloseRoom={handleCloseRoom} roomId={roomId} userId={userId} username={username}
           />
         </div>
 
@@ -182,6 +182,7 @@ export default function RoomPage() {
               openYouTubeExternally={openYouTubeExternally}
               handleMediaEnd={handleMediaEnd} handleYouTubeError={handleYouTubeError}
               currentRoomType={currentRoomType} currentTheme={currentTheme}
+              roomUsersList={roomUsersList} roomName={roomName} roomId={roomId}
             />
           </ErrorBoundary>
           <Controls currentTheme={currentTheme} handlePlay={handlePlay} handlePause={handlePause} sendReaction={sendReaction} sendAction={sendAction} playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed} ytPlayerRef={ytPlayerRef}           voiceChat={<ErrorBoundary fallbackMessage="Sesli sohbet yüklenirken bir hata oluştu."><VoiceChat socket={socket} roomId={roomId} mySocketId={mySocketId} isMuted={isMuted} setIsMuted={setIsMuted} token={authToken} /></ErrorBoundary>}           />

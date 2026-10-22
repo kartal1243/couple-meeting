@@ -1,38 +1,44 @@
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { trackAdCtaClicked } from '../utils/analytics';
 
 function LandingPage() {
   const navigate = useNavigate();
 
+  const handleStartRoom = () => {
+    trackAdCtaClicked('landing_page');
+    navigate('/?action=create');
+  };
+
   const features = [
-    { icon: '🎬', title: 'YouTube Birlikte İzle', desc: 'Arkadaşlarınla aynı anda YouTube videosu izle. Film, dizi, müzik klibi, gaming — her şey seninle.' },
-    { icon: '🎵', title: 'Müzik Paylaş', desc: 'Favori şarkılarını paylaş, birlikte dinleyin. Oluşturma listeleri oluştur, kategorilere ayır.' },
-    { icon: '💬', title: 'Canlı Sohbet', desc: 'Yazılı ve sesli sohbet ile arkadaşlarınla anında iletişim kur. Mesajlara tepki ver, yanıtla.' },
-    { icon: '🎤', title: 'Sesli Sohbet Odaları', desc: 'Mikrofonunu aç, sesli olarak sohbet et. Grup sesli konuşmaları yap.' },
-    { icon: '🔒', title: 'Özel Odalar', desc: 'Şifreli odalar oluştur, sadece davet ettiklerin girsin. Gizliliğin korunur.' },
-    { icon: '👑', title: 'VIP Özellikler', desc: 'VIP olarak ekstra özellikler kazan. Daha fazla oda, özel temalar, öncelikli destek.' },
-    { icon: '👥', title: 'Arkadaş Ekleme', desc: 'Arkadaşlarını bul, ekle, çevrimiçi olduklarında haberdar ol.' },
-    { icon: '🌍', title: 'Ücretsiz & Açık', desc: 'Tamamen ücretsiz, kayıt olarak hemen başla. Açık kaynak, şeffaf.' }
+    { icon: '🎬', title: 'YouTube Birlikte İzle', desc: 'Sevgilinle veya arkadaşlarınla aynı saniyede YouTube videosu izle. Film, dizi, müzik klibi, vlog — her şey senkronize.' },
+    { icon: '🎵', title: 'Senkronize Müzik Dinle', desc: 'Favori şarkılarını paylaş, ortak çalma listeleri oluştur ve gece boyu aynı ritimde dinleyin.' },
+    { icon: '🎤', title: 'Net Sesli & Yazılı Sohbet', desc: 'Video sesiyle karışmayan sesli sohbet ve anlık mesajlaşma ile yan yanaymış gibi konuşun.' },
+    { icon: '🎲', title: 'Çift Oyunları & Uyum Testi', desc: 'Oda içinde eğlenceli çift soruları, müzik uyum testi ve mini oyunlarla unutulmaz anlar yaşayın.' },
+    { icon: '🧾', title: 'Randevu Fişi (Date Receipt)', desc: 'Buluşma sonunda birlikte geçirdiğiniz dakikaları ve dinlediğiniz şarkıları gösteren hatıra fişinizi paylaşın.' },
+    { icon: '🔒', title: 'Şifreli Özel Odalar', desc: 'Şifreli özel oda oluştur, sadece davet linkini gönderdiğin kişi girsin. İkinize özel sinema salonu.' },
+    { icon: '👑', title: 'Couple Pass VIP (1 Öder 2 Kullanır)', desc: 'Kalıcı özel oda, 20 kişilik parti kapasitesi, özel romantik temalar ve VIP rozetleri.' },
+    { icon: '📱', title: 'Uygulama İndirmeden Her Cihazda', desc: 'iPhone, Android, tablet ve bilgisayarda tarayıcıdan tek tıkla çalışır. Tamamen ücretsiz.' }
   ];
 
   const steps = [
-    { num: '1', title: 'Kayıt Ol', desc: 'Ücretsiz hesap oluştur veya misafir olarak gir.', icon: '📝' },
-    { num: '2', title: 'Oda Oluştur', desc: 'Arkadaşlarınla paylaşacağın özel bir oda kur.', icon: '🏠' },
-    { num: '3', title: 'Davet Et', desc: 'Arkadaşlarını odaya davet et veya herkese açık odalara katıl.', icon: '📨' },
-    { num: '4', title: 'Eğlen', desc: 'Birlikte video izle, müzik dinle, sohbet et!', icon: '🎉' }
+    { num: '1', title: 'Özel Odanı Aç', desc: 'Tek tıkla ücretsiz ve şifreli odanı 5 saniyede kur.', icon: '🏠' },
+    { num: '2', title: 'Linki Sevgiline At', desc: 'WhatsApp veya Instagram DM üzerinden davet linkini gönder.', icon: '💌' },
+    { num: '3', title: 'Birlikte İzle & Konuş', desc: 'YouTube videosunu veya şarkıyı başlat, sesli sohbeti aç.', icon: '🎬' },
+    { num: '4', title: 'Randevu Fişini Al', desc: 'Gece sonunda buluşma fişinizi indirip Story\'de paylaşın!', icon: '🧾' }
   ];
 
   const testimonials = [
-    { name: 'Zeynep K.', text: 'Uzaktaki arkadaşımla film izlemek için en iyi yol! Çok eğlenceli.', avatar: '👩' },
-    { name: 'Ahmet R.', text: 'Müzik dinleme partileri harika oluyor. Herkese tavsiye ederim.', avatar: '👨' },
-    { name: 'Elif S.', text: 'Sohbet ve video bir arada. Mükemmel bir platform.', avatar: '👩‍🦰' }
+    { name: 'Zeynep & Burak', text: 'Aramızda 600 km var ama her gece burada film izleyip sesli konuşarak uyuyoruz. "3-2-1 başlat" derdi bitti!', avatar: '💑' },
+    { name: 'Ahmet R.', text: 'Müzik dinleme partileri ve oda içi çift soruları harika oluyor. Telefondan uygulama indirmeden girmek çok pratik.', avatar: '👨' },
+    { name: 'Elif S.', text: 'Yakın arkadaş grubumuzla dizi bölümlerini aynı saniyede izleyip dedikodu yapmak için vazgeçilmezimiz oldu.', avatar: '👩‍🦰' }
   ];
 
   const faqs = [
-    { q: 'Couple Meeting ücretsiz mi?', a: 'Evet, Couple Meeting tamamen ücretsizdir. Kayıt olarak hemen kullanmaya başlayabilirsin.' },
-    { q: 'Kaç kişi aynı anda odaya girebilir?', a: 'Bir odada 2-8 kişi aynı anda bulunabilir. VIP kullanıcılar için bu sınır artırılabilir.' },
-    { q: 'Şifreli oda oluşturabilir miyim?', a: 'Evet, her odaya şifre koyabilirsin. Sadece şifreyi bilenler odaya girebilir.' },
-    { q: 'Mobilde kullanabilir miyim?', a: 'Evet, Couple Meeting mobil tarayıcılarda tam uyumludur. Uygulama indirmene gerek yok.' }
+    { q: 'Couple Meeting ücretsiz mi?', a: 'Evet! Couple Meeting ile oda açmak, birlikte video/müzik izlemek ve sesli sohbet etmek tamamen ücretsizdir. Kayıt bile olmadan misafir olarak hemen başlayabilirsin.' },
+    { q: 'Sevgilimle sadece ikimize özel şifreli oda açabilir miyim?', a: 'Evet, oda oluştururken 2 kişilik kapasite seçip şifre koyabilirsin. Sadece linki ve şifreyi gönderdiğin kişi odaya katılabilir.' },
+    { q: 'Telefondan (iPhone / Android) uygulama indirmeden çalışır mı?', a: 'Evet, Couple Meeting tüm mobil tarayıcılarda (Safari, Chrome) tam uyumludur. İstersen Android uygulamamızı veya PWA kısayolunu da kullanabilirsin.' },
+    { q: 'Kaç kişi aynı anda odaya girebilir?', a: 'Ücretsiz odalarda 2 ila 8 kişi, VIP odalarda ise 20 kişiye kadar aynı anda senkronize izleme yapabilirsiniz.' }
   ];
 
   return (
@@ -52,34 +58,34 @@ function LandingPage() {
 
       {/* Navbar */}
       <nav style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #00d4ff, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>💕</div>
           <span style={{ fontWeight: 900, fontSize: 18 }}>Couple Meeting</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => navigate('/')} className="cta-btn" style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>🚀 Hemen Başla</button>
+          <button onClick={handleStartRoom} className="cta-btn" style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>🚀 Hemen Oda Aç</button>
         </div>
       </nav>
 
       {/* Hero */}
       <section className="landing-section" style={{ padding: '80px 24px', textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
-        <div style={{ display: 'inline-block', padding: '6px 16px', borderRadius: 20, background: 'rgba(124,58,237,.1)', border: '1px solid rgba(124,58,237,.2)', color: '#a855f7', fontSize: 12, fontWeight: 800, marginBottom: 20 }}>✨ BETA — Şu an ücretsiz</div>
+        <div style={{ display: 'inline-block', padding: '6px 16px', borderRadius: 20, background: 'rgba(124,58,237,.1)', border: '1px solid rgba(124,58,237,.2)', color: '#a855f7', fontSize: 12, fontWeight: 800, marginBottom: 20 }}>✨ UYGULAMA İNDİRMEK YOK — %100 ÜCRETSİZ</div>
         <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', fontWeight: 950, lineHeight: 1.1, marginBottom: 20 }}>
-          Arkadaşlarınla <span style={{ background: 'linear-gradient(135deg, #00d4ff, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Canlı</span> Buluş
+          Sevgilinle & Arkadaşlarınla <span style={{ background: 'linear-gradient(135deg, #00d4ff, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Aynı Anda</span> İzle
         </h1>
-        <p style={{ fontSize: 'clamp(14px, 2.5vw, 18px)', color: '#94a3b8', lineHeight: 1.7, marginBottom: 32, maxWidth: 600, margin: '0 auto 32px' }}>
-          YouTube videosu izle, müzik paylaş, sesli ve yazılı sohbet et. Arkadaşlarınla aynı anda aynı odada — uzakta olsan bile.
+        <p style={{ fontSize: 'clamp(14px, 2.5vw, 18px)', color: '#94a3b8', lineHeight: 1.7, marginBottom: 32, maxWidth: 640, margin: '0 auto 32px' }}>
+          Mesafeleri sıfırla. YouTube videolarını ve müzikleri aynı saniyede senkronize izle, sesli ve yazılı sohbet et, çift oyunları oyna — uzakta olsan bile yan yana hisset.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => navigate('/')} className="cta-btn" style={{ padding: '16px 32px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: '0 8px 30px rgba(124,58,237,.3)' }}>
-            🚀 Ücretsiz Başla
+          <button onClick={handleStartRoom} className="cta-btn" style={{ padding: '16px 32px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: '0 8px 30px rgba(124,58,237,.3)' }}>
+            🚀 Ücretsiz Özel Oda Aç
           </button>
           <button onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })} className="cta-btn" style={{ padding: '16px 32px', borderRadius: 14, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: '#e2e8f0', fontWeight: 800, fontSize: 16, cursor: 'pointer' }}>
             ❓ Nasıl Çalışır?
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginTop: 40, flexWrap: 'wrap' }}>
-          {[{ n: '100%', l: 'Ücretsiz' }, { n: '2-8', l: 'Kişi Kapasitesi' }, { n: '7/24', l: 'Erişilebilir' }].map((s, i) => (
+        <div style={{ display: 'flex', gap: 28, justifyContent: 'center', marginTop: 40, flexWrap: 'wrap' }}>
+          {[{ n: '10.000+', l: 'Senkronize Buluşma' }, { n: '%100', l: 'Ücretsiz & Kayıtsız' }, { n: '7/24', l: 'Tüm Cihazlarda' }].map((s, i) => (
             <div key={i} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 24, fontWeight: 900, color: '#a855f7' }}>{s.n}</div>
               <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>{s.l}</div>
@@ -91,8 +97,8 @@ function LandingPage() {
       {/* Features */}
       <section id="features" className="landing-section" style={{ padding: '60px 24px', maxWidth: 1100, margin: '0 auto' }}>
         <h2 style={{ fontSize: 28, fontWeight: 900, textAlign: 'center', marginBottom: 12 }}>Neler Yapabilirsin?</h2>
-        <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: 40 }}>Arkadaşlarınla birlikte eğlenceli vakit geçirmek için ihtiyacın olan her şey.</p>
-        <div className="feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: 40 }}>Uzak mesafe sevgilinle veya arkadaş grubunla kaliteli vakit geçirmek için her şey tek odada.</p>
+        <div className="feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
           {features.map((f, i) => (
             <div key={i} className="feature-card" style={{
               background: 'rgba(255,255,255,.02)', border: '1px solid rgba(255,255,255,.05)',
@@ -109,15 +115,14 @@ function LandingPage() {
       {/* How it works */}
       <section className="landing-section" style={{ padding: '60px 24px', maxWidth: 900, margin: '0 auto' }}>
         <h2 style={{ fontSize: 28, fontWeight: 900, textAlign: 'center', marginBottom: 12 }}>Nasıl Çalışır?</h2>
-        <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: 40 }}>4 basit adımda arkadaşlarınla buluş.</p>
-        <div className="step-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+        <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: 40 }}>4 basit adımda sevgilinle veya arkadaşlarınla buluş.</p>
+        <div className="step-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20 }}>
           {steps.map((s, i) => (
             <div key={i} style={{ textAlign: 'center', position: 'relative' }}>
               <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, rgba(124,58,237,.15), rgba(168,85,247,.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, margin: '0 auto 14px', border: '1px solid rgba(124,58,237,.2)' }}>{s.icon}</div>
               <div style={{ fontSize: 28, fontWeight: 900, color: '#7c3aed', marginBottom: 6 }}>{s.num}</div>
               <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 6, color: '#fff' }}>{s.title}</h3>
               <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{s.desc}</p>
-              {i < steps.length - 1 && <div style={{ position: 'absolute', top: 28, right: -12, color: '#475569', fontSize: 18 }}>→</div>}
             </div>
           ))}
         </div>
@@ -125,9 +130,9 @@ function LandingPage() {
 
       {/* Testimonials */}
       <section className="landing-section" style={{ padding: '60px 24px', maxWidth: 900, margin: '0 auto' }}>
-        <h2 style={{ fontSize: 28, fontWeight: 900, textAlign: 'center', marginBottom: 12 }}>Kullanıcılar Ne Diyor?</h2>
-        <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: 40 }}>Topluluktan gelen geri bildirimler.</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 900, textAlign: 'center', marginBottom: 12 }}>Çiftler & Kullanıcılar Ne Diyor?</h2>
+        <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: 40 }}>Topluluktan gelen gerçek geri bildirimler.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           {testimonials.map((t, i) => (
             <div key={i} style={{ background: 'rgba(255,255,255,.02)', border: '1px solid rgba(255,255,255,.05)', borderRadius: 16, padding: '24px 20px' }}>
               <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, marginBottom: 16, fontStyle: 'italic' }}>"{t.text}"</div>
@@ -157,12 +162,12 @@ function LandingPage() {
       {/* CTA */}
       <section className="landing-section" style={{ padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 32, fontWeight: 950, marginBottom: 16 }}>Hemen Başla, Ücretsiz!</h2>
-          <p style={{ fontSize: 16, color: '#94a3b8', marginBottom: 32 }}>Arkadaşlarınla buluşmak için tek yapman gereken hesap oluşturmak.</p>
-          <button onClick={() => navigate('/')} className="cta-btn" style={{ padding: '18px 40px', borderRadius: 16, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 900, fontSize: 18, cursor: 'pointer', boxShadow: '0 12px 40px rgba(124,58,237,.3)' }}>
-            🚀 Couple Meeting'e Katıl
+          <h2 style={{ fontSize: 32, fontWeight: 950, marginBottom: 16 }}>Bu Gece Odanızı Açın, Ücretsiz!</h2>
+          <p style={{ fontSize: 16, color: '#94a3b8', marginBottom: 32 }}>Sevgilinle veya arkadaşlarınla buluşmak için tek yapman gereken odayı başlatıp linki göndermek.</p>
+          <button onClick={handleStartRoom} className="cta-btn" style={{ padding: '18px 40px', borderRadius: 16, border: 'none', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', fontWeight: 900, fontSize: 18, cursor: 'pointer', boxShadow: '0 12px 40px rgba(124,58,237,.3)' }}>
+            🚀 Hemen Özel Oda Oluştur
           </button>
-          <p style={{ fontSize: 12, color: '#475569', marginTop: 16 }}>Kayıt ücretsizdir. Kredi kartı gerekmez.</p>
+          <p style={{ fontSize: 12, color: '#475569', marginTop: 16 }}>Kayıt şartı yoktur. Kredi kartı gerekmez.</p>
         </div>
       </section>
 
@@ -173,7 +178,7 @@ function LandingPage() {
             { label: 'Ana Sayfa', action: () => navigate('/') },
             { label: 'Topluluklar', action: () => navigate('/communities') },
             { label: 'Etkinlikler', action: () => navigate('/events') },
-            { label: 'Geri Bildirim', action: () => navigate('/') }
+            { label: 'Blog & Rehber', action: () => navigate('/blog') }
           ].map((l, i) => (
             <button key={i} onClick={l.action} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>{l.label}</button>
           ))}
@@ -185,8 +190,8 @@ function LandingPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
         "@context": "https://schema.org",
         "@type": "WebPage",
-        "name": "Couple Meeting - Arkadaşlarınla Canlı Video Odalarında Buluş",
-        "description": "Couple Meeting ile arkadaşlarınla aynı anda YouTube videosu izle, müzik paylaş, sesli ve yazılı sohbet et.",
+        "name": "Couple Meeting — Sevgilinle & Arkadaşlarınla Aynı Anda Film İzle, Müzik Dinle",
+        "description": "Couple Meeting ile sevgilinle ve arkadaşlarınla aynı saniyede YouTube videosu izle, müzik paylaş, sesli sohbet et ve çift oyunları oyna.",
         "url": "https://couplemeeting.com.tr/landing",
         "mainEntity": {
           "@type": "FAQPage",

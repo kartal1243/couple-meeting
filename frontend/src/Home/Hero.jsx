@@ -1,7 +1,31 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { trackInviteShared } from '../utils/analytics';
 
 export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpenSocial }) {
   const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
+
+  const handleShareHero = async () => {
+    trackInviteShared('hero');
+    const shareData = {
+      title: 'Couple Meeting — Birlikte İzle & Dinle',
+      text: 'Sevgilinle ve arkadaşlarınla aynı saniyede YouTube izle, müzik dinle, sesli sohbet et!',
+      url: 'https://couplemeeting.com.tr'
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (_) {}
+    }
+    try {
+      await navigator.clipboard.writeText(shareData.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (_) {}
+  };
+
   return (
     <section className="cm-hero">
       {/* Pulse Hearts Logo */}
@@ -23,6 +47,12 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
         BİRLİKTE<br />İZLE & DİNLE
       </h1>
 
+      <p style={{
+        maxWidth: 580, margin: '10px auto 22px', color: '#94a3b8',
+        fontSize: 'clamp(13px, 2.2vw, 16px)', lineHeight: 1.65, fontWeight: 500, padding: '0 12px'
+      }}>
+        Mesafeleri sıfırla 💕 Sevgilinle veya en yakın arkadaşlarınla aynı saniyede YouTube izle, müzik dinle, sesli konuş ve çift oyunları oyna — uygulama indirmeden, tek linkle.
+      </p>
 
       <div className="cm-hero-actions">
         <button
@@ -51,17 +81,14 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
         )}
         <button
           className="cm-big-btn"
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({ title: 'Couple Meeting', text: 'Arkadaşlarınla aynı anda video izle, müzik paylaş, sohbet et!', url: 'https://couplemeeting.com.tr' });
-            } else {
-              navigator.clipboard.writeText('https://couplemeeting.com.tr');
-              alert('Link kopyalandı!');
-            }
+          onClick={handleShareHero}
+          style={{
+            background: copied ? 'rgba(0,168,132,.2)' : 'rgba(168,85,247,.15)',
+            border: copied ? '1px solid rgba(0,168,132,.4)' : '1px solid rgba(168,85,247,.25)',
+            color: copied ? '#00a884' : '#a855f7'
           }}
-          style={{ background: 'rgba(168,85,247,.15)', border: '1px solid rgba(168,85,247,.25)', color: '#a855f7' }}
         >
-          📤 Paylaş
+          {copied ? '✅ Link Kopyalandı!' : '📤 Davet Linki Paylaş'}
         </button>
       </div>
 
@@ -80,10 +107,10 @@ export default function Hero({ authUser, openAuth, handleQuickCreateRoom, onOpen
       </div>
 
       <div className="cm-hero-features">
-        <span>✓ Misafir giriş</span>
-        <span>✓ Arkadaş sistemi</span>
-        <span>✓ Global sohbet</span>
-        <span>✓ Profil & durum</span>
+        <span>✓ Kayıtsız Misafir Girişi</span>
+        <span>✓ Senkronize Video & Müzik</span>
+        <span>✓ Sesli & Yazılı Sohbet</span>
+        <span>✓ Çift Oyunları & Randevu Fişi</span>
       </div>
 
       {/* Cihaz mockupları */}

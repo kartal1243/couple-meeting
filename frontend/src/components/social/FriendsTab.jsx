@@ -19,7 +19,7 @@ const FRIENDS_MOBILE_CSS = `
 }
 `;
 
-const FriendsTab = memo(function FriendsTab({ authUser, friendSearch, setFriendSearch, searchFriends, friendSearchResults, sendFriendRequest, friendRequests, respondFriendRequest, friends, friendOnlineStatuses, openDm, unfriendUser, styles, openAuth }) {
+const FriendsTab = memo(function FriendsTab({ authUser, friendSearch, setFriendSearch, searchFriends, friendSearchResults, sendFriendRequest, friendRequests, respondFriendRequest, friends, friendOnlineStatuses, openDm, unfriendUser, styles, openAuth, inviteToRoom, inRoom, roomId }) {
   return (
     <div className="cm-friends-root" style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
       <style>{FRIENDS_MOBILE_CSS}</style>
@@ -90,6 +90,9 @@ const FriendsTab = memo(function FriendsTab({ authUser, friendSearch, setFriendS
                       </div>
                     </div>
                     <div className="cm-social-card-btns" style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {inRoom && roomId && inviteToRoom && (
+                        <button type="button" onClick={() => inviteToRoom(f.username, roomId)} style={{ background: 'linear-gradient(135deg, #fb7185, #e11d48)', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>💕 Odaya Çağır</button>
+                      )}
                       <button type="button" onClick={() => openDm(f)} style={{ background: '#00a884', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>Mesaj</button>
                       <button type="button" onClick={() => { if (confirm(`${f.username} arkadasligini silmek istediginden emin misin?`)) unfriendUser(f.username); }} style={{ background: '#ea0038', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>Sil</button>
                     </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function Events({ currentTheme, token, username, socket }) {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -9,30 +11,68 @@ function Events({ currentTheme, token, username, socket }) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
 
   useEffect(() => {
+    if (!socket) return;
     socket.emit('event_list', { token });
-    socket.on('event_list_result', (data) => setEvents(data.events || []));
-    socket.on('event_info_result', (data) => setSelectedEvent(data));
-    socket.on('event_created', () => { setShowCreate(false); socket.emit('event_list', { token }); });
-    socket.on('event_deleted', () => { setSelectedEvent(null); socket.emit('event_list', { token }); });
-    return () => {
-      socket.off('event_list_result');
-      socket.off('event_info_result');
-      socket.off('event_created');
-      socket.off('event_deleted');
+    const onList = (data) => setEvents(data?.events || []);
+    const onInfo = (data) => setSelectedEvent(data);
+    const onCreated = () => {
+      setShowCreate(false);
+      setFeedbackMsg('✅ Etkinlik başarıyla oluşturuldu!');
+      setTimeout(() => setFeedbackMsg(''), 3000);
+      socket.emit('event_list', { token });
     };
-  }, [token]);
+    const onDeleted = () => {
+      setSelectedEvent(null);
+      setFeedbackMsg('🗑️ Etkinlik silindi.');
+      setTimeout(() => setFeedbackMsg(''), 3000);
+      socket.emit('event_list', { token });
+    };
+    const onResult = (data) => {
+      if (data && !data.ok && data.message) {
+        setFeedbackMsg(`⚠️ ${data.message}`);
+        setTimeout(() => setFeedbackMsg(''), 3500);
+      }
+    };
+    socket.on('event_list_result', onList);
+    socket.on('event_info_result', onInfo);
+    socket.on('event_created', onCreated);
+    socket.on('event_deleted', onDeleted);
+    socket.on('event_result', onResult);
+    return () => {
+      socket.off('event_list_result', onList);
+      socket.off('event_info_result', onInfo);
+      socket.off('event_created', onCreated);
+      socket.off('event_deleted', onDeleted);
+      socket.off('event_result', onResult);
+    };
+  }, [token, socket]);
 
   const createEvent = () => {
-    if (!title.trim() || !date.trim()) return;
+    if (!token) {
+      setFeedbackMsg('⚠️ Etkinlik oluşturmak için giriş yapmalısın.');
+      setTimeout(() => setFeedbackMsg(''), 3500);
+      return;
+    }
+    if (!title.trim() || !date.trim()) {
+      setFeedbackMsg('⚠️ Lütfen etkinlik adı ve tarih seçin.');
+      setTimeout(() => setFeedbackMsg(''), 3000);
+      return;
+    }
     socket.emit('event_create', { title, description: desc, date, time, location, token });
     setTitle(''); setDesc(''); setDate(''); setTime(''); setLocation('');
   };
 
   const rsvp = (eventId, status) => {
+    if (!token) {
+      setFeedbackMsg('⚠️ Katılım durumu belirtmek için giriş yapmalısın.');
+      setTimeout(() => setFeedbackMsg(''), 3500);
+      return;
+    }
     socket.emit('event_rsvp', { eventId, status, token });
-    setTimeout(() => socket.emit('event_info', { eventId, token }), 100);
+    setTimeout(() => socket.emit('event_info', { eventId, token }), 150);
   };
 
   const deleteEvent = (eventId) => {
@@ -45,12 +85,22 @@ function Events({ currentTheme, token, username, socket }) {
     try { return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return d; }
   };
 
-  if (selectedEvent) {
+  if (selectedEvent && selectedEvent.event) {
     const ev = selectedEvent.event;
-    const attendees = selectedEvent.attendees || [];
+    const attendees = selectedEvent?.event?.attendees || selectedEvent?.attendees || [];
+    const isCreator = Boolean(username && (ev.createdBy === username || ev.created_by === username));
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 20 }}>
-        <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: 16, fontSize: 14 }}>← Geri</button>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          <button onClick={() => setSelectedEvent(null)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}>← Etkinliklere Dön</button>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,.04)', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}>🏠 Ana Sayfa</button>
+        </div>
+
+        {feedbackMsg && (
+          <div style={{ background: 'rgba(30,41,59,.95)', border: '1px solid rgba(255,255,255,.12)', color: '#fff', padding: '10px 14px', borderRadius: 12, marginBottom: 14, fontSize: 13, fontWeight: 700 }}>
+            {feedbackMsg}
+          </div>
+        )}
 
         <div style={{ background: 'rgba(30,41,59,.8)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -62,7 +112,7 @@ function Events({ currentTheme, token, username, socket }) {
           </div>
           {ev.description && <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 12, lineHeight: 1.4 }}>{ev.description}</div>}
           {ev.location && <div style={{ color: '#64748b', fontSize: 12, marginBottom: 12 }}>📍 {ev.location}</div>}
-          {ev.created_by === username && (
+          {isCreator && (
             <button onClick={() => deleteEvent(ev.id)} style={{ background: 'rgba(239,68,68,.15)', color: '#ef4444', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>🗑️ Sil</button>
           )}
         </div>
@@ -89,6 +139,9 @@ function Events({ currentTheme, token, username, socket }) {
               </span>
             </div>
           ))}
+          {attendees.length === 0 && (
+            <div style={{ color: '#64748b', fontSize: 12 }}>Henüz yanıt veren olmadı.</div>
+          )}
         </div>
       </div>
     );
@@ -96,10 +149,21 @@ function Events({ currentTheme, token, username, socket }) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ color: '#fff', fontWeight: 800, fontSize: 24 }}>📅 Etkinlik Takvimi</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', color: '#e2e8f0', borderRadius: 10, padding: '8px 12px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+            ← Ana Sayfa
+          </button>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 22 }}>📅 Etkinlik Takvimi</div>
+        </div>
         <button onClick={() => setShowCreate(true)} style={{ background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>+ Yeni Etkinlik</button>
       </div>
+
+      {feedbackMsg && (
+        <div style={{ background: 'rgba(30,41,59,.95)', border: '1px solid rgba(255,255,255,.12)', color: '#fff', padding: '10px 14px', borderRadius: 12, marginBottom: 16, fontSize: 13, fontWeight: 700 }}>
+          {feedbackMsg}
+        </div>
+      )}
 
       {showCreate && (
         <div style={{ background: 'rgba(30,41,59,.95)', borderRadius: 14, padding: 20, marginBottom: 20, border: `1px solid ${currentTheme.primary}33` }}>
@@ -110,7 +174,7 @@ function Events({ currentTheme, token, username, socket }) {
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ flex: 1, background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13 }} />
             <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ flex: 1, background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13 }} />
           </div>
-          <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Konum (isteğe bağlı)" style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }} />
+          <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Konum / Oda Adı (isteğe bağlı)" style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(100,116,139,.3)', borderRadius: 10, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }} />
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setShowCreate(false)} style={{ flex: 1, background: '#1f2c34', color: '#94a3b8', border: 'none', borderRadius: 10, padding: '10px 0', fontWeight: 700, cursor: 'pointer' }}>İptal</button>
             <button onClick={createEvent} style={{ flex: 1, background: currentTheme.primary, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 0', fontWeight: 700, cursor: 'pointer' }}>Oluştur</button>
@@ -131,10 +195,11 @@ function Events({ currentTheme, token, username, socket }) {
             </div>
           </div>
         ))}
-        {events.length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 40 }}>Henüz etkinlik yok. İlk etkinliği sen oluştur!</div>}
+        {events.length === 0 && <div style={{ color: '#64748b', textAlign: 'center', padding: 40 }}>Henüz etkinlik yok. İlk randevu veya izleme etkinliğini sen oluştur!</div>}
       </div>
     </div>
   );
 }
 
 export default memo(Events);
+

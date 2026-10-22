@@ -4,62 +4,62 @@ export default function About() {
       <div className="cm-section-head" style={{ display: 'flex', justifyContent: 'center' }}>
         <div>
           <h3>Couple Meeting Nedir?</h3>
-          <p>Uzaktaki sevdiklerinle müzik ve video deneyimini birlikte yaşa.</p>
+          <p>Uzak mesafe sevgilinle ve en yakın arkadaşlarınla aynı odada buluşma deneyimi.</p>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, maxWidth: 960, margin: '0 auto', padding: '0 20px' }}>
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎵</div>
-          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Senkron Müzik Dinleme</div>
-          <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
-            YouTube Music kataloğundan milyonlarca şarkıya eriş. Seçtiğin şarkıyı sevdiklerinle aynı anda,
-            aynı saniyede dinle. Oda sahibi şarkıyı değiştirirken herkes otomatik olarak geçer.
-          </div>
-        </div>
-
-        <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
           <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎬</div>
-          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Birlikte Video İzleme</div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Senkronize Sinema & Video Odası</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
-            YouTube videolarını birlikte izle. Klip, belgesel, podcast — ne istersen.
-            Herkes aynı kareyi görüyor, aynı anda güldüğünüzü hissedeceksin.
+            "3, 2, 1 aynı anda başlat" derdine son! YouTube'dan film, dizi, klip veya vlog aç;
+            sevgilinle aynı saniyede, aynı kareyi izleyip birlikte gülün.
           </div>
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
-          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Anlık Sohbet</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎵</div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Birlikte Müzik Dinleme</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
-            Müzik dinlerken sohbet et. Mesaj gönder, emoji ile tepki ver, yanıtla.
-            Oda içi sohbet ve global sohbet ile her zaman bağlı kal.
+            YouTube Music kataloğundan milyonlarca şarkıya eriş. Ortak çalma listenizi oluşturun,
+            gece uyurken bile aynı şarkıyı aynı ritimde dinleyin.
           </div>
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🤝</div>
-          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Arkadaşlık Sistemi</div>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎤</div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Sesli & Anlık Sohbet</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
-            Profilini oluştur, arkadaşlarını bul ve ekle. Arkadaşlarının online durumunu gör,
-            son görülmelerini takip et. Yeni insanlarla tanış.
+            Video sesiyle yankı yapmadan net sesli sohbet et, anlık mesaj gönder ve ekranda uçuşan
+            kalp/emoji tepkileriyle duygularını paylaş.
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🎲</div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Çift Oyunları & Uyum Testleri</div>
+          <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
+            Sohbet tıkanırsa oda içindeki çift soruları, müzik uyum testi ve eğlenceli mini oyunlarla
+            birbirinizi daha yakından tanıyın.
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
+          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🧾</div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Randevu Fişi (Date Night Receipt)</div>
+          <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
+            Buluşma sonunda birlikte kaç dakika geçirdiğinizi, dinlediğiniz şarkıları ve mesaj sayınızı
+            gösteren paylaşılabilir özel randevu fişinizi alın!
           </div>
         </div>
 
         <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
           <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
-          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Gizli Odalar</div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Şifreli Özel Odalar & Tüm Cihazlar</div>
           <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
-            Şifreli oda oluştur ve sadece davet ettiğin kişiler katılsın.
-            2, 4 veya 8 kişilik odalar aç. Tema ve ayarları özelleştir.
-          </div>
-        </div>
-
-        <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 20, padding: '28px 24px' }}>
-          <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 12 }}>📱</div>
-          <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Her Cihazda Çalışır</div>
-          <div style={{ color: '#8696a0', fontSize: 13, lineHeight: 1.7 }}>
-            Telefon, tablet, bilgisayar — hangi cihazı kullanırsan kullan.
-            Arka planda müzik çalmaya devam eder. Uygulama indirmene gerek yok.
+            Sadece ikinize özel şifreli oda kurun. Uygulama indirmeden iPhone, Android, tablet veya
+            bilgisayardan tek linkle anında bağlanın.
           </div>
         </div>
       </div>
@@ -67,22 +67,22 @@ export default function About() {
       <div style={{ maxWidth: 700, margin: '40px auto 0', textAlign: 'center', padding: '0 20px' }}>
         <div style={{ background: 'linear-gradient(135deg, rgba(124,58,237,.1), rgba(37,99,235,.1))', border: '1px solid rgba(124,58,237,.2)', borderRadius: 20, padding: '28px 24px' }}>
           <div style={{ color: '#a78bfa', fontSize: 11, fontWeight: 900, marginBottom: 4 }}>🚀 NASIL ÇALIŞIR?</div>
-          <div style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 16 }}>3 Kolay Adım</div>
+          <div style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 16 }}>3 Kolay Adımda Randevu Odanı Kur</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 32, flexWrap: 'wrap' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(124,58,237,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, margin: '0 auto 8px' }}>1</div>
-              <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 700 }}>Oda Oluştur</div>
-              <div style={{ color: '#8696a0', fontSize: 11 }}>Tek tıkla oda aç</div>
+              <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 700 }}>Özel Oda Oluştur</div>
+              <div style={{ color: '#8696a0', fontSize: 11 }}>5 saniyede ücretsiz aç</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(37,99,235,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, margin: '0 auto 8px' }}>2</div>
-              <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 700 }}>Arkadaşını Davet Et</div>
-              <div style={{ color: '#8696a0', fontSize: 11 }}>Linki paylaş</div>
+              <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 700 }}>Sevgiline / Arkadaşına At</div>
+              <div style={{ color: '#8696a0', fontSize: 11 }}>WhatsApp veya DM'den linki paylaş</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(0,168,132,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, margin: '0 auto 8px' }}>3</div>
-              <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 700 }}>Birlikte Dinle</div>
-              <div style={{ color: '#8696a0', fontSize: 11 }}>Müzik ve sohbet</div>
+              <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 700 }}>Birlikte İzle & Konuş</div>
+              <div style={{ color: '#8696a0', fontSize: 11 }}>Aynı saniyede sinema ve müzik keyfi</div>
             </div>
           </div>
         </div>

@@ -1,4 +1,14 @@
+import { useNavigate } from 'react-router-dom';
+import { trackVipModalOpened } from '../../utils/analytics';
+
 export default function Footer({ setShowVipModal }) {
+  const navigate = useNavigate();
+
+  const handleOpenVip = () => {
+    trackVipModalOpened();
+    if (setShowVipModal) setShowVipModal(true);
+  };
+
   return (
     <footer className="cm-footer" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 20px 24px' }}>
@@ -9,43 +19,43 @@ export default function Footer({ setShowVipModal }) {
               <span style={{ fontWeight: 300, color: '#a78bfa', fontSize: 18 }}>meeting</span>
             </div>
             <div style={{ color: '#8696a0', fontSize: 12, lineHeight: 1.7 }}>
-              Uzaktaki sevdiklerinle müzik ve video deneyimini birlikte yaşa. Aynı anda dinle, izle, sohbet et.
+              Uzaktaki sevgilinle ve yakın arkadaşlarınla müzik ve video deneyimini birlikte yaşa. Aynı saniyede dinle, izle, sesli sohbet et.
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <a href="https://twitter.com/couplemeetingtr" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(29,161,242,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1da1f2', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(29,161,242,.15)' }}>𝕏</a>
-              <a href="https://instagram.com/couplemeetingtr" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(225,48,108,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e1306c', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(225,48,108,.15)' }}>📷</a>
-              <a href="https://reddit.com/r/couplemeetingtr" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,69,0,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4500', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,69,0,.15)' }}>🔴</a>
-              <a href="https://github.com/kartal1243/couple-meeting" target="_blank" rel="noopener" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,255,255,.08)' }}>⌨️</a>
+              <a href="https://twitter.com/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(29,161,242,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1da1f2', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(29,161,242,.15)' }}>𝕏</a>
+              <a href="https://instagram.com/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(225,48,108,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e1306c', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(225,48,108,.15)' }}>📷</a>
+              <a href="https://reddit.com/r/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,69,0,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4500', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,69,0,.15)' }}>🔴</a>
+              <a href="https://github.com/kartal1243/couple-meeting" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,255,255,.08)' }}>⌨️</a>
             </div>
           </div>
 
           <div>
             <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Ürün</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <a href="/landing" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Nasıl Çalışır?</a>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Özellikler</span>
-              <span onClick={() => setShowVipModal && setShowVipModal(true)} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>VIP Üyelik</span>
-              <span onClick={() => setShowVipModal && setShowVipModal(true)} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Fiyatlandırma</span>
+              <a href="/landing" onClick={(e) => { e.preventDefault(); navigate('/landing'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Nasıl Çalışır?</a>
+              <a href="/landing#features" onClick={(e) => { e.preventDefault(); navigate('/landing'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Özellikler</a>
+              <span onClick={handleOpenVip} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>👑 VIP Çift Paketi</span>
+              <span onClick={handleOpenVip} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Fiyatlandırma</span>
             </div>
           </div>
 
           <div>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Topluluk</div>
+            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Topluluk & Keşfet</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Canlı Odalar</span>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Global Sohbet</span>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Arkadaşlık</span>
+              <a href="/communities" onClick={(e) => { e.preventDefault(); navigate('/communities'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🏘️ Topluluklar</a>
+              <a href="/events" onClick={(e) => { e.preventDefault(); navigate('/events'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>📅 Etkinlik Takvimi</a>
+              <a href="/blog" onClick={(e) => { e.preventDefault(); navigate('/blog'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>📝 Çift & Film Rehberi (Blog)</a>
+              <a href="/ads?angle=couple" onClick={(e) => { e.preventDefault(); navigate('/ads?angle=couple'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>💕 Uzak Mesafe Çift Odası</a>
             </div>
           </div>
 
           <div>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Destek</div>
+            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Destek & Yasal</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <a href="/blog" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>📝 Blog</a>
               <a href="mailto:support@couplemeeting.com.tr" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>✉️ support@couplemeeting.com.tr</a>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Geri Bildirim</span>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Gizlilik Politikası</span>
-              <span style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Kullanım Şartları</span>
+              <a href="/privacy.html" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🔒 Gizlilik Politikası</a>
+              <a href="/child-safety.html" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🛡️ Çocuk Güvenliği ve Kurallar</a>
+              <a href="/delete-account.html" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🗑️ Hesap Silme Talebi</a>
             </div>
           </div>
         </div>

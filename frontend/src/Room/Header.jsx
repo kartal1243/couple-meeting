@@ -4,12 +4,19 @@ import { createPortal } from 'react-dom';
 function Header({
   roomName, currentTheme, isConnected, currentRoomInfo, showInstallBtn,
   handleInstallApp, setShowSettingsModal, setShowProfileModal, authUser, myAvatar, handleLeaveRoom,
-  roomUsersList, hostUserId, onCloseRoom, roomId, userId
+  roomUsersList, hostUserId, onCloseRoom, roomId, userId, username
 }) {
   const [showUsers, setShowUsers] = useState(false);
   const [showQuickLeave, setShowQuickLeave] = useState(false);
   const [shareTooltip, setShareTooltip] = useState('');
   const usersRef = useRef(null);
+  const isHost = Boolean(
+    hostUserId && (
+      hostUserId === authUser?.username ||
+      (userId && hostUserId === userId) ||
+      (username && hostUserId === username)
+    )
+  );
   const liveDotStyle = {
     width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#22c55e' : '#ef4444',
     boxShadow: isConnected ? '0 0 8px rgba(34,197,94,.6)' : 'none',
@@ -92,7 +99,7 @@ function Header({
           </div>
         </div>
 
-        {/* Users pill (desktop) */}
+        {/* Users pill (desktop & mobile) */}
         <div
           ref={usersRef}
           className="cm-users-pill"
@@ -128,7 +135,7 @@ function Header({
                 }}>
                   <span style={{ fontSize: 16 }}>{u.avatar || '🐱'}</span>
                   <span style={{ color: '#e2e8f0', fontWeight: 700, flex: 1 }}>{u.username || 'İzleyici'}</span>
-                  {u.userId === hostUserId && (
+                  {(u.userId === hostUserId || u.username === hostUserId) && (
                     <span style={{
                       fontSize: 9, background: 'linear-gradient(135deg, rgba(234,179,8,.15), rgba(251,191,36,.1))',
                       color: '#eab308', padding: '2px 8px', borderRadius: 6, fontWeight: 800,
@@ -228,7 +235,7 @@ function Header({
             <h3 style={{ color: '#fff', margin: '0 0 6px', fontSize: 16, fontWeight: 900 }}>Odadan Çık</h3>
             <p style={{ color: '#64748b', fontSize: 11, margin: '0 0 16px' }}>Emin misin?</p>
 
-            {hostUserId === (authUser?.username || myAvatar) && (
+            {isHost && (
               <button onClick={() => { setShowQuickLeave(false); onCloseRoom?.(); }} style={{
                 width: '100%', padding: '11px', marginBottom: 6, borderRadius: 12,
                 background: 'rgba(239,68,68,.15)', color: '#ef4444',

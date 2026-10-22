@@ -1,5 +1,6 @@
 import { getStyles } from '../styles';
 import { useState, useRef, useEffect, memo } from 'react';
+import { BACKEND_URL } from '../constants';
 
 function SearchBar({
   searchInput, setSearchInput, searchResults, isSearching,
@@ -58,7 +59,7 @@ function SearchBar({
       const formData = new FormData();
       formData.append('video', file);
       formData.append('token', token);
-      const res = await fetch('/api/upload-video', { method: 'POST', body: formData });
+      const res = await fetch(`${BACKEND_URL}/api/upload-video`, { method: 'POST', body: formData });
       const data = await res.json();
       if (data.ok && data.url) {
         handleVideoUpload(data.url, file.name);
@@ -93,7 +94,7 @@ function SearchBar({
 
       <input
         type="text"
-        placeholder={currentRoomType === 'music' ? '🎵 Şarkı ara...' : '🔍 Video, şarkı, oyun, film ara...'}
+        placeholder={currentRoomType === 'music' ? '🎵 Şarkı ara...' : '🔍 Video, şarkı, film ara veya link yapıştır...'}
         value={searchInput}
         onChange={(e) => { setSearchInput(e.target.value); setShowResults(true); }}
         onFocus={() => setShowResults(true)}

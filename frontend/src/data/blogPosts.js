@@ -1,62 +1,62 @@
 export const blogPosts = [
   {
     id: 'youtube-birlikte-izleme-rehberi',
-    title: 'YouTube Birlikte İzleme Rehberi 2026',
-    excerpt: 'Arkadaşlarınızla aynı anda YouTube videosu izlemek artık çok kolay. Bu rehberde, YouTube birlikte izleme yöntemlerini anlatacağız.',
-    date: '8 Eylül 2026',
+    title: 'Sevgiliyle & Arkadaşlarla YouTube Birlikte İzleme Rehberi (2026)',
+    excerpt: 'Uzaktaki sevgilinizle veya arkadaşlarınızla aynı saniyede YouTube videosu ve film izlemek artık çok kolay. Uygulama indirmeden birlikte izleme yöntemleri.',
+    date: '15 Mart 2026',
     readTime: '5 dk',
     category: 'Rehber',
     content: `
-Uzaktaki arkadaşlarınızla veya sevdiklerinizle aynı anda YouTube videosu izlemek artık çok kolay. Bu rehberde, **YouTube birlikte izleme** yöntemlerini, en iyi uygulamaları ve Couple Meeting ile nasıl yapacağınızı adım adım anlatacağız.
+Uzaktaki sevgilinizle veya arkadaşlarınızla aynı anda YouTube videosu izlemek artık çok kolay. Bu rehberde, **sevgiliyle uzaktan film izleme**, **YouTube birlikte izleme** yöntemlerini, en iyi uygulamaları ve Couple Meeting ile uygulama indirmeden nasıl yapacağınızı adım adım anlatacağız.
 
 ## YouTube Birlikte İzleme Nedir?
 
-YouTube birlikte izleme, iki veya daha fazla kişinin farklı konumlardan aynı anda aynı YouTube videosunu izlemesidir. Gerçek zamanlı senkronizasyon sayesinde herkes videoyu aynı saniyede görür.
+YouTube birlikte izleme, iki veya daha fazla kişinin farklı şehirlerden veya evlerden aynı saniyede aynı YouTube videosunu senkronize olarak izlemesidir. Gerçek zamanlı senkronizasyon sayesinde kimse "3, 2, 1 aynı anda başlat" demek zorunda kalmaz.
 
 ### Neden Birlikte İzlemeli?
 
-- **Uzak mesafe ilişkileri**: Farklı şehirlerde yaşayan arkadaşlar
-- **Film geceleri**: Arkadaş grubuyla uzaktan film keyfi
-- **Müzik dinleme**: Aynı şarkıyı birlikte dinleme deneyimi
+- **Uzak mesafe ilişkileri**: Farklı şehirlerde yaşayan çiftler için her gece ortak sinema rutini
+- **Film geceleri**: Sevgiliyle veya arkadaş grubuyla uzaktan film ve dizi keyfi
+- **Müzik dinleme**: Aynı şarkıyı aynı ritimde dinleme ve sesli sohbet deneyimi
 
 ## 2026'nın En İyi Birlikte İzleme Yöntemleri
 
-### 1. Couple Meeting ile YouTube Birlikte İzle
+### 1. Couple Meeting ile Sevgiliyle & Arkadaşla Birlikte İzle
 
-Couple Meeting, ücretsiz bir uygulamadır ve şu özellikleri sunar:
+Couple Meeting, tamamen ücretsiz bir web ve mobil platformdur ve şu özellikleri sunar:
 
-- **Ücretsiz**: Hiçbir ücret ödemeden kullanabilirsiniz
-- **Misafir girişi**: Kayıt olmadan hemen katılabilirsiniz
-- **Sesli sohbet**: Video izlerken sesli konuşabilirsiniz
-- **Yazılı sohbet**: Anlık mesajlaşma özelliği
-- **Takip sistemi**: Arkadaşlarınızı takip edebilirsiniz
+- **Ücretsiz**: Hiçbir ücret ödemeden şifreli özel oda açabilirsiniz
+- **Misafir girişi**: Kayıt bile olmadan 5 saniyede odaya katılabilirsiniz
+- **Sesli sohbet**: Video izlerken yankı olmadan net sesli konuşabilirsiniz
+- **Çift oyunları ve Randevu Fişi**: Oda içi uyum soruları ve buluşma sonunda paylaşılabilir randevu fişi
+- **Tüm cihazlarda çalışır**: iPhone, Android, tablet ve bilgisayarda uygulama indirmeden açılır
 
 **Nasıl kullanılır:**
 1. couplemeeting.com.tr adresine gidin
-2. "Oda Oluştur" butonuna tıklayın
-3. Odanızın adını yazın
-4. Arkadaşlarınıza oda linkini gönderin
-5. YouTube'dan video seçin ve izlemeye başlayın
+2. "Hemen Oda Oluştur" butonuna tıklayın
+3. Odanızın adını yazın ve isterseniz şifre koyun
+4. Sevgilinize veya arkadaşlarınıza oda linkini WhatsApp'tan gönderin
+5. YouTube'dan film, dizi veya müzik seçip aynı saniyede izlemeye başlayın
 
 ### 2. Tarayıcı Uzantıları
 
-Bazı tarayıcı uzantıları YouTube'a "birlikte izleme" özelliği ekler. Ancak bu yöntem genellikle sınırlıdır.
+Bazı tarayıcı uzantıları YouTube'a "birlikte izleme" özelliği ekler. Ancak bu yöntem sadece bilgisayarda çalışır ve mobildeki çiftler için uygun değildir.
 
 ### 3. Ekran Paylaşımı
 
-Discord veya Zoom gibi uygulamalarda ekran paylaşımı yaparak YouTube videosu gösterebilirsiniz. Ancak bu yöntemde video kalitesi düşebilir.
+Discord veya Zoom gibi uygulamalarda ekran paylaşımı yaparak YouTube videosu gösterebilirsiniz. Ancak bu yöntemde görüntü kalitesi düşer ve ses yankı yapar.
 
 ## Birlikte İzleme İpuçları
 
 ### Senkronizasyonu Koruyun
 
-- Herkesin aynı anda "oynat" butonuna basmasını sağlayın
-- İnternet bağlantınızın hızlı olduğundan emin olun
+- Couple Meeting otomatik senkronizasyon sağlar; biriniz durdurduğunda diğerinde de durur
+- İnternet bağlantınızın stabil olduğundan emin olun
 
 ### İletişimi Güçlendirin
 
-- Sesli sohbet kullanın, yazı yazmaktan daha doğal
-- Tepkilerinizi paylaşın, birlikte gülün
+- Sesli sohbet kullanın, yazı yazmaktan çok daha samimi ve doğal
+- Ekranda uçuşan kalp tepkilerini paylaşın, birlikte gülün
 
 ## Sıkça Sorulan Sorular
 
@@ -66,30 +66,30 @@ Evet, Couple Meeting tamamen ücretsizdir.
 
 ### Kaç kişi aynı anda izleyebilir?
 
-8 kişiye kadar aynı anda izleyebilirsiniz.
+Ücretsiz odalarda 2 ila 8 kişi, VIP odalarda 20 kişiye kadar aynı anda izleyebilirsiniz.
 
-### Sesli sohbet var mı?
+### Telefondan uygulama indirmeden girilir mi?
 
-Evet, video izlerken sesli sohbet edebilirsiniz.
+Evet, Safari ve Chrome üzerinden uygulama indirmeden tek linkle katılabilirsiniz.
 
 ## Sonuç
 
-YouTube birlikte izleme, uzaktaki sevdiklerinizle bağlınızı korumanın en eğlenceli yollarından biridir. Couple Meeting ile ücretsiz, kolay ve keyifli bir deneyim yaşayabilirsiniz.
+YouTube birlikte izleme, uzaktaki sevgilinizle ve sevdiklerinizle bağınızı korumanın en romantik ve eğlenceli yoludur. Couple Meeting ile ücretsiz, kolay ve keyifli bir deneyim yaşayabilirsiniz.
     `
   },
   {
     id: 'uzaktaki-sevgili-film-onerileri',
-    title: 'Uzaktaki Sevgiliyle Birlikte İzlenebilecek 15 Film Önerisi',
-    excerpt: 'Uzak mesafe ilişkisinde film izlemek, mesafeyi unutmanın en güzel yollarından biridir. İşte en iyi film önerileri.',
-    date: '7 Eylül 2026',
+    title: 'Uzaktaki Sevgiliyle Birlikte İzlenebilecek 15 Romantik Film Önerisi',
+    excerpt: 'Uzak mesafe ilişkisinde sevgiliyle uzaktan film izlemek, mesafeyi sıfırlamanın en güzel yoludur. İşte aynı anda izleyebileceğiniz en iyi 15 film.',
+    date: '14 Mart 2026',
     readTime: '6 dk',
     category: 'Film',
     content: `
-Uzak mesafe ilişkisi yürütmek zor olabilir ama doğru film seçimiyle bu mesafeyi unutabilirsiniz. İşte **uzaktaki sevgiliyle birlikte izlenebilecek en iyi filmler** ve neden Couple Meeting ile izlemeniz gerektiği.
+Uzak mesafe ilişkisi yürütmek zor olabilir ama doğru film seçimiyle aradaki yüzlerce kilometreyi unutabilirsiniz. İşte **uzaktaki sevgiliyle birlikte izlenebilecek en iyi filmler** ve Couple Meeting ile telefondan veya bilgisayardan aynı saniyede nasıl izleyebileceğiniz.
 
 ## Uzaktaki Sevgiliyle Film İzlemenin Önemi
 
-Uzak mesafe ilişkilerinde en önemli şey **ortak deneyimler** yaratmaktır. Birlikte film izlemek, aynı duyguları paylaşmanızı sağlar.
+Uzak mesafe ilişkilerinde en önemli şey **ortak deneyimler** ve gece rutinleri yaratmaktır. Birlikte film izlemek, aynı sahnede duygulanıp aynı anda gülmeyi sağlar.
 
 ## En İyi Film Önerileri
 
@@ -127,10 +127,10 @@ Uzak mesafe ilişkilerinde en önemli şey **ortak deneyimler** yaratmaktır. Bi
 
 ### Couple Meeting Adımları:
 
-1. **Oda oluşturun**: couplemeeting.com.tr'ye gidin ve ücretsiz oda açın
-2. **Linki paylaşın**: Sevgilinize oda linkini gönderin
-3. **Videoyu bulun**: YouTube'dan filmi arayın
-4. **Sesli sohbeti açın**: Birlikte konuşun, yorum yapın
+1. **Özel çift odası oluşturun**: couplemeeting.com.tr'ye gidin ve ücretsiz 2 kişilik şifreli oda açın
+2. **Linki WhatsApp'tan paylaşın**: Sevgilinize oda davet linkini gönderin
+3. **Videoyu bulun**: YouTube'dan filmi veya diziyi arayın
+4. **Sesli sohbeti açın**: Birlikte konuşun, kalp gönderin ve gece sonunda Randevu Fişinizi alın!
 
 ## Sonuç
 
@@ -139,13 +139,13 @@ Uzaktaki sevgiliyle film izlemek, mesafeyi unutmanın en güzel yollarından bir
   },
   {
     id: 'arkadas-grubu-online-eglence',
-    title: 'Arkadaş Grubuyla Online Eğlence Rehberi 2026',
-    excerpt: 'Arkadaşlarınızla aynı fiziksel ortamda olamasanız bile, internet sayesinde birlikte eğlenebilirsiniz.',
-    date: '6 Eylül 2026',
+    title: 'Sevgiliyle & Arkadaş Grubuyla Online Eğlence Rehberi 2026',
+    excerpt: 'Sevgilinizle veya arkadaşlarınızla aynı fiziksel ortamda olamasanız bile internet üzerinden birlikte yapabileceğiniz en eğlenceli aktiviteler.',
+    date: '12 Mart 2026',
     readTime: '4 dk',
     category: 'Eğlence',
     content: `
-Arkadaşlarınızla aynı fiziksel ortamda olamasanız bile, internet sayesinde birlikte eğlenebilirsiniz. Bu rehberde, **arkadaş grubuyla online eğlence** yöntemlerini anlatacağız.
+Sevgilinizle veya arkadaşlarınızla aynı fiziksel ortamda olamasanız bile, internet sayesinde birlikte kaliteli vakit geçirebilirsiniz. Bu rehberde **uzaktaki sevgiliyle yapılacak şeyler** ve **arkadaş grubuyla online eğlence** yöntemlerini anlatacağız.
 
 ## Neden Online Eğlence?
 
@@ -168,6 +168,7 @@ En popüler ve en kolay yöntemlerden biri.
 Birlikte oyun oynamak, arkadaşlarla bağ kurmanın harika bir yoludur.
 
 **Popüler online oyunlar:**
+- Couple Meeting Oda İçi Çift & Uyum Oyunları
 - Among Us
 - Jackbox Party Pack
 - Codenames Online
@@ -196,13 +197,13 @@ Arkadaş grubuyla online eğlence, modern dünyanın en keyifli aktivitelerinden
   },
   {
     id: 'youtube-music-birlikte-dinleme',
-    title: 'YouTube Music Birlikte Dinleme Rehberi',
-    excerpt: 'Arkadaşlarınızla aynı anda aynı şarkıları dinleyebilir, konser tadında deneyimler yaşayabilirsiniz.',
-    date: '5 Eylül 2026',
+    title: 'Sevgiliyle Aynı Anda Müzik Dinleme & YouTube Music Rehberi',
+    excerpt: 'Sevgilinizle veya arkadaşlarınızla aynı saniyede aynı şarkıları dinleyebilir, gece boyu sesli sohbet eşliğinde ortak çalma listesi oluşturabilirsiniz.',
+    date: '10 Mart 2026',
     readTime: '4 dk',
     category: 'Müzik',
     content: `
-Müzik, insanların en çok paylaştığı duygusal deneyimlerden biridir. **YouTube Music birlikte dinleme** ile arkadaşlarınızla aynı anda aynı şarkıları dinleyebilirsiniz.
+Müzik, çiftlerin ve yakın arkadaşların en çok paylaştığı duygusal deneyimlerden biridir. **Birlikte müzik dinleme uygulaması** arayanlar için YouTube Music senkronizasyonu ile aynı saniyede aynı şarkıları dinlemenin yollarını derledik.
 
 ## Neden Birlikte Müzik Dinlemeli?
 
@@ -253,9 +254,9 @@ YouTube Music birlikte dinleme, arkadaşlarınızla müzik paylaşmanın en güz
   },
   {
     id: 'online-izleme-partisi-nasil-duzenlenir',
-    title: 'Online İzleme Partisi Nasıl Düzenlenir?',
-    excerpt: 'Adım adım online izleme partisi düzenleme rehberi. Arkadaşlarınızla unutulmaz anılar yaratın.',
-    date: '4 Eylül 2026',
+    title: 'Online İzleme Partisi (Watch Party) Nasıl Düzenlenir?',
+    excerpt: 'Adım adım online izleme partisi düzenleme rehberi. Sevgilinizle veya arkadaş grubunuzla unutulmaz sinema geceleri yaratın.',
+    date: '8 Mart 2026',
     readTime: '5 dk',
     category: 'Rehber',
     content: `

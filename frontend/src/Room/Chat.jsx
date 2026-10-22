@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import VipBadge from '../components/social/VipBadge';
+import { BACKEND_URL } from '../constants';
 
 const AVATAR_COLORS = ['#7c3aed', '#2563eb', '#00a884', '#f59e0b', '#ec4899', '#ef4444', '#06b6d4', '#8b5cf6'];
 function getAvatarColor(name) {
@@ -55,7 +56,7 @@ function Chat({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('token', localStorage.getItem('cm_auth_token') || '');
-      const res = await fetch('/api/upload-room-file', { method: 'POST', body: formData });
+      const res = await fetch(`${BACKEND_URL}/api/upload-room-file`, { method: 'POST', body: formData });
       const data = await res.json();
       if (data.ok && onFileUpload) {
         onFileUpload({ url: data.url, name: data.name, type: data.type, isImage: data.isImage, isVideo: data.isVideo });
@@ -130,7 +131,7 @@ function Chat({
           const fname = `voice_${Date.now()}.webm`;
           fd.append('video', new File([blob], fname, { type: mime }));
           fd.append('token', localStorage.getItem('cm_auth_token') || '');
-          const res = await fetch('/api/upload-video', { method: 'POST', body: fd });
+          const res = await fetch(`${BACKEND_URL}/api/upload-video`, { method: 'POST', body: fd });
           const data = await res.json();
           if (data.ok && onFileUpload) {
             onFileUpload({ url: data.url, name: '🎤 Sesli mesaj', type: mime, isImage: false, isVideo: false });

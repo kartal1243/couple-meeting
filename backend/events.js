@@ -35,7 +35,7 @@ module.exports = function registerEventHandlers(io, socket, db, sanitize, crypto
     };
 
     socket.emit('event_result', { ok: true, event });
-    if (event.communityId) io.to('community:' + event.communityId).emit('event_created', event);
+    if (event.communityId) io.to('community_' + event.communityId).emit('event_created', event);
     else io.emit('event_created', event);
   });
 
@@ -153,7 +153,7 @@ module.exports = function registerEventHandlers(io, socket, db, sanitize, crypto
     };
 
     socket.emit('event_result', { ok: true, event: result });
-    if (row.community_id) io.to('community:' + row.community_id).emit('event_updated', result);
+    if (row.community_id) io.to('community_' + row.community_id).emit('event_updated', result);
     else io.emit('event_updated', result);
   });
 
@@ -196,7 +196,7 @@ module.exports = function registerEventHandlers(io, socket, db, sanitize, crypto
     };
 
     socket.emit('event_result', { ok: true, event });
-    if (updated.community_id) io.to('community:' + updated.community_id).emit('event_updated', event);
+    if (updated.community_id) io.to('community_' + updated.community_id).emit('event_updated', event);
     else io.emit('event_updated', event);
   });
 
@@ -215,7 +215,7 @@ module.exports = function registerEventHandlers(io, socket, db, sanitize, crypto
     db.getDb().prepare('DELETE FROM events WHERE id = ?').run(cleanId);
 
     socket.emit('event_result', { ok: true, deletedId: cleanId });
-    if (row.community_id) io.to('community:' + row.community_id).emit('event_deleted', { eventId: cleanId });
+    if (row.community_id) io.to('community_' + row.community_id).emit('event_deleted', { eventId: cleanId });
     else io.emit('event_deleted', { eventId: cleanId });
   });
 };

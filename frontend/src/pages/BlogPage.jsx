@@ -1,20 +1,71 @@
-import { useState, memo } from 'react';
+import { useEffect, useMemo, memo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { blogPosts } from '../data/blogPosts';
+import { trackAdCtaClicked } from '../utils/analytics';
 
 function BlogPage() {
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const postSlug = searchParams.get('post');
+
+  const selectedPost = useMemo(
+    () => blogPosts.find((p) => p.id === postSlug) || null,
+    [postSlug]
+  );
+
+  useEffect(() => {
+    const defaultTitle = 'Couple Meeting — Sevgilinle & Arkadaşlarınla Aynı Anda Film İzle, Müzik Dinle';
+    const defaultDesc = 'Uzak mesafe ilişkileri ve yakın arkadaşlar için ücretsiz sanal buluşma odası. YouTube videolarını ve müzikleri aynı saniyede senkronize izleyin, sesli sohbet edin ve çift oyunları oynayın.';
+
+    if (selectedPost) {
+      document.title = `${selectedPost.title} | Couple Meeting Blog`;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute('content', selectedPost.excerpt);
+    } else {
+      document.title = 'Çift & Online Eğlence Rehberi | Couple Meeting Blog';
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute('content', defaultDesc);
+    }
+
+    return () => {
+      document.title = defaultTitle;
+    };
+  }, [selectedPost]);
+
+  const handleSelectPost = (post) => {
+    setSearchParams({ post: post.id });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToList = () => {
+    setSearchParams({});
+  };
+
+  const handleStartRoomCta = (e) => {
+    e.preventDefault();
+    trackAdCtaClicked(`blog_${selectedPost?.id || 'index'}`);
+    navigate('/?action=create');
+  };
 
   if (selectedPost) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0e14', color: '#e9edef', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-          <button onClick={() => setSelectedPost(null)} style={{
-            background: 'rgba(255,255,255,.08)', border: 'none', color: '#00a884',
-            padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
-            fontSize: 14, marginBottom: 24
-          }}>
-            ← Geri Dön
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <button onClick={handleBackToList} style={{
+              background: 'rgba(255,255,255,.08)', border: 'none', color: '#00a884',
+              padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
+              fontSize: 14
+            }}>
+              ← Tüm Yazılar
+            </button>
+            <button onClick={() => navigate('/')} style={{
+              background: 'none', border: '1px solid rgba(255,255,255,.12)', color: '#94a3b8',
+              padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 12
+            }}>
+              🏠 Ana Sayfa
+            </button>
+          </div>
 
           <div style={{ marginBottom: 16 }}>
             <span style={{
@@ -65,21 +116,21 @@ function BlogPage() {
           </div>
 
           <div style={{
-            marginTop: 32, padding: 24, background: 'linear-gradient(135deg, rgba(0,168,132,.1), rgba(233,30,140,.1))',
-            borderRadius: 16, textAlign: 'center', border: '1px solid rgba(0,168,132,.2)'
+            marginTop: 32, padding: 28, background: 'linear-gradient(135deg, rgba(0,168,132,.12), rgba(233,30,140,.12))',
+            borderRadius: 16, textAlign: 'center', border: '1px solid rgba(0,168,132,.25)'
           }}>
-            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 12, color: '#fff' }}>
-              Hemen Deneyin!
+            <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 10, color: '#fff' }}>
+              Sevgilinle veya Arkadaşlarınla Hemen Deneyin! 💕
             </h3>
-            <p style={{ color: '#94a3b8', marginBottom: 16, fontSize: 14 }}>
-              Arkadaşlarınızla birlikte YouTube izlemeye başlayın
+            <p style={{ color: '#94a3b8', marginBottom: 18, fontSize: 14 }}>
+              Uygulama indirmeden 5 saniyede ücretsiz özel odanızı açın, linki gönderip aynı saniyede izlemeye başlayın.
             </p>
-            <a href="/" style={{
+            <a href="/?action=create" onClick={handleStartRoomCta} style={{
               display: 'inline-block', background: 'linear-gradient(135deg, #00a884, #00d4aa)',
-              color: '#fff', padding: '12px 32px', borderRadius: 12, fontWeight: 800,
-              fontSize: 14, textDecoration: 'none'
+              color: '#fff', padding: '14px 36px', borderRadius: 12, fontWeight: 900,
+              fontSize: 15, textDecoration: 'none', boxShadow: '0 8px 24px rgba(0,168,132,.3)'
             }}>
-              Ücretsiz Başla →
+              🚀 Ücretsiz Özel Oda Aç →
             </a>
           </div>
         </div>
@@ -90,12 +141,27 @@ function BlogPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a0e14', color: '#e9edef', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '40px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <button onClick={() => navigate('/')} style={{
+            background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', color: '#94a3b8',
+            padding: '8px 16px', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 13
+          }}>
+            ← Ana Sayfaya Dön
+          </button>
+          <button onClick={handleStartRoomCta} style={{
+            background: 'linear-gradient(135deg, #7c3aed, #a855f7)', border: 'none', color: '#fff',
+            padding: '10px 20px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13
+          }}>
+            🚀 Hemen Oda Aç
+          </button>
+        </div>
+
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <h1 style={{ fontSize: 40, fontWeight: 900, marginBottom: 16, background: 'linear-gradient(135deg, #00a884, #e91e8c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Couple Meeting Blog
           </h1>
-          <p style={{ fontSize: 18, color: '#64748b', maxWidth: 600, margin: '0 auto' }}>
-            Arkadaşlarınızla birlikte izleme, müzik dinleme ve online eğlence hakkında rehberler
+          <p style={{ fontSize: 18, color: '#64748b', maxWidth: 640, margin: '0 auto' }}>
+            Uzak mesafe ilişkileri, sevgiliyle uzaktan film izleme, senkronize müzik ve online buluşma rehberleri
           </p>
         </div>
 
@@ -103,7 +169,7 @@ function BlogPage() {
           {blogPosts.map((post) => (
             <article
               key={post.id}
-              onClick={() => setSelectedPost(post)}
+              onClick={() => handleSelectPost(post)}
               style={{
                 background: 'rgba(255,255,255,.03)', borderRadius: 16, padding: 24,
                 border: '1px solid rgba(255,255,255,.06)', cursor: 'pointer',

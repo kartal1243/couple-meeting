@@ -20,6 +20,7 @@ function SettingsModal({
   const [newPassword, setNewPassword] = useState('');
   const [maxUsers, setMaxUsers] = useState(currentRoomInfo?.maxUsers || 2);
   const [saveMsg, setSaveMsg] = useState('');
+  const [invisibleMode, setInvisibleMode] = useState(() => Boolean(authUser?.invisibleMode));
 
   const getThemeLabel = (key) => {
     const labels = { default: '🟢 Koyu Yeşil', purple: '🟣 Gece Moru', blue: '🔵 Okyanus Mavisi', rose: '🩷 Romantik Kırmızı', gold: '🥇 Altın VIP', ocean: '🌊 Okyanus VIP', emerald: '💎 Zümrüt VIP', sunset: '🌅 Günbatımı VIP' };
@@ -387,6 +388,7 @@ function SettingsModal({
                       });
                       const data = await res.json();
                       if (data.ok) {
+                        setInvisibleMode(Boolean(data.invisibleMode));
                         setSaveMsg('Görünmez mod ' + (data.invisibleMode ? 'açıldı' : 'kapatıldı'));
                         setTimeout(() => setSaveMsg(''), 2000);
                       }
@@ -394,11 +396,12 @@ function SettingsModal({
                   }}
                   style={{
                     width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-                    background: 'linear-gradient(135deg, #f59e0b, #f97316)', position: 'relative'
+                    background: invisibleMode ? 'linear-gradient(135deg, #f59e0b, #f97316)' : '#334155',
+                    position: 'relative', transition: 'background 0.2s'
                   }}>
                   <div style={{
                     width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                    position: 'absolute', top: 3, right: 3, transition: 'all 0.2s'
+                    position: 'absolute', top: 3, right: invisibleMode ? 3 : 23, transition: 'all 0.2s'
                   }} />
                 </button>
               </div>

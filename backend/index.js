@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -48,7 +48,10 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: '1mb' }));
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/webhooks/stripe') return next();
+  return express.json({ limit: '1mb' })(req, res, next);
+});
 
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { ok: false, message: 'Çok fazla istek.' }, validate: { xForwardedForHeader: false } });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla deneme.' }, validate: { xForwardedForHeader: false } });
@@ -79,6 +82,24 @@ const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 }, fileFilt
   else cb(new Error('Sadece resim dosyaları yüklenebilir.'));
 }});
 
+const roomFileStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.bin';
+    cb(null, `room_${Date.now()}_${Math.random().toString(36).slice(2,8)}${ext}`);
+  }
+});
+const roomFileUpload = multer({
+  storage: roomFileStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedExt = /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|mp3|ogg|wav|m4a|opus)$/i;
+    const mimeOk = file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/');
+    if (allowedExt.test(path.extname(file.originalname)) || mimeOk) cb(null, true);
+    else cb(new Error('Desteklenmeyen dosya tipi (resim, video veya ses yükleyin).'));
+  }
+});
+
 app.use('/uploads', express.static(uploadsDir));
 
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { ok: false, message: 'Çok fazla dosya yükleme.' }, validate: { xForwardedForHeader: false } });
@@ -101,10 +122,10 @@ app.post('/api/upload-avatar', uploadLimiter, (req, res) => {
   upload.single('avatar')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, message: err.message });
     if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadı.' });
-    const token = req.body.token;
-    if (!token) return res.status(401).json({ ok: false, message: 'Token gerekli.' });
+    const token = req.body.token || getBearerToken(req);
+    if (!token) { try { fs.unlinkSync(req.file.path); } catch {} return res.status(401).json({ ok: false, message: 'Token gerekli.' }); }
     const user = db.getUserByToken(token);
-    if (!user) return res.status(401).json({ ok: false, message: 'Geçersiz token.' });
+    if (!user) { try { fs.unlinkSync(req.file.path); } catch {} return res.status(401).json({ ok: false, message: 'Geçersiz token.' }); }
     const avatarUrl = `/uploads/${req.file.filename}`;
     db.updateUser(user.username, { avatar: avatarUrl });
     res.json({ ok: true, avatar: avatarUrl });
@@ -115,26 +136,34 @@ app.post('/api/upload-video', uploadLimiter, (req, res) => {
   videoUpload.single('video')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, message: err.message });
     if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadı.' });
-    const token = req.body.token;
-    const user = token ? db.getUserByToken(token) : null;
-    const uploader = user ? user.username : 'Misafir';
+    const token = req.body.token || getBearerToken(req);
+    if (!token) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(401).json({ ok: false, message: 'Video yüklemek için giriş yapmalısınız.' });
+    }
+    const user = db.getUserByToken(token);
+    if (!user) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(401).json({ ok: false, message: 'Geçersiz oturum.' });
+    }
     const videoUrl = `/uploads/${req.file.filename}`;
-    res.json({ ok: true, url: videoUrl, filename: req.file.originalname, size: req.file.size, uploader });
+    res.json({ ok: true, url: videoUrl, filename: req.file.originalname, size: req.file.size, uploader: user.username });
   });
 });
 
 app.post('/api/upload-room-file', uploadLimiter, (req, res) => {
-  upload.single('file')(req, res, (err) => {
+  roomFileUpload.single('file')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, message: err.message });
     if (!req.file) return res.status(400).json({ ok: false, message: 'Dosya bulunamadi.' });
-    const token = req.body.token;
-    if (!token) return res.status(401).json({ ok: false, message: 'Token gerekli.' });
+    const token = req.body.token || getBearerToken(req);
+    if (!token) { try { fs.unlinkSync(req.file.path); } catch {} return res.status(401).json({ ok: false, message: 'Token gerekli.' }); }
     const user = db.getUserByToken(token);
-    if (!user) return res.status(401).json({ ok: false, message: 'Gecersiz token.' });
+    if (!user) { try { fs.unlinkSync(req.file.path); } catch {} return res.status(401).json({ ok: false, message: 'Gecersiz token.' }); }
     const fileUrl = `/uploads/${req.file.filename}`;
     const isImage = req.file.mimetype.startsWith('image/');
     const isVideo = req.file.mimetype.startsWith('video/');
-    res.json({ ok: true, url: fileUrl, name: req.file.originalname, type: req.file.mimetype, size: req.file.size, isImage, isVideo });
+    const isAudio = req.file.mimetype.startsWith('audio/');
+    res.json({ ok: true, url: fileUrl, name: req.file.originalname, type: req.file.mimetype, size: req.file.size, isImage, isVideo, isAudio });
   });
 });
 
@@ -142,7 +171,13 @@ app.post('/api/upload-room-file', uploadLimiter, (req, res) => {
 // 2. YARDIMCI FONKSİYONLAR
 // ═══════════════════════════════════════════════════════════
 
-function sanitize(str, maxLen = 500) { return String(str || '').trim().slice(0, maxLen).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#x27;' }[c] || '')); }
+function sanitize(str, maxLen = 500) {
+  return String(str || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[<>]/g, '')
+    .trim()
+    .slice(0, maxLen);
+}
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function isValidUsername(u) { return /^[a-z0-9_]{3,20}$/.test(u); }
 
@@ -189,6 +224,37 @@ function getVipLevel(vipActivatedAt) {
   return 1;
 }
 
+function grantCoupleVip(primaryUser, plan, partnerUsernameInput, stripeMeta = {}) {
+  const now = Date.now();
+  const duration = VIP_PLANS[plan].duration;
+  const startFrom = (primaryUser.vipExpiry || 0) > now ? primaryUser.vipExpiry : now;
+  const newExpiry = startFrom + duration;
+
+  const cleanPartner = sanitize(partnerUsernameInput || primaryUser.partnerUsername || '', 20).toLowerCase();
+  const partnerUser = (cleanPartner && cleanPartner !== primaryUser.username) ? db.getUser(cleanPartner) : null;
+
+  db.updateUser(primaryUser.username, {
+    is_vip: 1, vip_expiry: newExpiry, vip_plan: plan, vip_activated_at: now, vip_level: getVipLevel(now),
+    ...(partnerUser ? { partner_username: partnerUser.username } : {}),
+    ...(stripeMeta.customer ? { stripe_customer_id: stripeMeta.customer } : {}),
+    ...(stripeMeta.subscription ? { stripe_subscription_id: stripeMeta.subscription } : {})
+  });
+  emitToUser(primaryUser.username, 'vip_updated', { isVip: true, vipUntil: newExpiry, vipExpiry: newExpiry, vipType: plan, plan, partnerUsername: partnerUser?.username || null });
+  emitToUser(primaryUser.username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan, partnerUsername: partnerUser?.username || null });
+
+  if (partnerUser) {
+    const partnerStart = (partnerUser.vipExpiry || 0) > now ? partnerUser.vipExpiry : now;
+    const partnerExpiry = partnerStart + duration;
+    db.updateUser(partnerUser.username, {
+      is_vip: 1, vip_expiry: partnerExpiry, vip_plan: plan, vip_activated_at: now, vip_level: getVipLevel(now),
+      partner_username: primaryUser.username
+    });
+    emitToUser(partnerUser.username, 'vip_updated', { isVip: true, vipUntil: partnerExpiry, vipExpiry: partnerExpiry, vipType: plan, plan, partnerUsername: primaryUser.username });
+    emitToUser(partnerUser.username, 'vip_activated', { isVip: true, vipExpiry: partnerExpiry, plan, partnerUsername: primaryUser.username });
+  }
+  return { newExpiry, partnerUsername: partnerUser ? partnerUser.username : null };
+}
+
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) return res.status(200).send('Stripe pasif');
   const sig = req.headers['stripe-signature'];
@@ -201,18 +267,14 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const { username, plan } = session.metadata;
+    const { username, plan, partnerUsername } = session.metadata || {};
     const user = db.getUser(username);
     if (user && VIP_PLANS[plan]) {
-      const now = Date.now();
-      const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
-      db.updateUser(username, {
-        is_vip: 1, vip_expiry: startFrom + VIP_PLANS[plan].duration,
-        vip_plan: plan, vip_activated_at: now, vip_level: 1,
-        stripe_customer_id: session.customer || '', stripe_subscription_id: session.subscription || ''
+      const { partnerUsername: grantedPartner } = grantCoupleVip(user, plan, partnerUsername, {
+        customer: session.customer || '',
+        subscription: session.subscription || ''
       });
-      logger.info(`[STRIPE] VIP aktif: ${username} (${VIP_PLANS[plan].label})`);
-      emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: startFrom + VIP_PLANS[plan].duration, plan });
+      logger.info(`[STRIPE] VIP aktif: ${username}${grantedPartner ? ` + partner: ${grantedPartner}` : ''} (${VIP_PLANS[plan].label})`);
     }
   }
 
@@ -222,6 +284,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     for (const u of allUsers) {
       db.updateUser(u.username, { is_vip: 0, vip_expiry: Date.now() });
       logger.info(`[STRIPE] VIP iptal: ${u.username}`);
+      emitToUser(u.username, 'vip_updated', { isVip: false, vipUntil: Date.now(), vipType: null });
       emitToUser(u.username, 'vip_activated', { isVip: false, vipExpiry: Date.now(), plan: null });
     }
   }
@@ -230,7 +293,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 });
 
 app.post('/api/vip/create-checkout', async (req, res) => {
-  const { token, plan } = req.body;
+  const { token, plan, partnerUsername } = req.body;
   if (!token || !plan || !VIP_PLANS[plan]) return res.json({ ok: false, message: 'Gecersiz plan.' });
   const user = db.getUserByToken(token);
   if (!user) return res.json({ ok: false, message: 'Giris yapmalisin.' });
@@ -239,17 +302,15 @@ app.post('/api/vip/create-checkout', async (req, res) => {
     return res.json({ ok: false, message: 'VIP sistemi su an bakimda. Lutfen daha sonra tekrar deneyin.' });
   }
 
+  const cleanPartner = sanitize(partnerUsername || user.partnerUsername || '', 20).toLowerCase();
+  if (partnerUsername && cleanPartner && cleanPartner !== user.username && !db.getUser(cleanPartner)) {
+    return res.json({ ok: false, message: 'Partner kullanici adi bulunamadi.' });
+  }
+
   if (!stripe) {
-    const duration = VIP_PLANS[plan].duration;
-    const currentExpiry = user.vipExpiry || 0;
-    const newExpiry = Math.max(currentExpiry, Date.now()) + duration;
-    db.getDb().prepare('UPDATE users SET is_vip = 1, vip_expiry = ?, vip_plan = ?, vip_activated_at = ?, vip_level = ? WHERE username = ?')
-      .run(newExpiry, plan, Date.now(), getVipLevel(Date.now()), user.username);
-    const updatedUser = db.getUser(user.username);
-    const io = req.app.get('io');
-    if (io) io.to(user.username).emit('vip_activated', { isVip: true, vipExpiry: newExpiry, plan });
-    logger.info('VIP test mode aktif', { username: user.username, plan, expiry: new Date(newExpiry).toISOString() });
-    return res.json({ ok: true, testMode: true, vipExpiry: newExpiry });
+    const { newExpiry, partnerUsername: grantedPartner } = grantCoupleVip(user, plan, cleanPartner);
+    logger.info('VIP test mode aktif (Couple Pass)', { username: user.username, partner: grantedPartner, plan, expiry: new Date(newExpiry).toISOString() });
+    return res.json({ ok: true, testMode: true, vipExpiry: newExpiry, vipUntil: newExpiry, partnerUsername: grantedPartner });
   }
 
   try {
@@ -259,7 +320,7 @@ app.post('/api/vip/create-checkout', async (req, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${req.headers.origin || 'https://couplemeeting.com.tr'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin || 'https://couplemeeting.com.tr'}/payment-cancel`,
-      metadata: { username: user.username, plan }
+      metadata: { username: user.username, plan, partnerUsername: cleanPartner || '' }
     });
     res.json({ ok: true, sessionId: session.id, url: session.url });
   } catch (err) {
@@ -273,19 +334,15 @@ if (!ADMIN_SECRET) logger.warn('ADMIN_SECRET tanimli degil. Admin VIP ozellikler
 
 app.post('/api/vip/admin-grant', (req, res) => {
   if (process.env.VIP_MAINTENANCE === '1') return res.status(503).json({ ok: false, message: 'VIP sistemi su an bakimda.' });
-  const { secret, username, plan } = req.body;
+  const { secret, username, plan, partnerUsername } = req.body;
   if (!ADMIN_SECRET || secret !== ADMIN_SECRET) return res.status(403).json({ ok: false, message: 'Yetkisiz erisim.' });
   if (!username || !isValidUsername(username) || !VIP_PLANS[plan || 'yearly']) return res.json({ ok: false, message: 'Gecersiz parametre.' });
   const user = db.getUser(username);
   if (!user) return res.json({ ok: false, message: 'Kullanici bulunamadi.' });
 
-  const now = Date.now();
-  const startFrom = (user.vipExpiry || 0) > now ? user.vipExpiry : now;
-  const newExpiry = startFrom + VIP_PLANS[plan || 'yearly'].duration;
-  db.updateUser(username, { is_vip: 1, vip_expiry: newExpiry, vip_plan: plan || 'yearly', vip_activated_at: now, vip_level: getVipLevel(now) });
-  logger.info(`[ADMIN] VIP verildi: ${username} (${VIP_PLANS[plan || 'yearly'].label})`);
-  emitToUser(username, 'vip_activated', { isVip: true, vipExpiry: newExpiry, plan: plan || 'yearly' });
-  res.json({ ok: true, message: `${username} VIP aktif!`, vipExpiry: newExpiry });
+  const { newExpiry, partnerUsername: grantedPartner } = grantCoupleVip(user, plan || 'yearly', partnerUsername);
+  logger.info(`[ADMIN] VIP verildi: ${username}${grantedPartner ? ` + ${grantedPartner}` : ''} (${VIP_PLANS[plan || 'yearly'].label})`);
+  res.json({ ok: true, message: `${username}${grantedPartner ? ` ve ${grantedPartner}` : ''} VIP aktif!`, vipExpiry: newExpiry, partnerUsername: grantedPartner });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -785,16 +842,25 @@ app.post('/api/admin/bulk-message', adminAuth, (req, res) => {
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
+const emailTransporter = (nodemailer && process.env.SMTP_USER && process.env.SMTP_PASS)
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: false,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    })
+  : null;
+
 app.post('/api/admin/send-email', adminAuth, async (req, res) => {
   try {
     const { to, subject, body } = req.body;
     if (!nodemailer) return res.status(500).json({ ok: false, message: 'E-posta servisi mevcut değil' });
-    const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: 587, secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
+    const transporter = emailTransporter || nodemailer.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: 587, secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
     if (to === 'all') {
       const users = db.getDb().prepare('SELECT email FROM users WHERE email IS NOT NULL AND email != ""').all();
       const emails = users.map(u => u.email);
       if (emails.length === 0) return res.json({ ok: true, sentCount: 0 });
-      await transporter.sendMail({ from: process.env.SMTP_USER || 'noreply@couplemeeting.com.tr', to: emails.join(','), subject: sanitize(subject, 200), html: sanitize(body, 5000) });
+      await transporter.sendMail({ from: process.env.SMTP_USER || 'noreply@couplemeeting.com.tr', bcc: emails, subject: sanitize(subject, 200), html: sanitize(body, 5000) });
       res.json({ ok: true, sentCount: emails.length });
     } else {
       await transporter.sendMail({ from: process.env.SMTP_USER || 'noreply@couplemeeting.com.tr', to: sanitize(to, 100), subject: sanitize(subject, 200), html: sanitize(body, 5000) });
@@ -894,13 +960,15 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
   const { email, password } = req.body || {};
   const user = db.getUserByEmail(sanitize(email, 100).toLowerCase());
   if (!user || !verifyPassword(user, password)) return res.json({ ok: false, message: 'E-posta veya sifre hatali.' });
+  if (user.is_banned || user.isBanned) return res.status(403).json({ ok: false, message: 'Hesabınız yasaklanmıştır.' });
+  if (user.frozen) return res.status(403).json({ ok: false, message: 'Hesabınız dondurulmuştur.' });
   const token = db.createToken(user.username);
   logger.info(`[GIRIS-HTTP] ${user.username}`);
   res.json({ ok: true, user: safeUser(user), token });
 });
 app.get('/api/auth/me', (req, res) => {
   const user = db.getUserByToken(getBearerToken(req));
-  if (!user) return res.status(401).json({ ok: false, message: 'Oturum gecersiz.' });
+  if (!user || user.is_banned || user.isBanned || user.frozen) return res.status(401).json({ ok: false, message: 'Oturum gecersiz.' });
   res.json({ ok: true, user: safeUser(user) });
 });
 
@@ -929,6 +997,16 @@ function loadRoomsFromDb() {
   try {
     const savedRooms = db.getAllRooms();
     for (const r of savedRooms) {
+      const loadedPlaylist = db.getRoomPlaylist(r.id).map(v => ({
+        id: v.video_id,
+        title: v.title,
+        type: 'youtube',
+        src: v.thumbnail || v.video_id,
+        thumbnail: v.thumbnail,
+        addedBy: v.added_by,
+        category: v.category || 'Genel'
+      }));
+      const loadedCategories = Array.from(new Set(['Genel', ...loadedPlaylist.map(p => p.category).filter(Boolean)]));
       rooms[r.id] = {
         id: r.id,
         name: r.name,
@@ -941,7 +1019,9 @@ function loadRoomsFromDb() {
         lastActivityAt: r.last_activity_at,
         users: [],
         currentMedia: null,
-        playlist: db.getRoomPlaylist(r.id).map(v => ({ id: v.video_id, title: v.title, thumbnail: v.thumbnail, addedBy: v.added_by })),
+        playlist: loadedPlaylist,
+        categories: loadedCategories,
+        playMode: 'sequence',
         messages: db.getRoomMessages(r.id, 200).map(m => ({
           id: m.id, username: m.username, avatar: m.avatar, text: m.text, time: m.time, createdAt: m.created_at
         })),
@@ -991,7 +1071,8 @@ function publicUser(u) {
     lastSeen: onlineUsers[u.username]?.lastSeen || u.lastSeen || null,
     isVip: u.isVip && u.vipExpiry && u.vipExpiry > Date.now(),
     vipExpiry: u.vipExpiry || null, vipLevel: u.vipLevel || 0,
-    invisibleMode: !!u.invisibleMode
+    invisibleMode: !!u.invisibleMode,
+    partnerUsername: u.partnerUsername || null
   };
 }
 
@@ -1178,7 +1259,9 @@ io.on('connection', (socket) => {
 
   const requireAuth = (token) => {
     if (!token) return null;
-    return db.getUserByToken(token);
+    const u = db.getUserByToken(token);
+    if (!u || u.is_banned || u.isBanned || u.frozen) return null;
+    return u;
   };
 
   // Socket.IO rate limiting
@@ -1262,6 +1345,9 @@ io.on('connection', (socket) => {
       }
     } catch { return socket.emit('auth_result', { ok: false, message: 'E-posta veya sifre hatali.' }); }
 
+    if (user.is_banned || user.isBanned) return socket.emit('auth_result', { ok: false, message: 'Hesabınız yasaklanmıştır.' });
+    if (user.frozen) return socket.emit('auth_result', { ok: false, message: 'Hesabınız dondurulmuştur.' });
+
     const token = db.createToken(user.username);
     socket.socialUsername = user.username;
     setOnline(user.username, socket.id);
@@ -1280,17 +1366,41 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('auth_forgot_password', ({ email }) => {
+  socket.on('auth_token', ({ token } = {}) => {
+    const user = db.getUserByToken(token);
+    if (!user || user.is_banned || user.isBanned || user.frozen) {
+      return socket.emit('auth_result', { ok: false, message: 'Oturum geçersiz veya hesabınız kısıtlanmış.' });
+    }
+    socket.socialUsername = user.username;
+    setOnline(user.username, socket.id);
+    broadcastOnlineStatus(user.username);
+    socket.emit('auth_result', { ok: true, user: publicUser(user), token });
+  });
+
+  socket.on('auth_forgot_password', async ({ email } = {}) => {
     if (checkRate('auth', 5)) return socket.emit('forgot_result', { ok: false, message: 'Çok fazla deneme. Biraz bekle.' });
     const cleanEmail = sanitize(email, 100).toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) return socket.emit('forgot_result', { ok: false, message: 'Geçerli bir e-posta girin.' });
     const user = db.getUserByEmail(cleanEmail);
-    if (!user) return socket.emit('forgot_result', { ok: true, message: 'E-posta bulunamadı, ama endişelenme!' });
-    const resetToken = crypto.randomBytes(16).toString('hex');
+    if (!user) return socket.emit('forgot_result', { ok: false, message: 'Bu e-posta ile kayıtlı hesap bulunamadı.' });
+    const resetToken = crypto.randomBytes(4).toString('hex').toUpperCase();
     const expiry = Date.now() + 3600000;
     db.updateUser(user.username, { reset_token: resetToken, reset_expiry: expiry });
     logger.info?.(`[SIFRE SIFIRLAMA] ${cleanEmail} | IP: ${socket.handshake?.address || 'bilinmiyor'}`);
-    socket.emit('forgot_result', { ok: true, message: 'Şifre sıfırlama kodu e-postana gönderildi.' });
+    if (emailTransporter) {
+      try {
+        await emailTransporter.sendMail({
+          from: process.env.SMTP_USER || 'noreply@couplemeeting.com.tr',
+          to: cleanEmail,
+          subject: 'Couple Meeting — Şifre Sıfırlama Kodun',
+          html: `<p>Merhaba <b>${user.username}</b>,</p><p>Şifre sıfırlama kodun: <b>${resetToken}</b></p><p>Bu kod 1 saat boyunca geçerlidir.</p>`
+        });
+        return socket.emit('forgot_result', { ok: true, step: 2, message: 'Şifre sıfırlama kodu e-postana gönderildi.' });
+      } catch (err) {
+        logger.error?.(`Şifre sıfırlama e-postası gönderilemedi: ${err.message}`);
+      }
+    }
+    socket.emit('forgot_result', { ok: true, resetToken, message: 'Şifre sıfırlama kodu oluşturuldu.' });
   });
 
   socket.on('auth_reset_password', ({ resetToken, newPassword }) => {
@@ -1356,7 +1466,7 @@ io.on('connection', (socket) => {
 
   socket.on('social_sync', ({ token } = {}) => {
     const user = db.getUserByToken(token);
-    if (!user) {
+    if (!user || user.is_banned || user.isBanned || user.frozen) {
       socket.emit('social_profile', null);
       return;
     }
@@ -1465,7 +1575,8 @@ io.on('connection', (socket) => {
   socket.on('dm_delete', ({ messageId, withUser, token }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
-    const key = [user.username, sanitize(withUser, 24)].sort().join(':');
+    const cleanWith = sanitize(withUser, 24);
+    const key = [user.username, cleanWith].sort().join(':');
     let deleted = false;
     if (dmMessages[key]) {
       const msg = dmMessages[key].find(m => m.id === messageId);
@@ -1474,8 +1585,9 @@ io.on('connection', (socket) => {
         deleted = true;
       }
     }
-    if (deleted) {
-      emitToUser(sanitize(withUser, 24), 'dm_deleted', { messageId, from: user.username });
+    const dbDeleted = db.deleteDMMessage(messageId, user.username);
+    if (deleted || dbDeleted) {
+      emitToUser(cleanWith, 'dm_deleted', { messageId, from: user.username });
       socket.emit('dm_deleted', { messageId, from: user.username });
     }
   });
@@ -1484,35 +1596,63 @@ io.on('connection', (socket) => {
     if (!user) return;
     const cleanText = sanitize(newText, 500);
     if (!cleanText) return;
-    const key = [user.username, sanitize(withUser, 24)].sort().join(':');
+    const cleanWith = sanitize(withUser, 24);
+    const key = [user.username, cleanWith].sort().join(':');
     if (dmMessages[key]) {
       const msg = dmMessages[key].find(m => m.id === messageId && m.from === user.username);
       if (msg) { msg.text = cleanText; msg.edited = true; }
     }
-    emitToUser(sanitize(withUser, 24), 'dm_edited', { messageId, text: cleanText, from: user.username });
+    db.editDMMessage(messageId, user.username, cleanText);
+    emitToUser(cleanWith, 'dm_edited', { messageId, text: cleanText, from: user.username });
     socket.emit('dm_edited', { messageId, text: cleanText, from: user.username });
   });
 
   // ── MESAJ TEPKİLERİ ──
-  socket.on('add_reaction', ({ messageId, messageType, emoji, token }) => {
+  function emitScopedReactionUpdate(socket, user, { messageId, messageType, reactions, roomId, withUser, groupId }) {
+    const type = messageType || 'dm';
+    const payload = { messageId, messageType: type, reactions };
+    socket.emit('reactions_update', payload);
+    if (type === 'room') {
+      const targetRoom = sanitize(roomId || socket.currentRoom || '', 50);
+      if (targetRoom) socket.to(targetRoom).emit('reactions_update', payload);
+    } else if (type === 'dm') {
+      let targetUser = sanitize(withUser || '', 24);
+      if (!targetUser && db.getDb()) {
+        try {
+          const row = db.getDb().prepare('SELECT from_username, to_username FROM dm_messages WHERE id = ?').get(messageId);
+          if (row) targetUser = row.from_username === user.username ? row.to_username : row.from_username;
+        } catch {}
+      }
+      if (targetUser) emitToUser(targetUser, 'reactions_update', payload);
+    } else if (type === 'group') {
+      const g = globalChatGroups[sanitize(groupId || '', 20)];
+      if (g && Array.isArray(g.members)) {
+        g.members.forEach(m => { if (m !== user.username) emitToUser(m, 'reactions_update', payload); });
+      }
+    } else if (type === 'global') {
+      socket.broadcast.emit('reactions_update', payload);
+    }
+  }
+
+  socket.on('add_reaction', ({ messageId, messageType, emoji, token, roomId, withUser, groupId }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     const cleanEmoji = sanitize(emoji, 8);
     if (!cleanEmoji) return;
-    db.addReaction(messageId, messageType || 'dm', user.username, cleanEmoji);
-    const reactions = db.getReactions(messageId, messageType || 'dm');
-    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
-    socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+    const type = messageType || 'dm';
+    db.addReaction(messageId, type, user.username, cleanEmoji);
+    const reactions = db.getReactions(messageId, type);
+    emitScopedReactionUpdate(socket, user, { messageId, messageType: type, reactions, roomId, withUser, groupId });
   });
-  socket.on('remove_reaction', ({ messageId, messageType, emoji, token }) => {
+  socket.on('remove_reaction', ({ messageId, messageType, emoji, token, roomId, withUser, groupId }) => {
     const user = db.getUserByToken(token);
     if (!user) return;
     const cleanEmoji = sanitize(emoji, 8);
     if (!cleanEmoji) return;
-    db.removeReaction(messageId, messageType || 'dm', user.username, cleanEmoji);
-    const reactions = db.getReactions(messageId, messageType || 'dm');
-    socket.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
-    socket.broadcast.emit('reactions_update', { messageId, messageType: messageType || 'dm', reactions });
+    const type = messageType || 'dm';
+    db.removeReaction(messageId, type, user.username, cleanEmoji);
+    const reactions = db.getReactions(messageId, type);
+    emitScopedReactionUpdate(socket, user, { messageId, messageType: type, reactions, roomId, withUser, groupId });
   });
 
   // ── ODA DAVETİ ──
@@ -1597,7 +1737,9 @@ io.on('connection', (socket) => {
     if (!cleanText) return;
     const id = db.addFeedItem(user.username, 'post', { text: cleanText });
     const item = { id, username: user.username, avatar: user.avatar, type: 'post', data: JSON.stringify({ text: cleanText }), created_at: Date.now(), liked_by: [], like_count: 0, comment_count: 0 };
-    user.followers && user.followers.forEach(f => emitToUser(f, 'new_feed_item', { item }));
+    const followers = db.getFollowers(user.username) || [];
+    followers.forEach(f => emitToUser(typeof f === 'string' ? f : f.username, 'new_feed_item', { item }));
+    socket.emit('new_feed_item', { item });
   });
 
   socket.on('feed_like', ({ token, feedId }) => {
@@ -2222,27 +2364,47 @@ io.on('connection', (socket) => {
   socket.on('add_to_playlist', ({ roomId, item, token }) => {
     const user = token ? requireAuth(token) : null;
     const addedBy = user ? user.username : (socket.userId || 'Misafir');
-    const room = rooms[sanitize(roomId, 50)];
+    const cleanRoomId = sanitize(roomId, 50);
+    const room = rooms[cleanRoomId];
     if (room && item && typeof item === 'object') {
       const isVip = user && user.isVip && user.vipExpiry > Date.now();
       if (!isVip && room.playlist.length >= 20) {
         socket.emit('room_error', 'Playlist dolu! (Maks. 20 video) VIP ile sinirsiz playlist acabilirsin.');
         return;
       }
-      const safeItem = { id: item.id || crypto.randomBytes(8).toString('hex'), title: sanitize(item.title, 200) || 'Video', type: sanitize(item.type, 20) || 'youtube', src: sanitize(item.src, 500) || '', addedBy: sanitize(addedBy, 24) };
+      const category = sanitize(item.category || 'Genel', 30).slice(0, 30) || 'Genel';
+      const safeItem = {
+        id: item.id || crypto.randomBytes(8).toString('hex'),
+        title: sanitize(item.title, 200) || 'Video',
+        type: sanitize(item.type, 20) || 'youtube',
+        src: sanitize(item.src, 500) || '',
+        thumbnail: safeUrl(item.thumbnail) || '',
+        category,
+        addedBy: sanitize(addedBy, 24)
+      };
       room.playlist.push(safeItem);
-      io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
+      if (room.categories && !room.categories.includes(category)) {
+        room.categories.push(category);
+      }
+      if (room.isVip) {
+        try { db.saveRoomPlaylistItem(cleanRoomId, safeItem); } catch (e) {}
+      }
+      io.to(cleanRoomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
     }
   });
 
   socket.on('remove_from_playlist', ({ roomId, itemId, token }) => {
     const user = token ? requireAuth(token) : null;
-    const room = rooms[sanitize(roomId, 50)];
+    const cleanRoomId = sanitize(roomId, 50);
+    const room = rooms[cleanRoomId];
     if (!room) return;
     const inRoom = room.users.some(u => u.socketId === socket.id);
     if (!user && !inRoom) return;
     room.playlist = room.playlist.filter(i => i.id !== itemId);
-    io.to(sanitize(roomId, 50)).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
+    if (room.isVip) {
+      try { db.removeRoomPlaylistItem(cleanRoomId, itemId); } catch (e) {}
+    }
+    io.to(cleanRoomId).emit('playlist_updated', { playlist: room.playlist, playMode: room.playMode });
   });
 
   socket.on('move_playlist_item', ({ roomId, itemId, dir, toIndex }) => {
@@ -2331,6 +2493,7 @@ io.on('connection', (socket) => {
         if (!m) return;
         m.text = sanitize(payload.text, 500);
         m.edited = true;
+        try { db.editRoomMessage(cleanRoomId, m.id, member.username, m.text); } catch (e) {}
         socket.to(cleanRoomId).emit('room_action', { type: 'EDIT_MESSAGE', payload: { messageId: m.id, text: m.text } });
         socket.emit('room_action', { type: 'EDIT_MESSAGE', payload: { messageId: m.id, text: m.text } });
         return;
@@ -2415,7 +2578,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ── TOMBALA ──
+  // ── ÇİFT AKTİVİTELERİ & OYUNLAR (COUPLE ACTIVITIES) ──
+  socket.on('couple_activity', ({ roomId, type, payload } = {}) => {
+    if (checkRate('action', 30)) return;
+    const rId = sanitize(roomId || socket.currentRoom || '', 50);
+    if (!rId || !rooms[rId]) return;
+    const member = rooms[rId].users.find(u => u.socketId === socket.id);
+    const from = member?.username || socket.socialUsername || socket.userId || 'Partner';
+    io.to(rId).emit('couple_activity', {
+      type: sanitize(type, 40),
+      payload: payload || {},
+      from,
+      ts: Date.now()
+    });
+  });
 
   // ──────────────────────────────────────────────────────
   // 7.10 TOPLULUKLAR (COMMUNITIES)
@@ -2430,8 +2606,9 @@ io.on('connection', (socket) => {
   socket.on('leave_room', () => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom;
-      // Host transfer: kullanıcıyı silmeden önce username'i kaydet
+      // Host transfer: kullanıcıyı silmeden önce userId ve username'i kaydet
       const leftUser = rooms[rId].users.find(u => u.socketId === socket.id);
+      const leftUserId = leftUser?.userId;
       const leftUsername = leftUser?.username;
       rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== socket.id);
       rooms[rId].lastActivityAt = Date.now();
@@ -2451,11 +2628,12 @@ io.on('connection', (socket) => {
         updateRoomUsers(rId);
       } else {
         // Host ayrıldıysa transfer et
-        if (rooms[rId].hostUserId === leftUsername) {
-          const newHost = rooms[rId].users[0];
-          rooms[rId].hostUserId = newHost.username;
-          io.to(rId).emit('room_host_changed', { hostUserId: newHost.username, message: `${newHost.username} artık oda sahibi!` });
-          try { db.saveRoom({ id: rId, name: rooms[rId].name, hostUserId: newHost.username, password: rooms[rId].password, isVip: rooms[rId].isVip, maxUsers: rooms[rId].maxUsers, theme: rooms[rId].theme, createdAt: rooms[rId].createdAt, lastActivityAt: rooms[rId].lastActivityAt }); } catch (e) {}
+        if (rooms[rId].hostUserId === leftUserId || rooms[rId].hostUserId === leftUsername) {
+          const nextHost = rooms[rId].users[0];
+          const nextHostId = nextHost.userId || nextHost.username;
+          rooms[rId].hostUserId = nextHostId;
+          io.to(rId).emit('room_host_changed', { hostUserId: nextHostId, message: `${nextHost.username} artık oda sahibi!` });
+          try { db.saveRoom({ id: rId, name: rooms[rId].name, hostUserId: nextHostId, password: rooms[rId].password, isVip: rooms[rId].isVip, maxUsers: rooms[rId].maxUsers, theme: rooms[rId].theme, createdAt: rooms[rId].createdAt, lastActivityAt: rooms[rId].lastActivityAt }); } catch (e) {}
         }
         updateRoomUsers(rId);
       }
@@ -2474,8 +2652,9 @@ io.on('connection', (socket) => {
     if (socket.currentRoom && rooms[socket.currentRoom]) {
       const rId = socket.currentRoom; const sid = socket.id;
       if (rooms[rId]) {
-        // Host transfer: kullanıcıyı silmeden önce username'i kaydet
+        // Host transfer: kullanıcıyı silmeden önce userId ve username'i kaydet
         const leftUser = rooms[rId].users.find(u => u.socketId === sid);
+        const leftUserId = leftUser?.userId;
         const leftUsername = leftUser?.username;
         rooms[rId].users = rooms[rId].users.filter(u => u.socketId !== sid);
         if (rooms[rId].voiceUsers) delete rooms[rId].voiceUsers[sid];
@@ -2497,12 +2676,13 @@ io.on('connection', (socket) => {
           updateRoomUsers(rId);
         } else {
           // Host ayrıldıysa sıradaki kullanıcıya host ver
-          if (rooms[rId].hostUserId === leftUsername && rooms[rId].users.length > 0) {
-            const newHost = rooms[rId].users[0];
-            rooms[rId].hostUserId = newHost.username;
-            io.to(rId).emit('room_host_changed', { hostUserId: newHost.username, message: `${newHost.username} artık oda sahibi!` });
-            logger.info(`Host transferi: ${rId} → ${newHost.username}`);
-            try { db.saveRoom({ id: rId, name: rooms[rId].name, hostUserId: newHost.username, password: rooms[rId].password, isVip: rooms[rId].isVip, maxUsers: rooms[rId].maxUsers, theme: rooms[rId].theme, createdAt: rooms[rId].createdAt, lastActivityAt: rooms[rId].lastActivityAt }); } catch (e) {}
+          if ((rooms[rId].hostUserId === leftUserId || rooms[rId].hostUserId === leftUsername) && rooms[rId].users.length > 0) {
+            const nextHost = rooms[rId].users[0];
+            const nextHostId = nextHost.userId || nextHost.username;
+            rooms[rId].hostUserId = nextHostId;
+            io.to(rId).emit('room_host_changed', { hostUserId: nextHostId, message: `${nextHost.username} artık oda sahibi!` });
+            logger.info(`Host transferi: ${rId} → ${nextHost.username}`);
+            try { db.saveRoom({ id: rId, name: rooms[rId].name, hostUserId: nextHostId, password: rooms[rId].password, isVip: rooms[rId].isVip, maxUsers: rooms[rId].maxUsers, theme: rooms[rId].theme, createdAt: rooms[rId].createdAt, lastActivityAt: rooms[rId].lastActivityAt }); } catch (e) {}
           }
           updateRoomUsers(rId);
         }

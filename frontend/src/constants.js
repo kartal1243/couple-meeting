@@ -29,19 +29,21 @@ export const THEMES = {
 };
 
 export const VIP_PLANS = {
-  monthly: { price: 29.90, duration: '30 gun', label: 'Aylik VIP', icon: '⭐' },
-  yearly: { price: 199.90, duration: '1 yil', label: 'Yillik VIP', icon: '👑', savings: '%45' }
+  weekly: { price: 49.90, duration: '7 gün • Haftalık Randevu Paketi', label: 'Haftalık Randevu Paketi', icon: '🍿', badge: 'Hafta Sonu' },
+  monthly: { price: 99.90, duration: '30 gün • Kişi başı ₺49.95', label: 'Aylık Çift VIP', icon: '💑', badge: '1 Alana 2 VIP' },
+  yearly: { price: 599.90, duration: '1 yıl • Aylık ₺49.90 • %50 İndirim', label: 'Yıllık Çift VIP', icon: '👑', savings: '%50', badge: 'En Popüler 💕' }
 };
 
 export const VIP_FEATURES = [
-  { icon: '🎨', title: 'Ozel Temalar', desc: 'Gold, Ocean, Emerald, Sunset temalari' },
-  { icon: '🛡️', title: 'VIP Oda', desc: 'Otomatik silinmeyen kalici odalar' },
-  { icon: '🏆', title: 'VIP Rozet Seviyeleri', desc: 'Bronze, Silver, Gold, Diamond cerceve' },
-  { icon: '👥', title: '20 Kisiye Kadar Oda', desc: 'Normal 8, VIP 20 kisi' },
-  { icon: '👻', title: 'Gorunmez Mod', desc: 'Sadece arkadaslar gorun' },
-  { icon: '👀', title: 'Ziyaretcileri Gor', desc: 'Kim profiline bakti ogren' },
-  { icon: '🚫', title: 'Reklamsiz', desc: 'Reklamlari tamamen kaldir' },
-  { icon: '🎭', title: 'Ozel Avatarlar', desc: 'VIP\'e ozel 12 avatar' },
-  { icon: '♾️', title: 'Sinirsiz Playlist', desc: 'Sinirsiz sarki kaydetme' },
-  { icon: '🔍', title: 'Sohbet Arama', desc: 'Eski mesajlarinda arama yap' }
+  { icon: '💑', title: '1 Alana 2 Kişilik VIP (Çift Paketi)', desc: 'Sen VIP olunca sevgilin veya en yakın arkadaşın da ücretsiz VIP olur!' },
+  { icon: '🔒', title: 'Kalıcı Özel Oda ("Bizim Odamız")', desc: 'Kapanmayan, şifreli ve sadece ikinize özel kalıcı buluşma odası' },
+  { icon: '🎨', title: 'Romantik & Özel Temalar', desc: 'Rose, Gold, Ocean, Emerald ve Sunset ambiyans temaları' },
+  { icon: '🏆', title: 'VIP Rozet & Çerçeve Seviyeleri', desc: 'Bronze, Silver, Gold ve Diamond profil çerçevesi' },
+  { icon: '👥', title: '20 Kişilik Parti Odası', desc: 'Standart 8 kişi yerine 20 kişiye kadar sinema & müzik odası' },
+  { icon: '👻', title: 'Görünmez Mod & Gizlilik', desc: 'Sadece partnerin ve seçtiğin arkadaşların seni çevrimiçi görsün' },
+  { icon: '👀', title: 'Profil Ziyaretçilerini Gör', desc: 'Profiline kimlerin ne zaman baktığını anında öğren' },
+  { icon: '🚫', title: 'Tamamen Reklamsız Deneyim', desc: 'Film ve müzik keyfiniz hiç bölünmeden kesintisiz izleyin' },
+  { icon: '🎭', title: 'Özel Çift & VIP Avatarları', desc: 'VIP üyelere özel 12 premium avatar ve ikon' },
+  { icon: '♾️', title: 'Sınırsız Ortak Playlist', desc: 'Beraber dinlediğiniz tüm şarkıları ve filmleri sınırsız kaydedin' }
 ];
+
