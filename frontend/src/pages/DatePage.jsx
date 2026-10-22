@@ -262,8 +262,7 @@ export default function DatePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'radial-gradient(circle at 20% 10%, rgba(244,63,94,.14), transparent 45%), radial-gradient(circle at 80% 20%, rgba(124,58,237,.14), transparent 50%), #090d16',
-      color: '#f8fafc',
+      background: '#ffffff', color: '#0f172a',
       paddingBottom: 60
     }}>
       <Navbar />
@@ -277,7 +276,7 @@ export default function DatePage() {
         }}>
           <div style={{
             width: 'min(460px, 100%)', padding: '32px 26px', borderRadius: 28,
-            background: 'linear-gradient(145deg, rgba(244,63,94,.22), rgba(15,23,42,.96) 55%, rgba(124,58,237,.22))',
+            background: '#ffffff', border: '2px solid #0f172a', color: '#0f172a',
             border: '1px solid rgba(251,113,133,.45)',
             boxShadow: '0 30px 90px rgba(244,63,94,.35)',
             textAlign: 'center'
@@ -290,10 +289,10 @@ export default function DatePage() {
             }}>
               EŞLEŞME BULUNDU!
             </div>
-            <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 950, color: '#fff' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 950, color: '#0f172a' }}>
               {matchBanner.partner?.username || 'Yeni Partnerin'} ile Date Başlıyor!
             </h2>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#cbd5e1', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
               Ortak Date odanıza bağlanıyorsun... İlk 10 dakikalık buzkıran sorularınız ve ambiyansınız hazır!
             </p>
             {matchBanner.favSong && (
@@ -314,9 +313,7 @@ export default function DatePage() {
         <div style={{
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
           gap: 14, marginBottom: 24, padding: '20px 24px', borderRadius: 24,
-          background: 'linear-gradient(135deg, rgba(244,63,94,.14), rgba(15,23,42,.9) 55%, rgba(124,58,237,.14))',
-          border: '1px solid rgba(251,113,133,.25)',
-          boxShadow: '0 16px 48px rgba(0,0,0,.35)'
+          background: '#ffffff', border: '2px solid #0f172a', boxShadow: '0 8px 24px rgba(253,38,125,0.08)'
         }}>
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -335,7 +332,7 @@ export default function DatePage() {
                 🟢 {queueCount + mergedWaitingRooms.length} Kişi Date Arıyor
               </span>
             </div>
-            <h1 style={{ margin: '0 0 4px', fontSize: 'clamp(22px, 3.2vw, 30px)', fontWeight: 950, color: '#fff', letterSpacing: '-0.5px' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 'clamp(22px, 3.2vw, 30px)', fontWeight: 950, color: '#0f172a', letterSpacing: '-0.5px' }}>
               Yeni Biriyle Tanış & İlk Sanal Date'ine Çık ✨
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: '#cbd5e1' }}>
@@ -346,8 +343,7 @@ export default function DatePage() {
             onClick={() => navigate('/')}
             style={{
               padding: '10px 16px', borderRadius: 12,
-              background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)',
-              color: '#e2e8f0', fontSize: 12, fontWeight: 800, cursor: 'pointer'
+              background: '#ffffff', border: '1.5px solid #0f172a', color: '#0f172a', fontSize: 12, fontWeight: 800, cursor: 'pointer'
             }}
           >
             ← Keşfet'e Dön
@@ -364,16 +360,14 @@ export default function DatePage() {
           {/* SOL PANEL: Canlı Sanal Date Eşleşmesi */}
           <div style={{
             padding: '24px', borderRadius: 24,
-            background: 'linear-gradient(160deg, rgba(15,23,42,.95), rgba(10,15,24,.98))',
-            border: '1px solid rgba(251,113,133,.28)',
-            boxShadow: '0 20px 55px rgba(0,0,0,.45)'
+            background: '#ffffff', border: '2px solid #0f172a', boxShadow: '0 12px 30px rgba(0,0,0,0.04)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <div style={{ color: '#fb7185', fontSize: 11, fontWeight: 900, letterSpacing: '0.6px' }}>
                   SPEED DATE & BLIND DATE
                 </div>
-                <h2 style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 950, color: '#fff' }}>
+                <h2 style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
                   💘 Canlı Sanal Date Eşleşmesi
                 </h2>
               </div>
@@ -393,9 +387,9 @@ export default function DatePage() {
                   maxLength={20}
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: 12,
-                    background: '#0b131e',
+                    background: '#ffffff',
                     border: nickError ? '1px solid #ef4444' : '1px solid rgba(251,113,133,.35)',
-                    color: '#fff', fontSize: 13, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
+                    color: '#0f172a', fontSize: 13, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
                   }}
                 />
                 {nickError && <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 700, marginTop: 4 }}>{nickError}</div>}
@@ -408,7 +402,7 @@ export default function DatePage() {
               }}>
                 <span style={{ fontSize: 22 }}>{authUser.avatar || myAvatar || '😻'}</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{authUser.username}</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{authUser.username}</div>
                   <div style={{ fontSize: 11, color: '#94a3b8' }}>Onaylı profilinle Date'e katılıyorsun</div>
                 </div>
               </div>
@@ -493,7 +487,7 @@ export default function DatePage() {
                       }}
                     >
                       <div style={{ fontSize: 20, marginBottom: 4 }}>{c.icon}</div>
-                      <div style={{ color: '#fff', fontSize: 12, fontWeight: 900, marginBottom: 2 }}>{c.title}</div>
+                      <div style={{ color: '#0f172a', fontSize: 12, fontWeight: 900, marginBottom: 2 }}>{c.title}</div>
                       <div style={{ color: '#94a3b8', fontSize: 10.5, lineHeight: 1.35 }}>{c.desc}</div>
                     </button>
                   );
@@ -513,8 +507,8 @@ export default function DatePage() {
                 maxLength={70}
                 style={{
                   width: '100%', padding: '11px 14px', borderRadius: 12,
-                  background: '#0b131e', border: '1px solid rgba(255,255,255,.12)',
-                  color: '#fff', fontSize: 12.5, fontWeight: 700, outline: 'none', boxSizing: 'border-box',
+                  background: '#ffffff', border: '1px solid rgba(255,255,255,.12)',
+                  color: '#0f172a', fontSize: 12.5, fontWeight: 700, outline: 'none', boxSizing: 'border-box',
                   marginBottom: 8
                 }}
               />
@@ -550,7 +544,7 @@ export default function DatePage() {
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>📡</div>
-                <div style={{ color: '#fff', fontSize: 14, fontWeight: 900, marginBottom: 4 }}>
+                <div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 4 }}>
                   Partner Aranıyor... Sırada {Math.max(1, queueCount)} kişi var
                 </div>
                 <div style={{ color: '#fda4af', fontSize: 11.5 }}>
@@ -569,7 +563,7 @@ export default function DatePage() {
                   background: inQueue
                     ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
                     : 'linear-gradient(135deg, #f43f5e, #e11d48)',
-                  color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+                  color: '#0f172a', fontSize: 14, fontWeight: 900, cursor: 'pointer',
                   boxShadow: '0 10px 28px rgba(244,63,94,.35)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                 }}
@@ -597,16 +591,14 @@ export default function DatePage() {
           {/* SAĞ PANEL: Şu An Partner Bekleyen Date Odaları (1/2 Kişi) */}
           <div style={{
             padding: '24px', borderRadius: 24,
-            background: 'linear-gradient(160deg, rgba(15,23,42,.95), rgba(10,15,24,.98))',
-            border: '1px solid rgba(168,85,247,.28)',
-            boxShadow: '0 20px 55px rgba(0,0,0,.45)'
+            background: '#ffffff', border: '2px solid #0f172a', boxShadow: '0 12px 30px rgba(0,0,0,0.04)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <div style={{ color: '#c084fc', fontSize: 11, fontWeight: 900, letterSpacing: '0.6px' }}>
                   BEKLEMEDEN ANINDA KATIL
                 </div>
-                <h2 style={{ margin: '2px 0 0', fontSize: 19, fontWeight: 950, color: '#fff' }}>
+                <h2 style={{ margin: '2px 0 0', fontSize: 19, fontWeight: 950, color: '#0f172a' }}>
                   🔥 Şu An Partner Bekleyen Date Odaları (1/2 Kişi)
                 </h2>
               </div>
@@ -626,7 +618,7 @@ export default function DatePage() {
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: 42, marginBottom: 10 }}>🕯️</div>
-                <div style={{ color: '#fff', fontSize: 15, fontWeight: 900, marginBottom: 6 }}>
+                <div style={{ color: '#0f172a', fontSize: 15, fontWeight: 900, marginBottom: 6 }}>
                   Şu an açık Date odası yok — İlk Date odasını sen aç!
                 </div>
                 <p style={{ color: '#94a3b8', fontSize: 12.5, lineHeight: 1.5, margin: '0 auto 16px', maxWidth: 360 }}>
@@ -638,7 +630,7 @@ export default function DatePage() {
                   style={{
                     padding: '11px 18px', borderRadius: 12, border: 'none',
                     background: 'linear-gradient(135deg, #f43f5e, #a855f7)',
-                    color: '#fff', fontSize: 12.5, fontWeight: 900, cursor: 'pointer'
+                    color: '#0f172a', fontSize: 12.5, fontWeight: 900, cursor: 'pointer'
                   }}
                 >
                   🕯️ İlk Date Odasını Ben Açayım →
@@ -670,13 +662,13 @@ export default function DatePage() {
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                            <span style={{ color: '#fff', fontSize: 14, fontWeight: 900 }}>
+                            <span style={{ color: '#0f172a', fontSize: 14, fontWeight: 900 }}>
                               {room.hostName || room.roomName || 'Date Odası'}
                             </span>
                             <span style={{
                               padding: '2px 8px', borderRadius: 999,
                               background: `${cMeta.accent}22`, border: `1px solid ${cMeta.accent}55`,
-                              color: '#fff', fontSize: 10, fontWeight: 800
+                              color: '#0f172a', fontSize: 10, fontWeight: 800
                             }}>
                               {cMeta.shortLabel}
                             </span>
@@ -696,7 +688,7 @@ export default function DatePage() {
                         style={{
                           padding: '10px 16px', borderRadius: 12, border: 'none',
                           background: 'linear-gradient(135deg, #f43f5e, #e11d48)',
-                          color: '#fff', fontSize: 12, fontWeight: 900, cursor: 'pointer',
+                          color: '#0f172a', fontSize: 12, fontWeight: 900, cursor: 'pointer',
                           boxShadow: '0 6px 18px rgba(244,63,94,.3)', flexShrink: 0
                         }}
                       >

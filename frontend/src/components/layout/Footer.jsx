@@ -10,62 +10,70 @@ export default function Footer({ setShowVipModal }) {
   };
 
   return (
-    <footer className="cm-footer" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 20px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 32, marginBottom: 32 }}>
+    <footer className="cm-footer" style={{ borderTop: '2px solid #0f172a', background: '#ffffff', marginTop: 40 }}>
+      <div style={{ maxWidth: 1140, margin: '0 auto', padding: '48px 20px 32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 36, marginBottom: 36 }}>
+          {/* Brand Info */}
           <div>
-            <div className="cm-footer-text" style={{ marginBottom: 12 }}>
-              <span style={{ fontWeight: 900, color: '#fff', fontSize: 18 }}>couple</span>
-              <span style={{ fontWeight: 300, color: '#a78bfa', fontSize: 18 }}>meeting</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 22 }}>🔥</span>
+              <span style={{ fontWeight: 950, color: '#0f172a', fontSize: 20, letterSpacing: '-0.5px' }}>couple meeting</span>
             </div>
-            <div style={{ color: '#8696a0', fontSize: 12, lineHeight: 1.7 }}>
-              Uzaktaki sevgilinle ve yakın arkadaşlarınla müzik ve video deneyimini birlikte yaşa. Aynı saniyede dinle, izle, sesli sohbet et.
+            <div style={{ color: '#64748b', fontSize: 13, lineHeight: 1.65, fontWeight: 500 }}>
+              Uzak mesafe sevgilileri ve yeni tanışanlar için senkronize video, müzik ve baş başa Sanal Date deneyimi. Aynı saniyede dinle, izle, hisset.
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <a href="https://twitter.com/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(29,161,242,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1da1f2', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(29,161,242,.15)' }}>𝕏</a>
-              <a href="https://instagram.com/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(225,48,108,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e1306c', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(225,48,108,.15)' }}>📷</a>
-              <a href="https://reddit.com/r/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,69,0,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4500', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,69,0,.15)' }}>🔴</a>
-              <a href="https://github.com/kartal1243/couple-meeting" target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14, textDecoration: 'none', border: '1px solid rgba(255,255,255,.08)' }}>⌨️</a>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <a href="https://twitter.com/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 36, height: 36, borderRadius: 10, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', fontSize: 15, textDecoration: 'none', border: '1px solid #e2e8f0' }}>𝕏</a>
+              <a href="https://instagram.com/couplemeetingtr" target="_blank" rel="noopener noreferrer" style={{ width: 36, height: 36, borderRadius: 10, background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e11d48', fontSize: 15, textDecoration: 'none', border: '1px solid #fecdd3' }}>📷</a>
+              <a href="https://github.com/kartal1243/couple-meeting" target="_blank" rel="noopener noreferrer" style={{ width: 36, height: 36, borderRadius: 10, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', fontSize: 15, textDecoration: 'none', border: '1px solid #e2e8f0' }}>⌨️</a>
             </div>
           </div>
 
+          {/* Kolon 1: Ürün & Özellikler */}
           <div>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Ürün</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <a href="/landing" onClick={(e) => { e.preventDefault(); navigate('/landing'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Nasıl Çalışır?</a>
-              <a href="/landing#features" onClick={(e) => { e.preventDefault(); navigate('/landing'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>Özellikler</a>
-              <span onClick={handleOpenVip} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>👑 VIP Çift Paketi</span>
-              <span onClick={handleOpenVip} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer' }}>Fiyatlandırma</span>
+            <div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 14 }}>Ürün & Deneyim</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <a href="/date" onClick={(e) => { e.preventDefault(); navigate('/date'); }} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>💘 Sanal Date (Canlı Eşleşme)</a>
+              <a href="/landing" onClick={(e) => { e.preventDefault(); navigate('/landing'); }} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>🎬 Birlikte Video & YouTube</a>
+              <span onClick={handleOpenVip} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>👑 Couple Pass VIP</span>
+              <a href="/communities" onClick={(e) => { e.preventDefault(); navigate('/communities'); }} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>🏘️ Topluluklar & Odalar</a>
             </div>
           </div>
 
+          {/* Kolon 2: Keşfet & Rehber */}
           <div>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Topluluk & Keşfet</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <a href="/communities" onClick={(e) => { e.preventDefault(); navigate('/communities'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🏘️ Topluluklar</a>
-              <a href="/events" onClick={(e) => { e.preventDefault(); navigate('/events'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>📅 Etkinlik Takvimi</a>
-              <a href="/blog" onClick={(e) => { e.preventDefault(); navigate('/blog'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>📝 Çift & Film Rehberi (Blog)</a>
-              <a href="/ads?angle=couple" onClick={(e) => { e.preventDefault(); navigate('/ads?angle=couple'); }} style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>💕 Uzak Mesafe Çift Odası</a>
+            <div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 14 }}>Keşfet & Etkinlik</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <a href="/events" onClick={(e) => { e.preventDefault(); navigate('/events'); }} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>📅 Canlı Etkinlik Takvimi</a>
+              <a href="/blog" onClick={(e) => { e.preventDefault(); navigate('/blog'); }} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>📝 Çift & Film Rehberi (Blog)</a>
+              <a href="/ads?angle=couple" onClick={(e) => { e.preventDefault(); navigate('/ads?angle=couple'); }} style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>💕 Uzak Mesafe Çift Odaları</a>
             </div>
           </div>
 
+          {/* Kolon 3: Yasal & Güvenlik */}
           <div>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Destek & Yasal</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <a href="mailto:support@couplemeeting.com.tr" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>✉️ support@couplemeeting.com.tr</a>
-              <a href="/privacy.html" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🔒 Gizlilik Politikası</a>
-              <a href="/child-safety.html" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🛡️ Çocuk Güvenliği ve Kurallar</a>
-              <a href="/delete-account.html" style={{ color: '#8696a0', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>🗑️ Hesap Silme Talebi</a>
+            <div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 14 }}>Destek & Yasal</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <a href="mailto:support@couplemeeting.com.tr" style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>✉️ support@couplemeeting.com.tr</a>
+              <a href="/privacy.html" style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>🔒 Gizlilik Politikası</a>
+              <a href="/child-safety.html" style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>🛡️ Topluluk Kuralları & Güvenlik</a>
+              <a href="/delete-account.html" style={{ color: '#475569', fontSize: 13, cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>🗑️ Hesap Silme Talebi</a>
             </div>
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ color: '#4a5568', fontSize: 11 }}>
-            © 2026 couplemeeting.com.tr — Tüm hakları saklıdır.
+        {/* Bottom Copyright bar */}
+        <div style={{
+          paddingTop: 24, borderTop: '1px solid #f1f5f9',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
+        }}>
+          <div style={{ color: '#94a3b8', fontSize: 12.5, fontWeight: 600 }}>
+            © 2026 Couple Meeting. Tüm hakları saklıdır. Sevgiyle tasarlandı.
           </div>
-          <div style={{ color: '#4a5568', fontSize: 11 }}>
-            Made with ❤️ in Turkey
+          <div style={{ display: 'flex', gap: 14, fontSize: 12, color: '#64748b', fontWeight: 700 }}>
+            <span>🌐 Türkiye (TR)</span>
+            <span>•</span>
+            <span>🇹🇷 Türkçe</span>
           </div>
         </div>
       </div>

@@ -20,39 +20,73 @@ export default function PublicRooms({ publicRooms, onJoinRoom, onCreateRoom }) {
     video: (publicRooms || []).filter(r => r.roomType !== 'music').length,
     music: (publicRooms || []).filter(r => r.roomType === 'music').length,
   };
-  const btn = (key, label) => (
-    <button key={key} onClick={() => setTypeFilter(key)} style={{
-      padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-      fontSize: 11, fontWeight: 800,
-      background: typeFilter === key ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'rgba(255,255,255,.06)',
-      color: typeFilter === key ? '#fff' : '#94a3b8'
-    }}>{label} ({counts[key]})</button>
-  );
+
+  const btn = (key, label) => {
+    const isSelected = typeFilter === key;
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={() => setTypeFilter(key)}
+        style={{
+          padding: '8px 16px',
+          borderRadius: 999,
+          border: isSelected ? 'none' : '1.5px solid #e2e8f0',
+          cursor: 'pointer',
+          fontSize: 12.5,
+          fontWeight: 900,
+          background: isSelected ? 'linear-gradient(135deg, #fd267d, #ff6036)' : '#ffffff',
+          color: isSelected ? '#ffffff' : '#475569',
+          boxShadow: isSelected ? '0 4px 14px rgba(253,38,125,0.3)' : 'none',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        {label} ({counts[key]})
+      </button>
+    );
+  };
 
   return (
-    <section className="cm-section" style={{ marginTop: 32 }}>
+    <section className="cm-section" style={{ marginTop: 40 }}>
       <div className="cm-section-head">
         <div>
-          <h3 style={{ display:'flex', alignItems:'center', gap: 10 }}>
-            <span style={{ display:'inline-flex', width:10, height:10, borderRadius:'50%', background:'#22c55e', boxShadow:'0 0 8px rgba(34,197,94,.5)', animation:'cmLivePulse 2s ease-in-out infinite' }} />
-            Canlı Odalar
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#0f172a' }}>
+            <span style={{ display: 'inline-flex', width: 10, height: 10, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px rgba(34,197,94,.5)', animation: 'cmLivePulse 2s ease-in-out infinite' }} />
+            Canlı Buluşma Odaları
           </h3>
-          <p>Şu an aktif olan odalara katıl veya yarat.</p>
+          <p style={{ color: '#64748b' }}>Şu an sevgililerin ve arkadaşların birlikte izlediği aktif odalar.</p>
         </div>
-        <div style={{ color:'#64748b', fontSize:12, fontWeight:800 }}>
-          {publicRooms.length} oda aktif
-        </div>
+        <button
+          type="button"
+          onClick={onCreateRoom}
+          style={{
+            padding: '8px 18px',
+            borderRadius: 999,
+            background: '#0f172a',
+            border: 'none',
+            color: '#ffffff',
+            fontSize: 12.5,
+            fontWeight: 900,
+            cursor: 'pointer'
+          }}
+        >
+          + Odanı Kur
+        </button>
       </div>
 
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:14, flexWrap:'wrap' }}>
-        {btn('all','Tümü')}{btn('video','🎬 Video')}{btn('music','🎵 Müzik')}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+        {btn('all', 'Tüm Odalar')}
+        {btn('video', '🎬 Video & Sinema')}
+        {btn('music', '🎵 Müzik')}
+
         <input
-          value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔍 Oda ara..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="🔍 Oda veya sanatçı ara..."
           style={{
-            flex:1, minWidth:160, padding:'8px 12px', borderRadius:10,
-            background:'#111b21', border:'1px solid #25313a', color:'#e9edef',
-            fontSize:12, outline:'none'
+            flex: 1, minWidth: 180, padding: '9px 16px', borderRadius: 999,
+            background: '#ffffff', border: '1.5px solid #0f172a', color: '#0f172a',
+            fontSize: 13, fontWeight: 600, outline: 'none'
           }}
         />
       </div>
@@ -60,53 +94,74 @@ export default function PublicRooms({ publicRooms, onJoinRoom, onCreateRoom }) {
       {filtered.length > 0 ? (
         <div className="cm-room-grid">
           {filtered.slice(0, 18).map((r, i) => (
-            <div className="cm-room" key={r.id} onClick={() => onJoinRoom(r)} style={{ animationDelay: `${i * 0.08}s` }}>
-              <div className="cm-room-glow" />
+            <div
+              className="cm-room"
+              key={r.id}
+              onClick={() => onJoinRoom(r)}
+              style={{ animationDelay: `${i * 0.08}s` }}
+            >
               <div className="cm-room-top">
-                <div className="cm-room-icon-wrap" style={{ background: r.roomType === 'music'
-                  ? 'linear-gradient(135deg,rgba(0,168,132,.2),rgba(8,145,178,.15))'
-                  : 'linear-gradient(135deg,rgba(124,58,237,.2),rgba(37,99,235,.15))' }}>
+                <div
+                  className="cm-room-icon-wrap"
+                  style={{
+                    background: r.roomType === 'music'
+                      ? 'linear-gradient(135deg, rgba(253,38,125,0.12), rgba(255,96,54,0.12))'
+                      : 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.12))'
+                  }}
+                >
                   <span className="cm-room-emoji">{r.roomType === 'music' ? '🎵' : '🎬'}</span>
                 </div>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ color: r.userCount > 0 ? '#22c55e' : '#64748b', fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:8, background: r.userCount > 0 ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.05)' }}>
-                    {r.userCount > 0 ? `${r.userCount} kişi` : 'Boş'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    color: r.userCount > 0 ? '#16a34a' : '#64748b',
+                    fontSize: 10, fontWeight: 900, padding: '3px 9px', borderRadius: 999,
+                    background: r.userCount > 0 ? '#dcfce7' : '#f1f5f9'
+                  }}>
+                    {r.userCount > 0 ? `${r.userCount} kişi buluşuyor` : 'Boş'}
                   </span>
-                  {r.hasPassword && <span style={{ fontSize:10 }}>🔒</span>}
+                  {r.hasPassword && <span style={{ fontSize: 11 }}>🔒</span>}
                 </div>
               </div>
+
               <div className="cm-room-name">{r.name}</div>
               <div className="cm-room-meta">
-                {r.roomType === 'music' ? '🎵 Müzik Odası' : '🎬 Video Odası'}{r.isVip ? ' • 👑 VIP' : ''}
+                {r.roomType === 'music' ? '🎵 Ortak Müzik Odası' : '🎬 Birlikte Video Odası'}
+                {r.isVip ? ' • 👑 VIP' : ''}
               </div>
+
               <div className="cm-room-bottom">
                 <div className="cm-room-users">
-                  {r.users && r.users.length > 0 ? (
-                    r.users.slice(0, 4).map((u, j) => (
-                      <div key={j} className="cm-room-user-avatar" style={{ background: ['#7c3aed','#2563eb','#00a884','#f59e0b'][j % 4] }}>
-                        {u.avatar || ['🐱','🐶','🦊','🐻'][j % 4]}
-                      </div>
+                  {Array.isArray(r.users) && r.users.length > 0 ? (
+                    r.users.slice(0, 4).map((u, ui) => (
+                      <span key={ui} className="cm-room-user-avatar">{u.avatar || '🐱'}</span>
                     ))
                   ) : (
-                    Array.from({ length: Math.min(r.userCount, 4) }).map((_, j) => (
-                      <div key={j} className="cm-room-user-avatar" style={{ background: ['#7c3aed','#2563eb','#00a884','#f59e0b'][j % 4] }}>
-                        {['🐱','🐶','🦊','🐻'][j % 4]}
-                      </div>
-                    ))
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>Henüz kimse yok</span>
                   )}
-                  {r.userCount > 4 && <div className="cm-room-user-more">+{r.userCount - 4}</div>}
                 </div>
-                <div className="cm-room-join-btn">Katıl →</div>
+                <span className="cm-room-join-btn">
+                  Katıl →
+                </span>
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="cm-empty-state">
-          <div className="cm-empty-icon">🎶</div>
-          <div className="cm-empty-title">{query || typeFilter !== 'all' ? 'Eşleşen oda yok' : 'Henüz açık oda yok'}</div>
-          <div className="cm-empty-desc">{query || typeFilter !== 'all' ? 'Filtreyi değiştir veya yeni oda aç.' : 'İlk odayı sen oluştur ve burayı hareketlendir!'}</div>
-          <button onClick={onCreateRoom} style={{ marginTop:16, padding:'12px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#7c3aed,#a855f7)', color:'#fff', fontSize:13, fontWeight:800, cursor:'pointer' }}>🚀 Oda Oluştur</button>
+          <div className="cm-empty-icon">🛋️</div>
+          <div className="cm-empty-title">Aktif Oda Bulunamadı</div>
+          <div className="cm-empty-desc">Hemen ilk odayı sen kur, sevgilinle veya arkadaşlarınla buluş!</div>
+          <button
+            type="button"
+            onClick={onCreateRoom}
+            style={{
+              marginTop: 16, padding: '11px 24px', borderRadius: 999, border: 'none',
+              background: 'linear-gradient(135deg, #fd267d, #ff6036)', color: '#ffffff',
+              fontSize: 13, fontWeight: 900, cursor: 'pointer'
+            }}
+          >
+            🚀 İlk Odayı Kur
+          </button>
         </div>
       )}
     </section>
