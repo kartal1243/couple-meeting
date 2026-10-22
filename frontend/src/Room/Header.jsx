@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 const AMBIENCE_OPTIONS = [
-  { id: 'none', label: '🎬 Standart' },
-  { id: 'car_rain', label: '🚗🌧️ Yağmur & Araba' },
-  { id: 'cinema', label: '🍿 Sinema' },
-  { id: 'cafe', label: '☕ Kafe' },
-  { id: 'campfire', label: '🔥 Kamp Ateşi' }
+  { id: 'cafe', label: '☕ Loş Kafe & Akustik' },
+  { id: 'car_rain', label: '🚗🌧️ Gece Sürüşü & Yağmur' },
+  { id: 'campfire', label: '🔥 Kamp Ateşi' },
+  { id: 'cinema', label: '🍿 VIP Sinema' },
+  { id: 'none', label: '🎬 Standart' }
 ];
 
 function Header({
